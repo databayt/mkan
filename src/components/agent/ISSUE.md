@@ -1,5 +1,64 @@
 # Agent — open issues
 
+## 2026-11-14 — The chat closes the loop by itself: no step waits for a person to type
+
+- **Why:** Abdout: "we still didn't close any deal end to end … we asked the tenant to wait, someone from
+  Mkan will respond, and this breaks the loop. I expect the cycle to be fully autonomous." Read on
+  production (read-only), 11-05..11-13:
+  - 12 Nov 21:41: a real tenant from a home page (`k_page`, K5811) asked to meet, picked home 1 and got
+    "A person from Mkan will check … and reply to you here", twice. Nobody wrote. That home's only broker
+    had been asked every day 10-26..11-01 and never answered, so the 14-day gap left nobody to ask.
+  - 16 messages were handed to "a person" in nine days (8 not about a home, 6 under the homes, 2 after a
+    hello); none was answered. "Sure I will update u" and "How many bathrooms?" both got "Okay, I've asked
+    Osman to reply to you here". A viewer who pasted one of our own TikTok links got a generic search.
+  - A tenant's "tomorrow 10am" became a #mkan card for a person to phone the broker and type
+    `pnpm deal:book`. 0 viewings and 0 deals, ever; 364 brokers, 0 with agreed terms.
+- **Abdout's calls (11-14):** Mkan's cut stays 10% of the broker's commission; a person from Mkan comes to
+  every viewing; Mkan stays in the middle from the first deal (no numbers exchanged).
+- **Shipped** (`7cad48e`, `6ab41c4`, `3f0b1d3`, `b49fc63`, and the stranded script; 602 agent + WhatsApp
+  tests, `pnpm deal:e2e` passes; NOT deployed — Abdout's line):
+  - A pick never ends on a person. A tenant's own pick re-asks a broker who was silent on the home (last
+    ask 3+ days old, one such re-ask per broker a week, outbox label `pick:` passes the rest but not
+    "one message a day"). Nobody to ask → the tenant hears that and is offered another home; a host's own
+    home → its page; a failed check is retried once, then asks for the number again. Only paused sends
+    and the team's numbers still hand a pick to a person (`availability.ts`, `broker.ts pickBroker`).
+  - Under the homes, a message that is neither a pick nor a search goes to the writer with the shown
+    homes' facts (`writer.ts writeHomeAnswer`; guard: no person promised, no link, no price, no number
+    outside the facts, no unconfirmed "available"). English and Arabic; Kinyarwanda stays on the rules'
+    line — one of two rw answers got a bathroom count wrong (`AGENT_ANSWER_LOCALES`).
+  - "Are you a bot?" gets the truth and the chat goes on; "person" hears what the assistant does and that
+    a person from Mkan is at the viewing. A stranger's off-topic first message gets one "this is Mkan"
+    line a week. A TikTok link names its home like a K-code (`tiktok-link.ts`). The same reply is not
+    sent twice in three minutes.
+  - The line agrees the viewing time and books it (`viewing-loop.ts`): Mkan's person's hours
+    (`MKAN_VIEWING_HOURS` 9-18, `MKAN_VIEWING_DAYS` 1-6) and other viewings first, then the broker is
+    asked "1 = yes, or send another day and time". Yes → `bookViewing`; another time → the tenant's yes;
+    no → the broker is asked when; taken → the home is marked rented; silence → one chase, then the
+    tenant is told. No share on record → booked anyway while fewer than 10 deals are paid
+    (`MKAN_SHARE_REQUIRED_AFTER`), with Mkan's terms on the confirmation. `MKAN_REP_WHATSAPP` gets the
+    booking and the meeting place. `MKAN_VIEWING_AUTO=off` restores the card and the one-tap Yes.
+  - One nudge for a tenant who goes quiet under the homes, 3 daytime hours on (`quiet-nudge.ts`,
+    `MKAN_QUIET_NUDGE=off`). After a viewing, "I want it" tells the broker and Mkan's person at once;
+    an unreadable answer asks 1 or 2 again. SIGNED sends the share request by itself once
+    `MKAN_PAYOUT_MOMO` is set.
+  - `pnpm agent:stranded` (dry by default) re-runs the picks the old line left waiting: today, one —
+    the 12 Nov tenant and K5811.
+- **After the deploy (each is Abdout's go):** `pnpm wa:deal48h on`; `MKAN_INTRO_CAP=0` on the Worker
+  (in the middle from deal one); `pnpm agent:stranded --apply`; a phone test from the team number through
+  to a booked viewing (team numbers keep the old card path, so test the broker side with
+  `pnpm deal:e2e`).
+- **Owed:**
+  - `MKAN_PAYOUT_MOMO`, `MKAN_REP_WHATSAPP`, and the viewing hours if 9-18 Mon–Sat is wrong.
+  - A native Kinyarwanda read of the new lines (checkText slow / unreachable / host / retry, the quiet
+    nudge, the viewing-time messages to tenants and brokers) and of `pnpm agent:eval-writer --under`.
+  - SIGNED and PAID are still set with `pnpm deal:status` or the Deals card on /monetize: a WhatsApp word
+    from Mkan's person ("signed K5811") is the next step, with the funnel ledger.
+  - Voice notes still get "please type"; a broker's free-text answer to a tenant's question is not relayed.
+  - The dedicated number: until it lands the line carries Abdout's own contacts, and the one-line hello
+    can reach a friend who is not on `pnpm wa:personal`.
+  - Before the 10th paid deal: the terms-first path for a broker with no share (today that case goes back
+    to the #mkan card).
+
 ## 2026-11-08 — End-to-end trace of the three doors (web, WhatsApp, the TikTok bio page)
 
 - **How:** three code traces (web chat, WhatsApp, the agent core and broker loop), every claim re-read in
