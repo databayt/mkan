@@ -5370,10 +5370,10 @@
     "followUp": {
       "check": "Mkan ibaza komisiyoneri niba inzu igihari kuri WhatsApp, kandi ni ubuntu kuri wowe. Komereza kuri WhatsApp, wohereze nimero y'inzu ushaka.",
       "visit": "Yego rwose. Gusura bitegurirwa kuri WhatsApp: komereza aho, wohereze nimero y'inzu wifuza gusura, hanyuma tuguhe igihe tuzazana nawe.",
-      "about": "Uri kuvugana n'umufasha wa Mkan: nshakisha amazu kandi mvugana n'abakomisiyoneri ku bwawe. Umuntu wo mu itsinda ryacu akurikirana ibiganiro kandi azaza mu gusura. Kugira ngo uvugane na we, komereza kuri WhatsApp wandike \"umuntu\".",
+      "about": "Uri kuvugana n'umufasha wa Mkan: nshakisha amazu, mvugana n'abakomisiyoneri kandi ntegura gusura ku bwawe; umwe mu itsinda ryacu azaza mu gusura hamwe nawe. Mbwira icyo ushaka, cyangwa ukande ku nzu iri hejuru.",
       "chat": "Muraho! Ndi umufasha wa Mkan. Kanda ku nzu iri hejuru urebe amakuru yayo, cyangwa umbwire icyo wahindura: agace, amafaranga cyangwa ibyumba.",
       "thanks": "Ntacyo! Kanda ku nzu iri hejuru urebe amakuru yayo, cyangwa umbwire icyo wahindura.",
-      "person": "Hano nshobora gufasha ku mazu gusa. Ku bindi byose, komereza kuri WhatsApp wandike \"umuntu\": umuntu wo muri Mkan azagusubiza aho.",
+      "person": "Ndi umufasha wa Mkan, mfasha ku mazu: kuyashaka, kubaza abakomisiyoneri bayo no gutegura gusura. Mbwira icyo ushaka, cyangwa ukomereze kuri WhatsApp, aho amazu aza afite nimero.",
       "checkHome": "Nzabaza komisiyoneri niba {ref} igihari. Igisubizo kiza kuri WhatsApp: kanda hasi wohereze ubutumwa, Mkan ihite ibaza ikakubwire aho. Ni ubuntu."
     },
     "reply": {

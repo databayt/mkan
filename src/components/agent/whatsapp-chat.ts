@@ -27,7 +27,11 @@ import { loadTask, STUCK_AFTER_MS } from "./task-view";
 import type { AgentMessage, AgentTaskView } from "./types";
 import { busyText, checkText, formatWhatsApp, isFresh, readPick, readRef, retryPlan, takenIn, waLang, wantsViewing, type CheckOutcome, type WaDict, type WaLang } from "./whatsapp-format";
 import { askAroundText, botText, firstMessageKind, isBareYes, isThanks, lastAgent, MAX_HOMES, personAfterHello, personText, asksForHome, readHomeRef, refSourceOf, shownHomes, thanksText, wantsPerson, whichOneText, type RefSource } from "./whatsapp-format";
-import { afterHomesKind, chatText, visitText } from "./whatsapp-format";
+import { afterHomesKind, chatText, helloText, unsureText, videoNotFoundText, visitText } from "./whatsapp-format";
+import { homeForTikTokLink } from "./tiktok-link";
+import { tiktokLink, withoutTikTokLink } from "./tiktok-link-pure";
+import { EMPTY_REQUIREMENTS } from "./requirements";
+import { canAnswer, noteRwSamples, writeHomeAnswer, writerFacts, type RwSample } from "./writer";
 import { askAround } from "./demand";
 import { viewingRep } from "./broker-message";
 import { parseBrokerReply } from "./broker-reply";
@@ -92,6 +96,18 @@ const noteHandoff = (msgId: string, why: string) =>
   db.waState
     .upsert({ where: { key: `handoff:${msgId}` }, create: { key: `handoff:${msgId}`, value: { why } }, update: {} })
     .catch(() => {});
+
+/** "This is Mkan" goes to a number that wrote about something else once in this long (WaState `hello:<digits>`). */
+const HELLO_GAP_MS = 7 * 86_400_000;
+const helloKey = (digits: string) => `hello:${digits}`;
+async function saidHelloLately(digits: string): Promise<boolean> {
+  const row = await db.waState.findUnique({ where: { key: helloKey(digits) }, select: { updatedAt: true } }).catch(() => null);
+  return !!row && Date.now() - row.updatedAt.getTime() < HELLO_GAP_MS;
+}
+const noteHello = (digits: string) => {
+  const value = { at: new Date().toISOString() };
+  return db.waState.upsert({ where: { key: helloKey(digits) }, create: { key: helloKey(digits), value }, update: { value } }).catch(() => {});
+};
 
 /**
  * How this person first reached Mkan (a TikTok post's code, the /k page, a web chat, or none) —
@@ -229,14 +245,25 @@ export async function handleTenantWhatsApp(input: {
   const lastKind = current ? (((current.messages as unknown as AgentMessage[]) ?? []).findLast((m) => m.role === "agent") as { kind?: string } | undefined)?.kind : undefined;
   const bareNumber = /^#?\d{4,6}$/.test(rest.trim());
   const homeRef = bareNumber && (lastKind === "ask" || lastKind === "clarify") ? null : readHomeRef(rest);
-  const refHome = homeRef ? await homeForRef(homeRef) : null;
+  // A TikTok link names a home as a code does (tiktok-link.ts): Mkan's own post of it, or the broker's video.
+  // 11-07: a viewer pasted one with "You posted this on ur TikTok" and got a generic search.
+  const hasLink = homeRef == null && !!tiktokLink(rest);
+  const linkedHome = hasLink ? await homeForTikTokLink(rest).catch(() => null) : null;
+  const refHome = homeRef ? await homeForRef(homeRef) : linkedHome ? await homeForRef(linkedHome) : null;
+  // A link to no home Mkan knows, with nothing said beside it: ask for the code on the video, or the search.
+  if (hasLink && !refHome && !withoutTikTokLink(rest)) {
+    if (current) await stampSeen(current.id, input.msgId, 0);
+    return { reply: videoNotFoundText(lang), taskId: current?.id ?? null };
+  }
   if (refHome) current = null;
-  const refSource = refHome ? refSourceOf(rest, ref) : null;
+  const refSource: RefSource | null = refHome ? (linkedHome ? "tiktok" : refSourceOf(rest, ref)) : null;
   if (refHome) await db.agentProfile.updateMany({ where: { id: profile.id, firstRef: null, firstSource: refSource }, data: { firstRef: refHome.id } }).catch(() => {});
 
   // A digit answers the last numbered question.
   // A ref's prefilled words are ours, not the tenant's: the web chat's own words run instead.
   let text = ref && !refHome ? "" : rest;
+  // The turn reads words, not a URL: what was said beside the link, else the home's own code.
+  if (hasLink) text = withoutTikTokLink(text) || (linkedHome ? `K${linkedHome}` : text);
   if (current) {
     const view = await loadTask(viewer, current.id);
     const pick = readPick(rest, view, d);
@@ -301,16 +328,22 @@ export async function handleTenantWhatsApp(input: {
 
   // A new chat that is neither about a home nor a hello is likely someone who knew this number before it
   // was Mkan's: a person answers it, never the agent.
-  if (!current && !ref && !refHome && firstMessageKind(text) === "other") {
-    await noteHandoff(input.msgId, "not-about-a-home");
-    await postSlackCard(`💬 ${profile.waPhone ?? "a number"} wrote, not about a home — the agent stayed quiet; answer it yourself if it is for you:\n> ${text.slice(0, 300)}${profile.waPhone ? `\nIf this is someone you know: \`pnpm wa:personal add ${profile.waPhone}\`` : ""}`).catch(() => {});
-    return { reply: null, why: "empty" };
-  }
-  // The same after a hello: a chat that has only greeted, whose next message is not about a home either
-  // ("where are you, so we can bring the things" got six homes on 11-01), goes to a person.
-  if (current && !ref && !refHome && personAfterHello(text, current.messages as unknown as AgentMessage[])) {
-    await noteHandoff(input.msgId, "after-hello");
-    await postSlackCard(`💬 ${profile.waPhone ?? "a number"} said hello, then wrote something not about a home — the agent stayed quiet; answer it yourself:\n> ${text.slice(0, 300)}`).catch(() => {});
+  // Since 2026-11-14 they hear who this is, once a week per number (`hello:<digits>`), instead of silence:
+  // a tenant whose opener the rules could not place got nothing at all. A number on Abdout's own list
+  // never reaches here (the `personal` gate above), and after that one line the agent stays quiet again.
+  const stranger = !current && !ref && !refHome && firstMessageKind(text) === "other";
+  const offTopic = !!current && !ref && !refHome && personAfterHello(text, current.messages as unknown as AgentMessage[]);
+  if (stranger || offTopic) {
+    await noteHandoff(input.msgId, stranger ? "not-about-a-home" : "after-hello");
+    const who = profile.waPhone ?? "a number";
+    const known = profile.waPhone ? `\nIf this is someone you know: \`pnpm wa:personal add ${profile.waPhone}\`` : "";
+    if (!personal && !(await saidHelloLately(digits))) {
+      await noteHello(digits);
+      await postSlackCard(`💬 ${who} wrote, not about a home — the agent said who Mkan is and asked what they are looking for:\n> ${text.slice(0, 300)}${known}`).catch(() => {});
+      if (current) await stampSeen(current.id, input.msgId, 0);
+      return { reply: helloText(lang), taskId: current?.id ?? null };
+    }
+    await postSlackCard(`💬 ${who} wrote again, not about a home — the agent stayed quiet (it said who Mkan is this week); answer it yourself if it is for you:\n> ${text.slice(0, 300)}${known}`).catch(() => {});
     return { reply: null, why: "empty" };
   }
   // A thank-you after the homes went out gets a line back, not the same homes again (11-01: "Thank you" got six).
@@ -329,9 +362,23 @@ export async function handleTenantWhatsApp(input: {
       const last = [...(said ?? [])].reverse().find((m): m is Extract<AgentMessage, { kind: "shortlist" }> => m.role === "agent" && m.kind === "shortlist");
       const n = Math.min(MAX_HOMES, last?.count ?? MAX_HOMES);
       if (kind === "person") {
-        await noteHandoff(input.msgId, "under-homes");
-        await postSlackCard(`💬 ${profile.waPhone ?? "a number"} wrote under their homes, not about a home — answer them yourself:\n> ${text.slice(0, 300)}`).catch(() => {});
-        return { reply: personText(lang, viewingRep()), taskId: current.id };
+        // Anything the rules cannot place ("does the first one have water?", "do you have a video?",
+        // "sure, I will update you"): the writer answers it from the shown homes' facts (writer.ts
+        // writeHomeAnswer). It was "Okay, I've asked {rep} to reply to you here" and a #mkan card — six in
+        // nine days, none answered (2026-11-14).
+        input.onAnswering?.();
+        const view = await loadTask(viewer, current.id);
+        const shown = (view?.shortlist ?? []).slice(0, MAX_HOMES);
+        const facts = writerFacts({ lang, requirements: EMPTY_REQUIREMENTS, relaxed: [], shortlist: shown });
+        const samples: RwSample[] = [];
+        const written = shown.length > 0 && (await canAnswer(lang).catch(() => false)) ? await writeHomeAnswer(text, facts, undefined, undefined, (x) => samples.push(x)).catch(() => null) : null;
+        void noteRwSamples(current.id, samples);
+        if (!written) {
+          // Counted, and #mkan hears what it was — a note for the weekly read, not a task: the tenant was answered.
+          await noteHandoff(input.msgId, "under-homes-unsure");
+          await postSlackCard(`💬 ${profile.waPhone ?? "a number"} wrote under their homes and the assistant could not place it; it asked them to pick a home or say what to change:\n> ${text.slice(0, 300)}`).catch(() => {});
+        }
+        return { reply: written ?? unsureText(lang), taskId: current.id };
       }
       const reply = kind === "check" ? whichOneText(lang, n) : kind === "visit" ? visitText(lang, n) : kind === "about" ? botText(lang, viewingRep()) : chatText(lang);
       return { reply, taskId: current.id };

@@ -12,6 +12,7 @@
  *     limit before dropped any message the webhook missed just after a pass);
  *   - the phone or the whole line is over its hourly ceiling.
  */
+import { createHash } from 'node:crypto';
 
 export const HUMAN_HOLD_MS = 12 * 60 * 60 * 1000;
 export const MAX_AGE_MS = 12 * 60 * 60 * 1000;
@@ -125,3 +126,24 @@ export function typePleaseText(lang: string): string {
 
 /** A one-to-one chat (not a group, a broadcast or a status). */
 export const isDirectChat = (remoteJid: string | undefined) => !!remoteJid && (remoteJid.endsWith('@s.whatsapp.net') || remoteJid.endsWith('@lid'));
+
+// ── the same words twice ─────────────────────────────────────────────────────────────────────────
+
+/** The agent's own messages to tenants (WaState `tenant-sent`): `id` once WhatsApp gave one, `h` the words' hash. */
+export type Sent = { id: string; phone: string; at: string; h?: string }[];
+
+/** A reply's words, hashed: its echo is ours even when it comes back before the send returned its id. */
+export const textHash = (t: string) => createHash('sha1').update(t.replace(/\s+/g, ' ').trim()).digest('hex').slice(0, 12);
+
+/**
+ * A reply already sent to this phone this recently is not sent again word for word: two messages in a
+ * row that draw the same line ("The 1 first one", then "Okay", 11-12) read as a machine, and the second
+ * needs no answer.
+ */
+export const REPEAT_WINDOW_MS = 3 * 60_000;
+
+/** Did these exact words go out to this phone within REPEAT_WINDOW_MS? Sent replies only (they carry an id). */
+export function saidJustNow(sent: Sent, phone: string, text: string, now: number): boolean {
+  const h = textHash(text);
+  return sent.some((s) => !!s.id && s.phone === phone && s.h === h && now - new Date(s.at).getTime() < REPEAT_WINDOW_MS);
+}

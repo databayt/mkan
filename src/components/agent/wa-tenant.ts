@@ -1,7 +1,5 @@
 import "server-only";
 
-import { createHash } from "node:crypto";
-
 /**
  * Tenants on WhatsApp → the rental agent, inside the container.
  *
@@ -10,7 +8,7 @@ import { createHash } from "node:crypto";
  * shows "typing…", runs the turn in-process (whatsapp-chat.ts) and sends the
  * reply. The turn dedupes by message id, so the two paths answer once.
  */
-import { langOfWords, LATE_AFTER_MS, lateLead, MAX_AGE_MS, MEDIA_NUDGE_MS, startText, stopConfirmText, tenantDecision, typePleaseText, type TenantDecision } from "../../../scripts/wa/tenant-pure";
+import { langOfWords, LATE_AFTER_MS, lateLead, MAX_AGE_MS, MEDIA_NUDGE_MS, REPEAT_WINDOW_MS, saidJustNow, startText, stopConfirmText, tenantDecision, textHash, typePleaseText, type Sent, type TenantDecision } from "../../../scripts/wa/tenant-pure";
 import { db } from "@/lib/db";
 import { sendPresence, sendText } from "@/lib/whatsapp/evolution";
 import { isPersonal } from "./personal";
@@ -20,10 +18,6 @@ import { postSlackCard } from "./whatsapp";
 
 const SENT_KEEP = 2000;
 
-type Sent = { id: string; phone: string; at: string; h?: string }[];
-
-/** A reply's words, hashed: its echo is ours even when it comes back before the send returned its id. */
-const textHash = (t: string) => createHash("sha1").update(t.replace(/\s+/g, " ").trim()).digest("hex").slice(0, 12);
 /** An echo of the same words this soon after sending is the agent's own, not a person typing. */
 const ECHO_WINDOW_MS = 120_000;
 
@@ -225,6 +219,13 @@ export function answerTenant(m: TenantMessage): Promise<TenantOutcome> {
       // A message the line took long to reach (the webhook missed it, a restart): say sorry first.
       const late = now.getTime() - m.sentAt.getTime() > LATE_AFTER_MS;
       const reply = late ? `${lateLead(await chatLocale(m.phone, m.text))}\n\n${res.reply}` : res.reply;
+      // The same words twice in a row read as a machine: an "Okay" after a status line got that line again
+      // (11-07 and 11-12, three times in one chat). Said once; the second message needs no answer.
+      if (saidJustNow(await readState<Sent>("tenant-sent", []), m.phone, reply, Date.now())) {
+        await settleMessage(m.msgId);
+        log(`tenant +${m.phone} not answered: the same reply went out under ${Math.round(REPEAT_WINDOW_MS / 60_000)} min ago`);
+        return "nothing";
+      }
       await holdReply(m.msgId, reply, claim.tries);
       await recordSent(m.phone, undefined, reply);
       const out = await sendText(m.phone, reply);

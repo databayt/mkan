@@ -155,7 +155,8 @@ const TIKTOK_WORDS_RE =
  */
 export function refSourceOf(text: string, webRef: string | null): RefSource {
   if (/\btiktok_bio\b/i.test(text)) return "tiktok_bio";
-  if (readHomeRef(text) == null) return webRef ? "web" : TIKTOK_WORDS_RE.test(text) ? "tiktok" : "organic";
+  // A pasted TikTok link is TikTok's too (tiktok-link.ts reads which home it shows).
+  if (readHomeRef(text) == null) return webRef ? "web" : TIKTOK_WORDS_RE.test(text) || /\btiktok\.com\//i.test(text) ? "tiktok" : "organic";
   if (/\bmkan\.sd\b/i.test(text)) return "k_page";
   return webRef ? "web" : "tiktok";
 }
@@ -586,9 +587,11 @@ export function askAroundText(lang: WaLang, result: { asked: number; handed: boo
  * tells the team someone asked.
  */
 export function botText(lang: WaLang, rep: string): string {
-  if (lang === "ar") return `أنت تتحدث مع مساعد مكان: أبحث في المنازل وأتواصل مع الوسطاء من أجلك. ${rep} من فريقنا يتابع المحادثات ويحضر المعاينة معك. اكتب «شخص» إن أردت أن يرد عليك أحد من الفريق.`;
-  if (lang === "rw") return `Uri kuvugana n'umufasha wa Mkan: nshakisha amazu kandi mvugana n'abakomisiyoneri ku bwawe. ${rep} wo mu itsinda ryacu akurikirana ibiganiro kandi azaza mu gusura. Andika "umuntu" niba ushaka ko akwisubiriza.`;
-  return `You're chatting with Mkan's assistant: I search the homes and talk to the brokers for you. ${rep} from our team follows these chats and comes to the viewing with you. Type "person" if you'd like a person to reply.`;
+  // The truth, and no "type person": nobody answered those (2026-11-14). The assistant does the chat; a
+  // person from Mkan is at the viewing.
+  if (lang === "ar") return `أنت تتحدث مع مساعد مكان: أبحث في المنازل وأتواصل مع الوسطاء وأرتب المعاينة من أجلك هنا، و${rep} من فريقنا يحضر المعاينة معك. عمّ تبحث؟`;
+  if (lang === "rw") return `Uri kuvugana n'umufasha wa Mkan: nshakisha amazu, mvugana n'abakomisiyoneri kandi ntegura gusura ku bwawe hano. ${rep} wo mu itsinda ryacu azaza mu gusura hamwe nawe. Urashaka inzu imeze ite?`;
+  return `You're chatting with Mkan's assistant: I search the homes, talk to the brokers and set up the viewing for you, right here. ${rep} from our team comes to the viewing with you. What are you looking for?`;
 }
 
 /**
@@ -635,11 +638,39 @@ export function thanksText(lang: WaLang): string {
   return "You're welcome! Send the number of a home you like and I'll check it's still free, or tell me what to change.";
 }
 
-/** The tenant asked for a person: one is told (a #mkan card), and the tenant hears so. */
+/**
+ * The tenant asked for a person. Until 2026-11-14 this said "Okay, I've asked {rep} to reply to you here"
+ * — a promise the line could not keep (16 such hand-offs in nine days, none answered). It now says what is
+ * true: the assistant does the whole chat, and a person from Mkan is at the viewing.
+ */
 export function personText(lang: WaLang, rep: string): string {
-  if (lang === "ar") return `تمام، طلبت من ${rep} أن يرد عليك هنا.`;
-  if (lang === "rw") return `Yego, nasabye ${rep} kugusubiza hano.`;
-  return `Okay, I've asked ${rep} to reply to you here.`;
+  if (lang === "ar") return `أنا مساعد مكان، وأستطيع أن أقوم بكل شيء هنا: أجد المنازل، وأتأكد من وسطائها، وأرتب المعاينة، وهناك يلتقيك ${rep} من فريقنا. بماذا أساعدك؟`;
+  if (lang === "rw") return `Ndi umufasha wa Mkan, kandi byose nabikora hano: gushaka amazu, kubaza abakomisiyoneri no gutegura gusura, aho ${rep} wo mu itsinda ryacu azahurira nawe. Nagufasha iki?`;
+  return `I'm Mkan's assistant, and I can do all of it here: find homes, check them with their brokers and set up the viewing, where ${rep} from our team meets you. What can I help with?`;
+}
+
+/** Under the homes, a message the writer could not answer (off, slow, or refused by its guard): how to go on. Never a promise. */
+export function unsureText(lang: WaLang): string {
+  if (lang === "ar") return "لم أفهم ذلك تماماً. أرسل رقم منزل من القائمة وأتأكد من وسيطه أنه متاح، أو أخبرني بما تبحث عنه: المنطقة والميزانية وعدد الغرف.";
+  if (lang === "rw") return "Sinabyumvise neza. Ohereza nimero y'inzu iri ku rutonde ndebe ko igihari, cyangwa umbwire icyo ushaka: agace, amafaranga n'ibyumba.";
+  return "I didn't quite get that. Send the number of a home above and I'll check with its broker that it's free, or tell me what you're looking for: the area, the budget and the bedrooms.";
+}
+
+/** A TikTok link that leads to no home Mkan knows, sent with nothing else: the code on the video, or the search itself. */
+export function videoNotFoundText(lang: WaLang): string {
+  if (lang === "ar") return "لم أتمكن من ربط هذا الفيديو بمنزل. أرسل الرمز الظاهر في الفيديو (مثل K5811)، أو أخبرني بالمنطقة وعدد الغرف والميزانية.";
+  if (lang === "rw") return "Sinashoboye guhuza iyo videwo n'inzu. Ohereza kode iri kuri videwo (nka K5811), cyangwa umbwire agace, umubare w'ibyumba n'amafaranga ufite.";
+  return "I couldn't match that video to a home. Send the code shown on the video (like K5811), or tell me the area, the number of bedrooms and your budget.";
+}
+
+/**
+ * A first message that is neither about a home nor a hello, from a number that is not on Abdout's own list:
+ * one line saying who this is, once a week per number (whatsapp-chat.ts). It was silence and a #mkan card.
+ */
+export function helloText(lang: WaLang): string {
+  if (lang === "ar") return "مرحباً، معك مكان. نساعد الناس في إيجاد منزل للإيجار في كيغالي. إن كنت تبحث عن منزل، أخبرني بالمنطقة وعدد الغرف والميزانية.";
+  if (lang === "rw") return "Muraho, ni Mkan. Dufasha abantu kubona inzu yo gukodesha i Kigali. Niba ushaka inzu, mbwira agace, umubare w'ibyumba n'amafaranga ufite.";
+  return "Hi, this is Mkan. We help people find a home to rent in Kigali. If you're looking for one, tell me the area, the number of bedrooms and your budget.";
 }
 
 /**

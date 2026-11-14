@@ -5370,10 +5370,10 @@
     "followUp": {
       "check": "I check a home with its broker on WhatsApp, and it's free for you. Continue there and send the number of the home you want.",
       "visit": "Happy to. Viewings are set up on WhatsApp: continue there, send the number of the home you want to see, and we agree a time and come with you.",
-      "about": "You're chatting with Mkan's assistant: I search the homes and talk to the brokers for you. A person from our team follows these chats and comes to the viewing with you. To talk to them, continue on WhatsApp and write \"person\".",
+      "about": "You're chatting with Mkan's assistant: I search the homes, talk to the brokers and set up the viewing for you, and someone from our team comes to the viewing with you. Tell me what you're looking for, or tap a home above.",
       "chat": "Hi! I'm Mkan's assistant. Tap a home above for its details, or tell me what to change: the area, the budget or the bedrooms.",
       "thanks": "You're welcome! Tap a home above for its details, or tell me what to change.",
-      "person": "I can only help with homes here. For anything else, continue on WhatsApp and write \"person\": someone from Mkan answers you there.",
+      "person": "I'm Mkan's assistant, and I help with homes: finding them, checking them with their brokers and setting up viewings. Tell me what you're looking for, or continue on WhatsApp, where the homes come numbered.",
       "checkHome": "I'll ask the broker if {ref} is still free. The answer comes on WhatsApp, so tap below and send the message: Mkan asks right away and tells you there. It's free."
     },
     "reply": {
