@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The second ear: a launchd timer that runs the #mkan intake sweep every two minutes,
+# The second ear: a launchd timer that runs the #mkan intake sweep every ten minutes,
 # so a home typed into Slack is caught even when the Hermes gateway is down or asleep.
 #
 #   bash scripts/crm/install-home-sweep.sh            # install + start
@@ -26,7 +26,7 @@ cat > "$PLIST" <<PL
 <plist version="1.0"><dict>
   <key>Label</key><string>$LABEL</string>
   <key>ProgramArguments</key><array>
-    <string>$PNPM</string><string>-s</string><string>home:sweep</string><string>--apply</string>
+    <string>$REPO/node_modules/.bin/tsx</string><string>scripts/crm/home-intake.ts</string><string>sweep</string><string>--apply</string>
   </array>
   <key>WorkingDirectory</key><string>$REPO</string>
   <key>EnvironmentVariables</key><dict>
@@ -34,7 +34,7 @@ cat > "$PLIST" <<PL
     <key>HOME</key><string>$HOME</string>
     <key>FORCE_SEED</key><string>1</string>
   </dict>
-  <key>StartInterval</key><integer>120</integer>
+  <key>StartInterval</key><integer>600</integer>
   <key>RunAtLoad</key><true/>
   <key>StandardOutPath</key><string>$LOGDIR/sweep.log</string>
   <key>StandardErrorPath</key><string>$LOGDIR/sweep.err.log</string>
@@ -42,4 +42,4 @@ cat > "$PLIST" <<PL
 PL
 launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
 launchctl bootstrap "gui/$(id -u)" "$PLIST"
-echo "installed $LABEL — every 120s, logs in $LOGDIR/sweep.log"
+echo "installed $LABEL — every 600s, logs in $LOGDIR/sweep.log"
