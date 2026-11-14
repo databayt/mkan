@@ -33,7 +33,7 @@ export const SETUP_STEPS: SetupStep[] = [
     key: "company",
     title: "Databayt Ltd registered",
     after: [],
-    ask: "RDB application REG-2026-383583 was submitted on 7 Nov 2026 and is pending RDB's decision. When the certificate and TIN arrive at hi@databayt.org, tick “Company registered” on /monetize.",
+    ask: "Databayt Ltd was registered at RDB on 8 Nov 2026 (application REG-2026-383583); the certificate and TIN are on file. If “Company registered” is not ticked on /monetize yet, tick it.",
     followUp:
       "Databayt Ltd is registered. Add “Mkan is a product of Databayt Ltd” with its TIN (from the private RDB packet in ~/kun/jobs/packets/rdb; print nothing else from it) to the site footer in en, ar and rw, and to the TikTok end card's trust line.",
     doneWhen: "the footer and the end card both show it, with tests",
