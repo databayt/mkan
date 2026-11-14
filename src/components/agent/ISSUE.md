@@ -43,10 +43,14 @@
     `MKAN_PAYOUT_MOMO` is set.
   - `pnpm agent:stranded` (dry by default) re-runs the picks the old line left waiting: today, one —
     the 12 Nov tenant and K5811.
-- **After the deploy (each is Abdout's go):** `pnpm wa:deal48h on`; `MKAN_INTRO_CAP=0` on the Worker
-  (in the middle from deal one); `pnpm agent:stranded --apply`; a phone test from the team number through
-  to a booked viewing (team numbers keep the old card path, so test the broker side with
-  `pnpm deal:e2e`).
+- **Later the same day:** Mkan's person closes a step from their phone — "signed K5811", "paid K5811",
+  "viewed K5811", "lost K5811 <why>", "deals" — from `MKAN_REP_WHATSAPP` (`rep-word.ts`, `1240bba`).
+  Mkan in the middle from the first deal is now the code's default (`intro-pure.ts introCap`, 0;
+  `MKAN_INTRO_CAP=10` brings the direct intros back), so it is no longer a switch to flip. /monetize
+  says what a paid deal earns and how many cover the month (`src/lib/monetize/path.ts`).
+- **After the deploy (each is Abdout's go):** `pnpm wa:deal48h on`; `pnpm agent:stranded --apply`; a
+  phone test from the team number through to a booked viewing (team numbers keep the old card path, so
+  test the broker side with `pnpm deal:e2e`).
 - **Owed:**
   - `MKAN_PAYOUT_MOMO`, `MKAN_REP_WHATSAPP`, and the viewing hours if 9-18 Mon–Sat is wrong.
   - A native Kinyarwanda read of the new lines (checkText slow / unreachable / host / retry, the quiet

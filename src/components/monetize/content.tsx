@@ -62,7 +62,7 @@ export function MonetizeContent({
         </div>
       </header>
 
-      {data.score && <Scorecard score={data.score} reach={data.reach} intro={data.intro} labels={labels} locale={locale} />}
+      {data.score && <Scorecard score={data.score} reach={data.reach} intro={data.intro} path={data.path} labels={labels} locale={locale} />}
       {canEdit && deals && <DealsSection deals={deals} labels={labels} locale={locale} payoutSet={payoutSet} held={heldIntros} momoMode={momoMode} />}
       {canEdit && <SetupSection state={data.setup ?? {}} labels={labels} locale={locale} />}
 

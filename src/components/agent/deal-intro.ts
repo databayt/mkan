@@ -33,6 +33,7 @@ import {
   decideSend,
   dueFollowUps,
   heldIntroCard,
+  introCap,
   FOLLOW_UP_TTL_MS,
   followUpBrokerMessage,
   followUpTenantMessage,
@@ -67,11 +68,15 @@ const langOf = (l: string | null | undefined): DealLang => (l === "ar" || l === 
 const variants = (phone: string) => [`+${phoneKey(phone)}`, phoneKey(phone)];
 const plus = (phone: string) => `+${phoneKey(phone)}`;
 
-/** Intro or relay, from the paid deals so far (intro-pure.ts INTRO_CAP; MKAN_INTRO_CAP overrides it for deal:e2e). */
+/**
+ * Intro or relay, from the paid deals so far against the cap in force (intro-pure.ts introCap: 0 since
+ * 2026-11-14, so relay from the first deal; MKAN_INTRO_CAP sets another, and deal:e2e uses it).
+ */
 export async function introMode(): Promise<ConnectionMode> {
+  const cap = introCap();
+  if (cap === 0) return "relay";
   const paid = await db.deal.count({ where: { status: "PAID" } });
-  const cap = Number(process.env.MKAN_INTRO_CAP);
-  return connectionMode(paid, Number.isFinite(cap) && process.env.MKAN_INTRO_CAP !== "" && process.env.MKAN_INTRO_CAP != null ? cap : undefined);
+  return connectionMode(paid, cap);
 }
 
 /** `messages`, when the caller has them: a yes a day or more after the tenant last wrote names the day they asked. */
@@ -614,7 +619,7 @@ export async function introBrokerUpdate(brokerId: string, phone: string, text: s
 /** For the scorecard and the loop: intro deals so far, and how many paid deals remain before relay. */
 export async function introCounts(): Promise<{ intros: number; paid: number; mode: ConnectionMode }> {
   const [intros, paid] = await Promise.all([db.deal.count({ where: { introducedAt: { not: null } } }), db.deal.count({ where: { status: "PAID" } })]);
-  return { intros, paid, mode: connectionMode(paid) };
+  return { intros, paid, mode: connectionMode(paid, introCap()) };
 }
 
 export type { FollowUpMark };

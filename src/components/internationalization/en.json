@@ -6945,7 +6945,14 @@
       "allMet": "Every part on target",
       "followers": "{n} followers",
       "introMode": "Until {cap} deals are paid, we introduce tenant and broker directly once the broker agrees Mkan's terms (10% of their commission, free viewing). {paid} paid so far · {intros} intros.",
-      "relayMode": "{paid} deals paid: Mkan now stays in the middle, and tenant and broker don't swap numbers.",
+      "relayMode": "Mkan stays in the middle: the line agrees the viewing time with the tenant and the broker, a person from Mkan comes to every viewing, and they don't swap numbers. {paid} deals paid so far.",
+      "path": {
+        "title": "The money on this road",
+        "typical": "A paid deal earns Mkan about {share}: 10% of the broker's usual commission on a {rent} home.",
+        "paid": "A paid deal earns Mkan about {share}, the median of the deals paid so far.",
+        "breakEven": "A month costs {cost}, so break-even is {deals} paid deals a month. {paid} paid this month, {left} to go.",
+        "unknown": "Not enough data yet to say what a paid deal earns."
+      },
       "reach": {
         "title": "Our TikTok page",
         "followers": "Followers",

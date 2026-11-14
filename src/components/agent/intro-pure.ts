@@ -11,10 +11,22 @@
 import { awakeMs } from "./broker-rank";
 import type { DealLang } from "./deal-pure";
 
-/** Intros last until this many deals are paid. */
+/** Intros were to last until this many deals are paid (Abdout, 2026-11-07). */
 export const INTRO_CAP = 10;
 
-/** What a broker agrees to before getting a tenant's number. */
+/**
+ * The cap in force. Since 2026-11-14 it is 0: Mkan stays in the middle from the first deal — tenant and
+ * broker never get each other's number, the line agrees the viewing with both (viewing-loop.ts) and a
+ * person from Mkan comes to it (Abdout: "a gentle bridge between tenants and brokers while fully isolating
+ * them from each other"). MKAN_INTRO_CAP sets another number: 10 brings the direct intros back.
+ */
+export const DEFAULT_INTRO_CAP = 0;
+export function introCap(env: string | undefined = process.env.MKAN_INTRO_CAP): number {
+  const n = Number(env);
+  return env != null && env.trim() !== "" && Number.isFinite(n) && n >= 0 ? Math.floor(n) : DEFAULT_INTRO_CAP;
+}
+
+/** What a broker agrees to: Mkan's share of their commission, and no viewing fee for Mkan's tenants. */
 export const MKAN_TERMS = { pct: 0.1, freeViewing: true } as const;
 
 export type ConnectionMode = "intro" | "relay";

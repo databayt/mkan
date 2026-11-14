@@ -4,6 +4,7 @@ import { Fragment } from "react";
 import type { Locale } from "@/components/internationalization/config";
 import { formatNumber, formatPercentage } from "@/lib/i18n/formatters";
 import { ARROW_PART, type PartView, type ScorecardView, type TileView, type Word } from "@/lib/monetize/scorecard";
+import type { PathView } from "@/lib/monetize/path";
 import type { ReachView } from "@/lib/monetize/score-samples";
 import { cn } from "@/lib/utils";
 
@@ -148,10 +149,39 @@ function FunnelLine({ score, L, locale }: { score: ScorecardView; L: L; locale: 
   );
 }
 
+/**
+ * The money on the path (path.ts): what a paid deal earns Mkan and how many cover the month. In francs,
+ * the money a deal is agreed and paid in, with the page's dollars beside it.
+ */
+function PathLine({ path, L, locale }: { path: PathView; L: L; locale: Locale }) {
+  const P = L.path;
+  const both = (rwf: number) => `RWF ${formatNumber(rwf, locale)} (${formatValue(rwf, "rwf", locale)})`;
+  if (path.sharePerDealRwf == null || path.dealsToBreakEven == null) return <p className={cn("mt-4 text-sm", MUTED)}>{P.unknown}</p>;
+  const earns =
+    path.basis === "paid"
+      ? fill(P.paid, { share: both(path.sharePerDealRwf) })
+      : fill(P.typical, { share: both(path.sharePerDealRwf), rent: `RWF ${formatNumber(path.typicalRentRwf ?? 0, locale)}` });
+  return (
+    <div className={cn("mt-4 rounded-lg border px-4 py-3 text-sm", LINE)}>
+      <p className={cn("font-semibold", INK)}>{P.title}</p>
+      <p className={cn("mt-1", INK)}>{earns}</p>
+      <p className={cn("mt-1", INK)}>
+        {fill(P.breakEven, {
+          cost: both(path.breakEvenRwf),
+          deals: formatNumber(path.dealsToBreakEven, locale),
+          paid: formatNumber(path.paidThisMonth, locale),
+          left: formatNumber(path.dealsLeft ?? 0, locale),
+        })}
+      </p>
+    </div>
+  );
+}
+
 export function Scorecard({
   score,
   reach,
   intro,
+  path,
   labels,
   locale,
 }: {
@@ -159,6 +189,8 @@ export function Scorecard({
   /** The TikTok page: followers, views, posts (reach-row.tsx). */
   reach?: ReachView | null;
   intro?: { intros: number; paid: number; cap: number; mode: "intro" | "relay" } | null;
+  /** What a paid deal earns and how many cover the month (path.ts). */
+  path?: PathView | null;
   labels: MonetizeLabels;
   locale: Locale;
 }) {
@@ -175,6 +207,7 @@ export function Scorecard({
       </div>
       {reach && <ReachRow reach={reach} labels={labels} locale={locale} />}
       <FunnelLine score={score} L={L} locale={locale} />
+      {path && <PathLine path={path} L={L} locale={locale} />}
       {intro && (
         <p className={cn("mt-3 text-sm", MUTED)}>
           {fill(intro.mode === "intro" ? L.introMode : L.relayMode, {

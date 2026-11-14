@@ -11,7 +11,7 @@ import { config } from "dotenv";
 config({ override: true, quiet: true } as never);
 process.env.PRISMA_QUIET ??= "1";
 
-import { introPendingMessage, introTenantMessage, lastDigits, nextSweepTick, termsAskMessage, connectionMode } from "../../src/components/agent/intro-pure";
+import { introPendingMessage, introTenantMessage, lastDigits, nextSweepTick, termsAskMessage, connectionMode, introCap } from "../../src/components/agent/intro-pure";
 import { inSendWindow } from "./../wa/outbox-pure";
 
 const kigali = (d: Date) => d.toLocaleString("en-GB", { timeZone: "Africa/Kigali", hour12: false });
@@ -23,7 +23,7 @@ async function main() {
   try {
     const now = new Date();
     const [mode, tests, paid] = await Promise.all([brokerSendMode(), testPhones(), db.deal.count({ where: { status: "PAID" } })]);
-    console.log(`now ${kigali(now)} Kigali · broker sends ${mode} · ${paid} paid deals → ${connectionMode(paid)} mode · send window ${inSendWindow(now) ? "open" : "closed"}`);
+    console.log(`now ${kigali(now)} Kigali · broker sends ${mode} · ${paid} paid deals, cap ${introCap()} → ${connectionMode(paid, introCap())} mode · send window ${inSendWindow(now) ? "open" : "closed"}`);
     const reqs = await db.brokerRequest.findMany({
       where: { status: "AVAILABLE", respondedAt: { gte: new Date(now.getTime() - 30 * 86_400_000) } },
       orderBy: { respondedAt: "desc" },

@@ -20,7 +20,9 @@ import { scorecard, type ScorecardView } from "./scorecard";
 import { buildSamples, reachOf, type ReachView } from "./score-samples";
 import { REAL_PERSON } from "./team";
 import { loadScoreQueries, postPoints } from "./score-load";
-import { connectionMode, INTRO_CAP } from "@/components/agent/intro-pure";
+import { connectionMode, introCap, MKAN_TERMS } from "@/components/agent/intro-pure";
+import { KIGALI_LONG_TERMS } from "@/components/agent/cost";
+import { pathToMoney, type PathView } from "./path";
 import { SETUP_STATE_KEY, type SetupState } from "./setup";
 
 /**
@@ -85,6 +87,8 @@ export interface MonetizeOverview {
   setup?: SetupState | null;
   /** Direct intros until INTRO_CAP deals are paid, then Mkan in the middle (deal-intro.ts). */
   intro?: { intros: number; paid: number; cap: number; mode: "intro" | "relay" } | null;
+  /** What a paid deal earns Mkan and how many cover the month (path.ts). */
+  path?: PathView | null;
 }
 
 type SnapRow = { block: string; at: Date; status: string; metrics: unknown };
@@ -424,6 +428,30 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
   const fixedIsEstimate = fixedEstimated();
   const steps = nextSteps({ money: m, blocks, bottleneck: bn, gates, fixedEstimated: fixedIsEstimate, shortlisted: funnel.shortlisted, paidDealsMonth: monthPaid.length });
 
+  // ── the money on the path (path.ts): what a paid deal earns, and how many cover the month ──
+  // The rent tenants actually ask brokers about, else the live broker homes'; inside the band the post
+  // gate trusts, so a sale price read as a rent cannot move it.
+  const since30 = new Date(now - 30 * DAY);
+  const rents = await db.$queryRaw<{ picked: number | null; live: number | null }[]>`
+    SELECT
+      (SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY l."priceMonth")::float
+         FROM "Listing" l
+        WHERE l."priceMonth" BETWEEN 60000 AND 15000000
+          AND l.id IN (SELECT r."listingId" FROM "BrokerRequest" r WHERE r."createdAt" >= ${since30})) AS picked,
+      (SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY l."priceMonth")::float
+         FROM "Listing" l
+        WHERE l."priceMonth" BETWEEN 60000 AND 15000000
+          AND l."isPublished" = false AND l."lostAt" IS NULL AND l.source::text IN ('TIKTOK', 'WEB')) AS live`.catch(() => [{ picked: null, live: null }]);
+  const since90 = new Date(now - 90 * DAY);
+  const path = pathToMoney({
+    breakEvenRwf: m.breakEvenRwf,
+    paidShares: dealRows.filter((d) => d.status === "PAID" && d.paidAt && d.paidAt >= since90).map((d) => d.mkanShare ?? 0),
+    typicalRentRwf: rents[0]?.picked ?? rents[0]?.live ?? null,
+    commissionPct: KIGALI_LONG_TERMS.commissionPct,
+    sharePct: MKAN_TERMS.pct,
+    paidThisMonth: monthPaid.length,
+  });
+
   return {
     days,
     generatedAt: new Date(now).toISOString(),
@@ -460,7 +488,9 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
     score,
     reach: reachOf(postPoints(byBlock("post")), now),
     setup: (setupRow?.value as SetupState | null | undefined) ?? {},
-    intro: scoreQ ? { ...scoreQ.intro, cap: INTRO_CAP, mode: connectionMode(scoreQ.intro.paid) } : null,
+    // The cap the line itself reads (MKAN_INTRO_CAP; 0 = Mkan in the middle from the first deal).
+    intro: scoreQ ? { ...scoreQ.intro, cap: introCap(), mode: connectionMode(scoreQ.intro.paid, introCap()) } : null,
+    path,
   };
 }
 
