@@ -12,6 +12,7 @@ import { langOfWords, LATE_AFTER_MS, lateLead, MAX_AGE_MS, MEDIA_NUDGE_MS, REPEA
 import { db } from "@/lib/db";
 import { sendPresence, sendText } from "@/lib/whatsapp/evolution";
 import { isPersonal } from "./personal";
+import { readRepWord, repDigits } from "./rep-word-pure";
 import { addToList, CLAIM_STALE_MS, claimMessage, holdReply, MAX_ANSWER_TRIES, mutateState, readState, releaseMessage, removeFromList, settleMessage, writeState } from "./wa-state";
 import { handleTenantWhatsApp, silenceTenant } from "./whatsapp-chat";
 import { postSlackCard } from "./whatsapp";
@@ -126,6 +127,25 @@ export function answerTenant(m: TenantMessage): Promise<TenantOutcome> {
         await postSlackCard(`⚠️ The agent failed ${MAX_ANSWER_TRIES} times on a message from +${m.phone} — answer by hand:\n> ${m.text.slice(0, 500).replace(/\n/g, "\n> ")}`).catch(() => {});
         log(`tenant +${m.phone} handed to a person after ${MAX_ANSWER_TRIES} failed tries`);
         return "error";
+      }
+      // Mkan's person closing a step from their phone ("signed K5811", rep-word.ts): theirs, not a tenant's.
+      // Only from the number in MKAN_REP_WHATSAPP; anything else they write goes the usual way, except a bare
+      // "ok" to one of the line's own notices, which needs no answer.
+      const rep = repDigits();
+      if (rep && m.phone === rep && !m.media) {
+        const word = readRepWord(m.text);
+        if (word) {
+          const { applyRepWord } = await import("./rep-word");
+          const text = await applyRepWord(word);
+          await sendLine(m, text, claim.tries);
+          await settleMessage(m.msgId);
+          log(`rep word: ${word.kind === "status" ? `${word.status} K${word.listingId}` : "list"}`);
+          return "sent";
+        }
+        if (/^(?:ok(?:ay)?|thanks|thank you|noted|👍|تمام|شكرا|شكراً)[\s.!]*$/iu.test(m.text.trim())) {
+          await settleMessage(m.msgId);
+          return "nothing";
+        }
       }
       const now = new Date();
       // Abdout's own contacts (personal.ts) never get a line from the agent: no "please type", no STOP
