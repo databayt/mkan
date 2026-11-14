@@ -109,6 +109,9 @@ export const UNANSWERED_IN_A_ROW = 2;
 export const REST_DAYS = 14;
 const DAY_MS = 86_400_000;
 
+/** The label of a pick's re-ask (src/components/agent/broker.ts PICK_LABEL). */
+export const isPickAsk = (label: string | null | undefined) => !!label && label.startsWith('pick:');
+
 export type RestReason = 'broker-week' | 'broker-resting';
 export type HoldReason = 'quiet-hours' | 'daily-cap' | 'broker-today' | RestReason;
 export type SkipReason = 'opted-out' | 'stale' | 'sends-off' | 'tenant-stop' | 'stale-alert';
@@ -260,7 +263,10 @@ export function planOutbox<R extends OutboxRow>(input: PlanInput<R>): Plan<R> {
       plan.hold.push({ row, reason: 'broker-today' });
       continue;
     }
-    const rest = isAlert || reply ? undefined : input.resting?.get(phoneKey(row.to));
+    // A tenant's own pick, re-asked of a silent broker (broker.ts pickBroker, one a week per broker): the
+    // rest does not hold it — held, it went stale and the tenant was promised a person (2026-11-12). It
+    // still waits its turn behind "one message a day", quiet hours and the cap.
+    const rest = isAlert || reply || isPickAsk(row.label) ? undefined : input.resting?.get(phoneKey(row.to));
     if (rest) {
       plan.hold.push({ row, reason: rest });
       continue;

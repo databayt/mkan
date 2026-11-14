@@ -127,9 +127,14 @@ export async function prepareDealSheet(task: DealTask, listingId: number): Promi
     },
     lang,
   );
-  const value = { taskId: task.id, listingId, at: new Date().toISOString() } satisfies ViewingAsk;
-  await db.waState.upsert({ where: { key: askKey(to) }, create: { key: askKey(to), value }, update: { value } });
+  await openViewingAsk(to, task.id, listingId);
   return { to, body };
+}
+
+/** Open the 72 h "when can you come?" window for this number and home: its next day-and-time is the viewing. */
+export async function openViewingAsk(to: string, taskId: string, listingId: number): Promise<void> {
+  const value = { taskId, listingId, at: new Date().toISOString() } satisfies ViewingAsk;
+  await db.waState.upsert({ where: { key: askKey(to) }, create: { key: askKey(to), value }, update: { value } });
 }
 
 /** The broker said the home is free: the WhatsApp tenant gets the deal and is asked when they can come. */

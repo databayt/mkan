@@ -251,6 +251,28 @@ describe("who to ask", () => {
     expect(pickBroker([b("a")], new Map([["5:a", req("a", "AVAILABLE", hours(-24))]]), now)).toBeNull();
     expect(pickBroker([b("a")], new Map([["5:a", req("a", "AVAILABLE", hours(-24 * 4))]]), now)).toEqual({ ask: b("a") });
   });
+
+  // 2026-11-12: a real tenant picked a home whose only broker had been asked daily in late October and never
+  // answered. Nobody was asked, and the tenant was promised a person who never wrote.
+  it("a tenant's own pick re-asks a broker who was silent on the home, once the last ask is three days old", async () => {
+    const { pickBroker } = await import("../../src/components/agent/broker");
+    const silent = (h: number) => new Map([["5:a", req("a", "NO_REPLY", hours(h))]]);
+    // Not a pick (the hourly cron, a search): the gap holds, as before.
+    expect(pickBroker([b("a")], silent(-24 * 12), now)).toBeNull();
+    expect(pickBroker([b("a")], silent(-24 * 12), now, { tenantPick: true })).toEqual({ ask: b("a"), override: true });
+    // Asked two days ago: too soon, even for a pick.
+    expect(pickBroker([b("a")], silent(-24 * 2), now, { tenantPick: true })).toBeNull();
+    // A broker never asked about it still goes first, with no override.
+    expect(pickBroker([b("a"), b("b")], silent(-24 * 12), now, { tenantPick: true })).toEqual({ ask: b("b") });
+  });
+
+  it("a pick never re-asks a broker who said rented, one still being asked past expiry, or one already re-asked this week", async () => {
+    const { pickBroker } = await import("../../src/components/agent/broker");
+    expect(pickBroker([b("a")], new Map([["5:a", req("a", "RENTED", hours(-24 * 12))]]), now, { tenantPick: true })).toBeNull();
+    expect(pickBroker([b("a")], new Map([["5:a", req("a", "PENDING", hours(-24 * 12))]]), now, { tenantPick: true })).toBeNull();
+    const silent = new Map([["5:a", req("a", "NO_REPLY", hours(-24 * 12))]]);
+    expect(pickBroker([b("a")], silent, now, { tenantPick: true, overridden: new Set(["a"]) })).toBeNull();
+  });
 });
 
 describe("one house, several brokers", () => {

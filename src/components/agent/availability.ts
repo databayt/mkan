@@ -19,12 +19,22 @@ const json = (v: unknown) => v as Prisma.InputJsonValue;
  *   web     — /find in a browser never reaches a broker: the card offers the
  *             same chat on WhatsApp instead;
  *   taken   — a broker already said it is rented: the tenant hears so, and picks another;
- *   person  — nothing for the line to ask (a host's own home, a broker who went
- *             quiet on it, no broker with a number): a person got a #mkan card.
- *             Until 2026-11-08 these were "none" and the tenant heard "I'll tell
- *             you here if the broker writes back" with no broker asked.
+ *   host    — a host's own home, not a broker's lead: the tenant gets its page, where it is requested;
+ *   unreachable — nobody the line may ask: every broker on it said stop, was re-asked this week, or
+ *             was asked in the last days. The tenant hears that, and is offered another home.
+ *
+ * No outcome promises a person any more (2026-11-14). Until 11-08 these said "I'll tell you here if
+ * the broker writes back" with no broker asked; from 11-08 "a person from Mkan will check" — and on
+ * 11-12 a real tenant who picked a home got that line twice and nobody wrote. A pick now re-asks a
+ * broker who was silent on the home (`slow`, broker.ts pickBroker), and #mkan gets a note, not a task.
  */
-export type AskOutcome = { ok: boolean; asked: boolean; why?: "handed" | "web" | "none" | "busy" | "already" | "confirmed" | "taken" | "person" };
+export type AskOutcome = {
+  ok: boolean;
+  asked: boolean;
+  /** Asked, of a broker who has been silent on this home before: the tenant is told it may take a while. */
+  slow?: boolean;
+  why?: "handed" | "web" | "none" | "busy" | "already" | "confirmed" | "taken" | "host" | "unreachable";
+};
 
 /** How long a pick waits for the turn that showed the homes to finish writing. */
 const PICK_WAIT_MS = 10_000;
@@ -57,13 +67,13 @@ export async function askAvailabilityFor(taskId: string, listingId: number): Pro
   if (item?.availability === "confirmed") return { ok: true, asked: false, why: "confirmed" };
   if (item?.availability === "rented") return { ok: true, asked: false, why: "taken" };
   if (!item) return { ok: false, asked: false };
-  if (!item.lead || item.availability !== "unconfirmed") {
-    // Nothing for the line to ask: a host's own home, or a broker who went quiet on this one.
-    await handPickToPerson(task.id, item, item.lead ? "no-reply" : "not-a-lead");
-    return { ok: true, asked: false, why: "person" };
+  if (!item.lead) {
+    // A host's own home has no broker to ask: its page is where the tenant requests it.
+    await handPickToPerson(task.id, item, "not-a-lead");
+    return { ok: true, asked: false, why: "host" };
   }
-
-  const outcome = await askBroker(task.id, item, task.requirements, task.locale);
+  // "no_reply": the broker went quiet on it in this chat. The tenant picking it is worth one more ask.
+  const outcome = await askBroker(task.id, { ...item, availability: "unconfirmed" }, task.requirements, task.locale);
   if (outcome.asked) {
     await db.agentTask.update({
       where: { id: task.id },
@@ -89,11 +99,13 @@ export async function askBroker(taskId: string, item: ShortlistItem, requirement
 
   // Picking it means a monthly rent: the broker is asked about one.
   const requirements = { ...coerceRequirements(requirementsJson), stay: "long" as const };
-  const asked = await requestConfirmations(taskId, [item], requirements as never, locale);
+  const overrides = new Set<number>();
+  const asked = await requestConfirmations(taskId, [item], requirements as never, locale, { tenantPick: true, overrides });
   if (asked.length === 0) {
-    // No broker with a number, or this one was asked lately and has not answered: a person checks.
+    // Nobody the line may ask: no broker with a number, one who said stop, or one already re-asked this
+    // week. The tenant hears that (never a promise), and #mkan gets a note.
     await handPickToPerson(taskId, item, "no-broker", gate.waPhone);
-    return { ok: true, asked: false, why: "person" };
+    return { ok: true, asked: false, why: "unreachable" };
   }
   await Promise.all([
     appendTaskEvent(taskId, "availability_asked", "waiting_person", { listingId: item.id }),
@@ -102,25 +114,26 @@ export async function askBroker(taskId: string, item: ShortlistItem, requirement
     // shared with the broker only when they pick a viewing time.
     db.brokerRequest.updateMany({ where: { taskId, listingId: item.id, consentAt: null }, data: { consentAt: new Date() } }),
   ]);
-  return { ok: true, asked: true };
+  return { ok: true, asked: true, ...(overrides.has(item.id) ? { slow: true } : {}) };
 }
 
-/** Why a pick went to a person instead of a broker message — the card's first line. */
+/** Why a pick did not become a plain broker message — the card's first line. */
 export type PickToPerson = "paused" | "test" | "no-broker" | "not-a-lead" | "no-reply" | "check-failed" | "no-sheet";
 const HEAD: Record<PickToPerson, string> = {
   paused: "🙋 A tenant wants a home checked — broker sends are paused, so a person does it",
   test: "🧪 TEST (team number, not sent)",
-  "no-broker": "🙋 A tenant wants a home checked — no broker with a number to ask, or the broker was asked lately and has not answered; a person checks",
-  "not-a-lead": "🙋 A tenant picked a home that is not a broker's lead (a host's own) — a person answers them",
-  "no-reply": "🙋 A tenant picked a home whose broker went quiet on it — a person checks",
-  "check-failed": "⚠️ A tenant's pick could not be checked (an error) — a person checks it",
-  "no-sheet": "🙋 A tenant wants to view a home the broker confirmed, but no deal sheet could be written — a person sets up the viewing",
+  "no-broker": "ℹ️ A tenant picked a home nobody can be asked about (no broker with a number, one who said stop, or one already re-asked this week). The tenant was told and offered another home — call the broker if you want this one",
+  "not-a-lead": "ℹ️ A tenant picked a host's own home (not a broker's lead). They were sent its page",
+  "no-reply": "ℹ️ A tenant picked a home whose broker went quiet on it",
+  "check-failed": "⚠️ A tenant's pick hit an error. They were told to send the number again — look at the logs",
+  "no-sheet": "⚠️ A tenant wants to view a home the broker confirmed, but no deal sheet could be written. They were asked for a day and time",
 };
 
 /**
- * The pick, for a person: who asked, which home, which broker — and the chats one tap away. The tenant
- * hears that a person will reply (whatsapp-format.ts checkText "person"). `tenant` defaults to the task's
- * own number (the WhatsApp chat's, or the one a web tenant left).
+ * The pick, for #mkan: who asked, which home, which broker — and the chats one tap away. Only `paused`
+ * and `test` leave the pick to a person (the tenant hears "checking"); every other one is a note about
+ * what the tenant was already told (whatsapp-format.ts checkText). `tenant` defaults to the task's own
+ * number (the WhatsApp chat's, or the one a web tenant left).
  */
 export async function handPickToPerson(taskId: string, item: ShortlistItem, why: PickToPerson, tenant?: string | null): Promise<void> {
   const phone = tenant !== undefined ? tenant : ((await gateForTask(taskId).catch(() => null))?.waPhone ?? null);

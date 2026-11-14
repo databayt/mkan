@@ -62,8 +62,9 @@ export async function askBrokerWithNumber(input: { taskId: string; listingId: nu
   if (res.why === "busy") return { ok: false, error: "busy" };
   if (!res.ok) return { ok: false, error: "missing" };
   if (res.asked) return { ok: true, outcome: "asked" };
-  // "person": nothing for the line to ask — a person was told and checks it; "taken" refreshes the card to taken.
-  return { ok: true, outcome: res.why === "handed" || res.why === "person" ? "checking" : res.why === "already" || res.why === "confirmed" ? res.why : "none" };
+  // "handed": sends are paused or a team number — a person checks it. "unreachable" / "host": nobody for the
+  // line to ask, and the card says so ("none"); "taken" refreshes the card to taken.
+  return { ok: true, outcome: res.why === "handed" ? "checking" : res.why === "already" || res.why === "confirmed" ? res.why : "none" };
 }
 
 /** The ask behind a broker's link, with what the page and the submission need. */

@@ -269,12 +269,24 @@ function newestPerBroker(rows: RecentRequest[]): Map<string, RecentRequest> {
  * in that time — so a broker who said nothing hands the home to the next one
  * who posted it, and is never asked about it again the next day.
  */
+/**
+ * A tenant's own pick is the one ask worth a second try (2026-11-14). On 11-12 a real tenant picked a
+ * home whose only broker had been asked every day in late October and never answered: the gap below held,
+ * nobody was asked, and the tenant was promised a person who never wrote. A pick may now re-ask a broker
+ * who stayed silent on the home, once the last ask is PICK_REASK_MIN_DAYS old, and a broker gets one such
+ * re-ask in PICK_OVERRIDE_GAP_DAYS whatever the home. Opt-outs and "rented" still hold.
+ */
+export const PICK_REASK_MIN_DAYS = 3;
+export const PICK_OVERRIDE_GAP_DAYS = 7;
+/** The outbox label of a pick's re-ask: the rest a silent broker is given does not hold it (outbox-pure.ts isPickAsk). */
+export const PICK_LABEL = "pick:";
+
 export function pickBroker(
   brokers: BrokerLink[],
   recent: Map<string, RecentRequest>,
   now = Date.now(),
-  opts: { join?: boolean } = {},
-): { join: RecentRequest; broker: BrokerLink } | { ask: BrokerLink } | null {
+  opts: { join?: boolean; tenantPick?: boolean; overridden?: ReadonlySet<string> } = {},
+): { join: RecentRequest; broker: BrokerLink } | { ask: BrokerLink; override?: true } | null {
   // Handing a slow ask on (`join: false`), the broker still being asked is passed over, not joined.
   for (const b of opts.join === false ? [] : brokers) {
     const r = recent.get(`${b.listingId}:${b.userId}`);
@@ -290,18 +302,25 @@ export function pickBroker(
     if (!r && digits(b) && askedNumbers.has(digits(b))) return false;
     return !r || (r.status === "AVAILABLE" && now - r.createdAt.getTime() > CONFIRMATION_TTL_DAYS * 86_400_000);
   });
-  return fresh ? { ask: fresh } : null;
+  if (fresh) return { ask: fresh };
+  if (!opts.tenantPick) return null;
+  // The tenant chose this home themselves: the best-ranked broker who was silent on it gets one more ask.
+  const again = brokers.find((b) => {
+    const r = recent.get(`${b.listingId}:${b.userId}`);
+    return r?.status === "NO_REPLY" && now - r.createdAt.getTime() >= PICK_REASK_MIN_DAYS * 86_400_000 && !opts.overridden?.has(b.userId);
+  });
+  return again ? { ask: again, override: true } : null;
 }
 
 const handleOf = (b: BrokerLink) => (b.user.sourceHostId?.startsWith("tiktok:") ? b.user.sourceHostId.slice(7) : null);
 
 /** Send each broker one message for all their homes, and record the channel it went by. */
 async function sendGrouped(
-  groups: Map<string, { phone: string; handle: string | null; homes: BrokerHomeLine[]; ids: string[] }>,
+  groups: Map<string, { phone: string; handle: string | null; homes: BrokerHomeLine[]; ids: string[]; pick?: boolean }>,
 ): Promise<{ broker: string | null; count: number; channel: string }[]> {
   return Promise.all(
     [...groups.values()].map(async (m) => {
-      const channel = await sendToBroker(m.phone, availabilityMessage(m.homes, m.ids.join()), m.handle ? `@${m.handle}` : m.phone, m.ids);
+      const channel = await sendToBroker(m.phone, availabilityMessage(m.homes, m.ids.join()), `${m.pick ? PICK_LABEL : ""}${m.handle ? `@${m.handle}` : m.phone}`, m.ids);
       // "queued": the Mac's outbox stamps channel "evolution" and sentAt once it really went out.
       await db.brokerRequest.updateMany({ where: { id: { in: m.ids } }, data: { channel, sentAt: null } });
       return { broker: m.handle ? `@${m.handle}` : null, count: m.homes.length, channel };
@@ -317,7 +336,14 @@ async function sendGrouped(
  * Reads and writes in batches: this ran one query per home and one event
  * insert per home and per broker, all in sequence, inside the tenant's turn.
  */
-export async function requestConfirmations(taskId: string, shortlist: ShortlistItem[], r: Requirements, lang: string): Promise<number[]> {
+export async function requestConfirmations(
+  taskId: string,
+  shortlist: ShortlistItem[],
+  r: Requirements,
+  lang: string,
+  /** `tenantPick`: the tenant chose these homes themselves (availability.ts) — a silent broker may be re-asked once; `overrides` collects the homes where that happened. */
+  opts: { tenantPick?: boolean; overrides?: Set<number> } = {},
+): Promise<number[]> {
   const unconfirmed = shortlist.filter((s) => s.availability === "unconfirmed");
   if (unconfirmed.length === 0) return [];
   // The caller has checked the tenant (availability.ts); with broker sends off nothing is asked at all.
@@ -329,16 +355,28 @@ export async function requestConfirmations(taskId: string, shortlist: ShortlistI
     db.brokerRequest.findMany({ where: { listingId: { in: ids }, createdAt: { gte: since } }, orderBy: { createdAt: "desc" }, select: RECENT_SELECT }),
   ]);
   const recent = newestPerBroker(recentRows);
+  // Brokers who already had a pick's re-ask this week, about any home: not a second one.
+  const candidates = [...new Set([...brokers.values()].flat().map((b) => b.userId))];
+  const overridden = new Set(
+    opts.tenantPick && candidates.length
+      ? (
+          await db.brokerRequest.findMany({
+            where: { brokerUserId: { in: candidates }, createdAt: { gte: new Date(Date.now() - PICK_OVERRIDE_GAP_DAYS * 86_400_000) }, need: { path: ["pickOverride"], equals: true } },
+            select: { brokerUserId: true },
+          })
+        ).map((q) => q.brokerUserId)
+      : [],
+  );
 
   const need = needSummary(r);
   const needJson = json({ requirements: r, summary: need });
   const joins: Prisma.BrokerRequestCreateManyInput[] = [];
-  const asks: { row: Prisma.BrokerRequestCreateManyInput; token: string; item: ShortlistItem; broker: BrokerLink }[] = [];
+  const asks: { row: Prisma.BrokerRequestCreateManyInput; token: string; item: ShortlistItem; broker: BrokerLink; override: boolean }[] = [];
   const events: [EventKind, StepStatus, Record<string, unknown>][] = [];
   const waiting: number[] = [];
 
   for (const item of unconfirmed) {
-    const pick = pickBroker(brokers.get(item.id) ?? [], recent);
+    const pick = pickBroker(brokers.get(item.id) ?? [], recent, Date.now(), { tenantPick: opts.tenantPick, overridden });
     if (!pick) continue;
     waiting.push(item.id);
     if ("join" in pick) {
@@ -351,8 +389,22 @@ export async function requestConfirmations(taskId: string, shortlist: ShortlistI
       continue;
     }
     const token = randomBytes(18).toString("base64url");
-    const row = { tokenHash: hashToken(token), listingId: item.id, brokerUserId: pick.ask.userId, taskId, locale: lang, need: needJson, expiresAt: new Date(Date.now() + REQUEST_TTL_HOURS * 3_600_000) };
-    asks.push({ row, token, item, broker: pick.ask });
+    const override = "override" in pick && pick.override === true;
+    const row = {
+      tokenHash: hashToken(token),
+      listingId: item.id,
+      brokerUserId: pick.ask.userId,
+      taskId,
+      locale: lang,
+      need: override ? json({ requirements: r, summary: need, pickOverride: true }) : needJson,
+      expiresAt: new Date(Date.now() + REQUEST_TTL_HOURS * 3_600_000),
+    };
+    if (override) {
+      // One a week per broker, within this call too.
+      overridden.add(pick.ask.userId);
+      opts.overrides?.add(item.id);
+    }
+    asks.push({ row, token, item, broker: pick.ask, override });
   }
 
   const created = asks.length
@@ -360,13 +412,14 @@ export async function requestConfirmations(taskId: string, shortlist: ShortlistI
     : [];
   if (joins.length) await db.brokerRequest.createMany({ data: joins });
   const idByHash = new Map(created.map((c) => [c.tokenHash, c.id]));
-  const groups = new Map<string, { phone: string; handle: string | null; homes: BrokerHomeLine[]; ids: string[] }>();
+  const groups = new Map<string, { phone: string; handle: string | null; homes: BrokerHomeLine[]; ids: string[]; pick?: boolean }>();
   for (const a of asks) {
     const id = idByHash.get(a.row.tokenHash);
     if (!id) continue;
     const g = groups.get(a.broker.userId) ?? { phone: a.broker.user.phoneNumber!, handle: handleOf(a.broker), homes: [], ids: [] };
     g.homes.push({ title: a.item.title, link: homeLink(a.broker.sourceUrl, a.broker.listing) ?? brokerLink(a.token, "en"), code: a.broker.listing?.code });
     g.ids.push(id);
+    if (a.override) g.pick = true;
     groups.set(a.broker.userId, g);
   }
   for (const sent of await sendGrouped(groups)) events.push(["broker_contact_started", "waiting_person", sent]);

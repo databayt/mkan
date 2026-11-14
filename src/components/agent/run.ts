@@ -579,8 +579,9 @@ async function turn(taskId: string, gate: Gate, onShown: () => void): Promise<vo
               return null;
             })
         : null;
-    // "person": nothing for the line to ask, a person was told — the web says a person is checking.
-    const checked = check ? (check.asked ? "asked" : check.why === "handed" || check.why === "person" ? "handed" : check.why === "none" ? "none" : undefined) : undefined;
+    // "slow": asked, of a broker silent on it before; "unreachable": nobody the line may ask — said so, never
+    // "a person is checking" (2026-11-14). "handed" stays for paused sends and the team's own numbers.
+    const checked = check ? (check.asked ? (check.slow ? "slow" : "asked") : check.why === "handed" ? "handed" : check.why === "unreachable" || check.why === "none" ? "unreachable" : undefined) : undefined;
     if (check?.asked) {
       asked.add(pinned!.id);
       // Marked asked at once, not after the writer: the WhatsApp reply formatted at 16 s, and a "1" sent

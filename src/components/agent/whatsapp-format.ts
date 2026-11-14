@@ -508,12 +508,23 @@ export function pickInWords(text: string, shown: readonly ShortlistItem[]): numb
  * or none (no broker to reach, or one asked lately who has not answered yet).
  */
 /**
- * What a pick gets. "taken": a broker already said it is rented. "person" (and the old "none"): there was
- * nobody for the line to ask — a host's own home, a broker who went quiet, a check that failed — so a
- * person was told in #mkan. It used to say "I'll tell you here if the broker writes back" when no broker
- * had been asked at all (2026-11-08). rw is machine-written (native review sheet).
+ * What a pick gets. Every line says what the line itself did or will do; none promises a person
+ * (2026-11-14 — "A person from Mkan will check … and reply to you here" was sent twice to a real tenant
+ * on 11-12 and nobody wrote; before 11-08 it was "I'll tell you here if the broker writes back" with no
+ * broker asked at all).
+ *   asked       — the broker was messaged;
+ *   slow        — messaged, but this broker has been silent on the home before: it may take a while;
+ *   already     — an ask is already out;
+ *   handed      — broker sends are paused, or a team number: a person at Mkan checks (an operator's switch);
+ *   taken       — a broker said it is rented;
+ *   unreachable — nobody the line may ask ("none" on older stored messages): said so, another home offered;
+ *   host        — a host's own home: its page (`link`);
+ *   retry       — the check failed twice: send the number again;
+ *   confirmed   — a broker already said yes: when can you come?
+ * rw is machine-written (native review sheet).
  */
-export function checkText(lang: WaLang, outcome: "asked" | "handed" | "none" | "already" | "taken" | "person", title: string): string {
+export type CheckOutcome = "asked" | "slow" | "handed" | "none" | "already" | "taken" | "unreachable" | "host" | "retry" | "confirmed";
+export function checkText(lang: WaLang, outcome: CheckOutcome, title: string, link?: string | null): string {
   if (outcome === "already") {
     if (lang === "ar") return `سألت الوسيط عن «${title}» من قبل، وسيصلك رده هنا.`;
     if (lang === "rw") return `Nabajije komisiyoneri ibya "${title}" mbere. Igisubizo kizaza hano.`;
@@ -524,10 +535,31 @@ export function checkText(lang: WaLang, outcome: "asked" | "handed" | "none" | "
     if (lang === "rw") return `"${title}" yamaze gufatwa, mbabarira. Ohereza nimero y'indi nzu, cyangwa umbwire icyo nahindura.`;
     return `"${title}" has just been taken, sorry. Send the number of another home, or tell me what to change.`;
   }
-  if (outcome === "person" || outcome === "none") {
-    if (lang === "ar") return `سيتحقق أحد من فريق مكان من «${title}» ويرد عليك هنا.`;
-    if (lang === "rw") return `Umuntu wo muri Mkan azagenzura "${title}" akugarukire hano.`;
-    return `A person from Mkan will check "${title}" and reply to you here.`;
+  if (outcome === "slow") {
+    if (lang === "ar") return `سألت الوسيط عن «${title}». كان بطيئاً في الرد مؤخراً، فقد يأخذ بعض الوقت، وسأرسل لك رده هنا. هل أتحقق من منزل آخر في الأثناء؟ أرسل رقمه.`;
+    if (lang === "rw") return `Nabajije komisiyoneri ibya "${title}". Muri iyi minsi atinda gusubiza, bishobora gufata igihe; igisubizo nzakikoherereza hano. Ushaka ko ndeba indi nzu hagati aho? Ohereza nimero yayo.`;
+    return `I've asked the broker about "${title}". They have been slow to answer lately, so it may take a while. I'll send their answer here. Want me to check another home meanwhile? Send its number.`;
+  }
+  if (outcome === "unreachable" || outcome === "none") {
+    if (lang === "ar") return `لم أتمكن من الوصول إلى وسيط «${title}»، فهو لا يرد. لن أتركك تنتظر: أرسل رقم منزل آخر، أو أخبرني بما تريد تغييره وأبحث لك عن غيره.`;
+    if (lang === "rw") return `Sinashoboye kubona komisiyoneri wa "${title}", ntasubiza. Sinshaka ko utegereza: ohereza nimero y'indi nzu, cyangwa umbwire icyo wahindura nshake izindi.`;
+    return `I couldn't reach the broker of "${title}": they haven't been answering. I won't keep you waiting on it. Send the number of another home, or tell me what to change and I'll find more.`;
+  }
+  if (outcome === "host") {
+    const at = link ? `: ${link}` : "";
+    if (lang === "ar") return `«${title}» معروض من مالكه على مكان. يمكنك رؤيته وإرسال طلبك من صفحته${at}\nهل أتحقق من منزل آخر مع وسيطه؟ أرسل رقمه.`;
+    if (lang === "rw") return `"${title}" yashyizweho na nyirayo kuri Mkan. Wayireba ukohereza ubusabe ku rupapuro rwayo${at}\nUshaka ko ndeba indi nzu kuri komisiyoneri wayo? Ohereza nimero yayo.`;
+    return `"${title}" is listed by its owner on Mkan. You can see it and send your request on its page${at}\nWant me to check another home with its broker? Send its number.`;
+  }
+  if (outcome === "retry") {
+    if (lang === "ar") return `عذراً، حدث خطأ عندي أثناء التحقق من «${title}». أرسل رقمه مرة أخرى بعد دقيقة.`;
+    if (lang === "rw") return `Mbabarira, habaye ikibazo iwanjye ndimo kugenzura "${title}". Ongera wohereze nimero yayo mu munota umwe.`;
+    return `Sorry, something went wrong on my side while checking "${title}". Please send its number again in a minute.`;
+  }
+  if (outcome === "confirmed") {
+    if (lang === "ar") return `خبر جيد: «${title}» ما زال متاحاً. متى تستطيع أن تأتي لرؤيته؟ أرسل اليوم والوقت، مثل «غداً 10 صباحاً».`;
+    if (lang === "rw") return `Inkuru nziza: "${title}" iracyahari. Ni ryari wabasha kuza kuyireba? Ohereza umunsi n'isaha, nka "ejo saa yine".`;
+    return `Good news: "${title}" is still available. When can you come to see it? Reply with a day and time, like "tomorrow 10am".`;
   }
   if (lang === "ar")
     return outcome === "asked" ? `سألت الوسيط عن «${title}». سأرسل لك الرد هنا.` : `تمام، أتحقق من «${title}» مع الوسيط الآن، وسأراسلك هنا.`;

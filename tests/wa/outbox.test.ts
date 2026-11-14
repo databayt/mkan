@@ -130,6 +130,19 @@ describe('wa outbox — plan', () => {
     expect(plan.hold).toEqual([{ row: r, reason: 'broker-resting' }]);
   });
 
+  // 2026-11-12: a real tenant's pick of a home whose broker was resting never reached the broker.
+  it("sends a tenant's own pick to a resting broker, but still only one message a day", () => {
+    const to = '+250700000014';
+    const pick = row({ to, label: 'pick:@kigali.homes' });
+    const resting = new Map([['250700000014', 'broker-resting' as const]]);
+    expect(base([pick], { resting }).send).toEqual([pick]);
+    expect(base([pick], { resting: new Map([['250700000014', 'broker-week' as const]]) }).send).toEqual([pick]);
+    const today = base([pick], { resting, lastSentAt: new Map([[recipientKey(pick), kigali('2026-10-21T08:30:00')]]) });
+    expect(today.hold).toEqual([{ row: pick, reason: 'broker-today' }]);
+    // An opt-out still holds, whatever the label.
+    expect(base([pick], { resting, optedOutPhones: new Set(['250700000014']) }).skip).toEqual([{ row: pick, reason: 'opted-out' }]);
+  });
+
   it('caps a row without a broker by its number', () => {
     const x1 = row({ brokerId: null, kind: 'BROKER_REQUEST', to: '+250 700 000 077' });
     const x2 = row({ brokerId: null, kind: 'BROKER_REQUEST', to: '250700000077' });

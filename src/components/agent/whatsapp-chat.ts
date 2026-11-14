@@ -25,7 +25,7 @@ import { hashKey, type Viewer } from "./profile";
 import { startTurn, TURN_DEADLINE_MS } from "./run";
 import { loadTask, STUCK_AFTER_MS } from "./task-view";
 import type { AgentMessage, AgentTaskView } from "./types";
-import { busyText, checkText, formatWhatsApp, isFresh, readPick, readRef, retryPlan, takenIn, waLang, wantsViewing, type WaDict, type WaLang } from "./whatsapp-format";
+import { busyText, checkText, formatWhatsApp, isFresh, readPick, readRef, retryPlan, takenIn, waLang, wantsViewing, type CheckOutcome, type WaDict, type WaLang } from "./whatsapp-format";
 import { askAroundText, botText, firstMessageKind, isBareYes, isThanks, lastAgent, MAX_HOMES, personAfterHello, personText, asksForHome, readHomeRef, refSourceOf, shownHomes, thanksText, wantsPerson, whichOneText, type RefSource } from "./whatsapp-format";
 import { afterHomesKind, chatText, visitText } from "./whatsapp-format";
 import { askAround } from "./demand";
@@ -33,7 +33,7 @@ import { viewingRep } from "./broker-message";
 import { parseBrokerReply } from "./broker-reply";
 import { homeForRef } from "./home-ref";
 import { isPersonal } from "./personal";
-import { afterViewingFor, prepareDealSheet, proposeViewing, readViewingAsk, recordAfterViewing } from "./deal";
+import { afterViewingFor, openViewingAsk, prepareDealSheet, proposeViewing, readViewingAsk, recordAfterViewing } from "./deal";
 import { askTimeMessage, readAfterViewing, readViewingTime } from "./deal-pure";
 import { introFollowUpFor, introMode, introTenantAnswer, startIntro } from "./deal-intro";
 import { postSlackCard } from "./whatsapp";
@@ -242,24 +242,34 @@ export async function handleTenantWhatsApp(input: {
     const pick = readPick(rest, view, d);
     if (pick?.kind === "check") {
       const item = view!.shortlist.find((s) => s.id === pick.listingId)!;
+      const taskId = current.id;
       input.onAnswering?.();
-      const res: AskOutcome | null = await askAvailabilityFor(current.id, pick.listingId).catch(() => null);
+      // A check that threw (a dropped connection, usually) is tried once more before the tenant hears of it.
+      const ask = (): Promise<AskOutcome | null> => askAvailabilityFor(taskId, pick.listingId).catch(() => null);
+      let res = await ask();
+      if (!res) {
+        await sleep(1_500);
+        res = await ask();
+      }
       // The turn that showed the homes is still writing: the next pass takes this pick (never refused).
       if (res?.why === "busy") return { reply: null, why: "busy" };
-      await stampSeen(current.id, input.msgId, pick.listingId);
+      await stampSeen(taskId, input.msgId, pick.listingId);
+      const title = scrubTitle(item.title);
       // A broker already said yes: the pick is "I want to see it" — the deal sheet and "when can you come?".
       if (res?.why === "confirmed") {
-        const sheet = await dealSheetFor(current.id, pick.listingId);
-        if (sheet) return { reply: sheet, taskId: current.id };
-        // A yes with no sheet to write: a person sets up the viewing, and the tenant hears so.
-        await handPickToPerson(current.id, item, "no-sheet").catch(() => {});
-        return { reply: checkText(lang, "person", scrubTitle(item.title)), taskId: current.id };
+        const sheet = await dealSheetFor(taskId, pick.listingId);
+        if (sheet) return { reply: sheet, taskId };
+        // No sheet to write (a tenant who said STOP, then picked a home): the question itself, and its window.
+        await openViewingAsk(profile.waPhone ?? `+${digits}`, taskId, pick.listingId).catch(() => {});
+        await handPickToPerson(taskId, item, "no-sheet").catch(() => {});
+        return { reply: checkText(lang, "confirmed", title), taskId };
       }
       const why = res?.why;
-      const outcome = res?.asked ? "asked" : why === "handed" || why === "already" || why === "taken" || why === "person" ? why : null;
-      // A check that failed or found nothing to do is never answered with a promise nobody keeps (2026-11-08).
-      if (!outcome) await handPickToPerson(current.id, item, "check-failed").catch(() => {});
-      return { reply: checkText(lang, outcome ?? "person", scrubTitle(item.title)), taskId: current.id };
+      const outcome: CheckOutcome | null = res?.asked ? (res.slow ? "slow" : "asked") : why === "handed" || why === "already" || why === "taken" || why === "unreachable" || why === "host" ? why : null;
+      // Two failed checks: the tenant is asked to send the number again — never a promise nobody keeps
+      // (2026-11-08), and since 2026-11-14 never "a person will reply" either.
+      if (!outcome) await handPickToPerson(taskId, item, "check-failed").catch(() => {});
+      return { reply: checkText(lang, outcome ?? "retry", title, outcome === "host" ? `${publicAppUrl()}${item.path}` : null), taskId };
     }
     if (pick?.kind === "askAround") {
       const result = await askAround(current.id).catch(() => ({ asked: 0, handed: false }));

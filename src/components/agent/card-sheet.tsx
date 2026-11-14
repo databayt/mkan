@@ -213,7 +213,7 @@ export default function CardSheet({
                     ? c?.askSent ?? "Done. Mkan is asking the broker, and the answer will reach you on WhatsApp."
                     : asked === "checking"
                       ? c?.askChecking ?? "Got it. Mkan is checking this home with the broker and will message you on WhatsApp."
-                      : c?.askNoBroker ?? "No broker with a number is on file for this home yet. Open it on WhatsApp and a person will help."}
+                      : c?.askNoBroker ?? "Mkan can't reach this home's broker right now. Try another home, or tell Mkan what to change and it will find more."}
                 </p>
               ) : (
                 <form
