@@ -1,0 +1,74 @@
+{
+  "sprints": [
+    {
+      "kind": "WEEK",
+      "title": "The loop closes itself — measure it, then feed it",
+      "goal": "The chat now carries a tenant to a booked viewing with no person typing (ISSUE.md 2026-11-14). This adds the ledger that measures every step, the daily review that fixes the weakest one, and the supply side that feeds it.",
+      "startsAt": "2026-11-14",
+      "endsAt": "2026-11-21",
+      "tasks": [
+        { "key": "n1", "title": "Funnel ledger: every message the line sends is a counted step", "block": "chat" },
+        { "key": "n2", "title": "Daily funnel review: the weakest step, its cause, one fix", "block": "chat" },
+        { "key": "n3", "title": "/monetize: one path to money at the top" },
+        { "key": "n4", "title": "Mkan's person closes a deal with one WhatsApp word", "block": "chat" },
+        { "key": "n5", "title": "Web chats reach WhatsApp; search keeps the area (mkan#54)", "block": "chat" },
+        { "key": "n6", "title": "TikTok: the best 3–5 posts a day, and format v2 judged", "block": "post" },
+        { "key": "n7", "title": "Enhance study: five clips, every candidate, one table", "block": "enhance" },
+        { "key": "n8", "title": "Scrape safety: search off the page's account, jitter, ceilings", "block": "scrape" },
+        { "key": "n9", "title": "Tenants and deals on the CRM board" },
+        { "key": "n10", "title": "Mkan installs on a phone (web app)" }
+      ],
+      "prompts": [
+        {
+          "task": "n1",
+          "metric": "viewingsBooked",
+          "text": "In ~/mkan: viewingsBooked is 0 and nothing links a reply's wording to what the tenant or broker did next. Read src/components/agent/ISSUE.md (2026-11-14) first. Build the funnel ledger: (1) an additive Prisma model ChatTouch { id, taskId?, channel 'wa'|'web', side 'tenant'|'broker', stage, templateKey, variant?, lang, sentAt, answeredAt?, outcome? } with a migration file only (do NOT run migrate; the schema step is Abdout's — report it blocked for him with the exact command); (2) one helper say() in src/components/agent/touch.ts that every tenant reply (wa-tenant.ts, after the send) and every queued message (whatsapp.ts sendMessages) passes, writing a row best-effort (a failed write never blocks a send); templateKey names come from the function that wrote the text (checkText:slow, quietNudge, dealSheet, viewingTimeAsk, …); (3) the next inbound from that number within 24 h stamps answeredAt and outcome (reply | pick | time | stop), else silence at 24 h in the hourly cron; (4) stages for both doors: chat, homes, pick, broker_asked, broker_yes, sheet, time, booked, viewed, signed, paid, lost. Pure logic in touch-pure.ts with tests. Done when: tests pass, tsc is clean, and `pnpm mkan:read funnel --days=7` prints one line per stage with counts from the ledger."
+        },
+        {
+          "task": "n2",
+          "metric": "handoffs",
+          "text": "In ~/mkan: 16 messages were handed to a person in nine days and none was answered (handoffs); since 2026-11-14 the line answers them itself, and someone must read how well. Build `pnpm funnel:review` (scripts/agent/funnel-review.ts, read-only except SprintLesson and Experiment rows): for the last 24 h it prints, with phones masked (src/lib/redact.ts), every WhatsApp chat that stalled or was lost with its stage, the line's last message and the tenant's last words; the WaState `handoff:*` reasons (under-homes-unsure, not-about-a-home, after-hello); per stage the conversion with a Wilson interval and the median time; and names the weakest stage as the one whose improvement to its target would add the most expected viewings. It writes at most two Experiment rows (a wording variant for the weakest stage's template, through pickPhrase) and one SprintLesson per finding. Never sends, never changes a switch. Add the Hermes job script scripts/crm/hermes/funnel-review.sh (21:30 Kigali, detached like the other lanes) but do NOT install it: report the install line for Abdout. Done when: the script runs on production data read-only and its output names a weakest stage with numbers."
+        },
+        {
+          "task": "n3",
+          "metric": "openSteps",
+          "text": "In ~/mkan: /monetize shows four score tiles and a road, but not the one line that matters: where the next franc comes from. Refine, do not rebuild: edit only src/components/monetize/content.tsx, scorecard.tsx and a new path-strip.tsx (+ src/lib/monetize/path.ts, pure, with tests). Add one strip at the top: the stages chat → homes → pick → broker yes → viewing booked → viewed → signed → paid with 30-day counts of real people (src/lib/monetize/team.ts REAL_PERSON), the first stage with a zero in red, one sentence on what the line is doing about it (from the open sweeps: quiet nudge, viewing loop, 48-hour rule), and the money: deals paid × Mkan's share (10% of the broker's commission, intro-pure.ts MKAN_TERMS) against this month's break-even (src/lib/monetize/money.ts), as 'N paid deals to break even'. en, ar and rw keys (rw may reuse en until the native read). Public view redacted as today (public.ts). Done when: pnpm vitest tests/monetize passes, pnpm i18n:check passes, and a screenshot of /en/monetize at 393 px shows the strip without horizontal scroll."
+        },
+        {
+          "task": "n4",
+          "metric": "viewingsBooked",
+          "text": "In ~/mkan: a person from Mkan comes to every viewing (Abdout, 2026-11-14), but a deal still becomes SIGNED or PAID only through `pnpm deal:status` on the Mac. Let that person close it from their phone: when a message arrives on the line from MKAN_REP_WHATSAPP (wa-tenant.ts, before the tenant handler), read 'signed K5811', 'paid K5811', 'lost K5811 <reason>' or 'viewed K5811' (pure reader rep-word-pure.ts with tests, en + rw + ar spellings, the K optional), find that home's newest open Deal, call deal.ts setDealStatus, and answer the rep with what was recorded and what went out (SIGNED sends the share request itself when MKAN_PAYOUT_MOMO is set). A word that matches no open deal answers with the open deals' codes. Any other message from that number is left to the normal flow. Refuse when MKAN_REP_WHATSAPP is unset. Done when: tests cover each word, a wrong code, and a number that is not the rep's; deal:e2e still passes."
+        },
+        {
+          "task": "n5",
+          "metric": "chat.health",
+          "text": "In ~/mkan: 36 real web chats in 30 days left no number, so a broker's yes reached nobody, and mkan#54 says search ignores the area and the photo tour never loads. (1) Reproduce both mkan#54 bugs in a browser at 393 px on localhost:3000, fix the cause, add a test each. (2) After the homes on /find make 'Continue on WhatsApp' the primary action under the list (the existing wa-link.ts link with the chat's ref), above the number field; keep the field. (3) The follow-ups that now exist for WhatsApp tenants (quiet-nudge.ts) also reach a web tenant who left a number (broker-gate.ts tenantNumber). No new sends to anyone without a number. Done when: both bugs have tests, the button is first at 393 px in en and ar, and pnpm vitest tests/agent passes."
+        },
+        {
+          "task": "n6",
+          "metric": "part.returning",
+          "text": "In ~/mkan: the TikTok page has 72 videos, 25 followers and no comment ever; posting every ad (plan B, 2026-11-07) did not grow it. Read docs/tiktok-playbook.md first and log the result there as an experiment. (1) Change the pick (scripts/crm/tiktok-post-pure.ts pickFresh) to the best 3–5 homes a day by a score: ad age (under 48 h best), a clear price and area in the facts, a clean v2 render, and the broker's own answer rate (src/components/agent/broker-rank.ts answerStats); TIKTOK_POSTS_MAX default 5; the rest stay unposted. Tests for the score and the cut. (2) Render ten v2 previews (TIKTOK_FORMAT=v2 pnpm tt:render --id=<listing>, preview only, never tt:upload) of the top-scored homes, list their paths, and report blocked for Abdout's verdict on the previews; the default flips only on his yes. Never post, never run tt:upload or tt:pick --apply. Done when: tests pass and ten preview paths are in the result."
+        },
+        {
+          "task": "n7",
+          "metric": "failRate",
+          "text": "In ~/mkan: the enhance block must give a clean original (no blur, no added text or logo), better quality and a fitting sound, and nobody has measured the candidates. Write docs/enhance-study-2026-11.md from a real benchmark on five consented broker clips already in scripts/crm/.data/tiktok-post/src (pick ones with burned-in captions and a logo): for text removal compare today's v2 (Vision detector + fill, scripts/crm/video) with one open-source video inpainting tool you can run on this Mac's Apple Silicon; for upscale compare no upscale, Real-ESRGAN (already at ~/.local/opt/realesrgan) and one newer video super-resolution tool if it runs here; record per clip and step: leftover text frames (ocr-frames), seconds, peak disk, output size, and one still each for the eye. State the license of every tool and whether it may be used commercially. Add a table of what kun already has for media (~/kun/.claude/skills/edit, higgs, hyperframes*, media-use) and what each would add. 4K: say what the benchmark shows on time and disk, and design (do not run) a 10-against-10 upload test. Install nothing system-wide; work under scripts/crm/.data/enhance-study and delete the clips' copies after. Done when: the doc has the table with real numbers for all five clips and a one-paragraph recommendation."
+        },
+        {
+          "task": "n8",
+          "metric": "brokersAsked7",
+          "text": "In ~/mkan: the scrape lane's TikTok search (scripts/crm/tiktok.ts vaultSearch) runs inside the Chrome on :9222 that is logged in as @mkan.rw and uploads the page's videos, so scraping and posting share one account: a search limit or a flag on that session would stop the page. (1) Move discovery off it: run the search logged out (a separate Playwright context with no cookies, or yt-dlp/seeds only) and keep TIKTOK_VAULT_SEARCH as an explicit opt-in that defaults off; a test that the upload session is never used for search. (2) Add jitter (±30%) to every fixed sleep in tiktok.ts and the web-ads lane, and a hard daily ceiling per source in one place (requests a day per site and for TikTok), enforced in code with a test. (3) Write docs/scrape-safety.md: each source, what is fetched, how often, what is stored (broker phones and names from public ads, frames on the CDN), how long, how a broker's STOP or a deletion request is honoured, and a short checklist for Rwanda's data-protection law as open questions for Abdout (do not state legal conclusions). Done when: tests pass, the sweep's dry run (pnpm crm:tiktok with no --apply) completes, and the doc exists."
+        },
+        {
+          "task": "n9",
+          "metric": "intros",
+          "text": "In ~/mkan: the Twenty board shows homes, hosts and brokers but no tenant and no deal, so the pipeline Mkan lives on is invisible there. One-way, Prisma is the truth: extend scripts/crm/sync-up (+ sync-up-pure.ts, tests) to upsert a `deal` record per Deal (code, home link, broker, stage from DealStatus, viewing time, Mkan's share, source) and a `tenant` record per real WhatsApp tenant with an open search (number masked to last 3 digits in titles; the full number only in the phone field; REAL_PERSON filter from src/lib/monetize/team.ts), using scripts/crm/twenty-rest.ts (paced, 100 requests/min shared). Create the two objects with scripts/crm/seed-objects if missing, behind --apply. Run only the dry mode and paste its plan; report --apply as blocked for Abdout (it writes to the CRM). Done when: tests pass and the dry run prints the records it would write."
+        },
+        {
+          "task": "n10",
+          "text": "In ~/mkan: Mkan has no app and the site cannot be installed on a phone; Abdout chose web app first, stores after (2026-11-14). Make it installable: src/app/manifest.ts (name Mkan, short_name, start_url /en/find, display standalone, theme and background from the existing tokens, icons 192/512 + maskable from the existing brand mark, lang and dir per locale), a small service worker (public/sw.js) that caches only the app shell and static assets (never /api, never an authenticated page, never a chat) with an offline page that says so in en, ar and rw, registered from a client component only in production, and an install hint on /find after the second visit (dismissible, remembered). Follow ~/.claude/skills/pwa/SKILL.md. No push yet. Done when: Lighthouse's installability checks pass on a local production build (pnpm exec next build --webpack, never pnpm build), the service worker never serves a stale chat (a test for the route filter), and screenshots at 393 px show the install hint in en and ar."
+        }
+      ]
+    }
+  ]
+}
