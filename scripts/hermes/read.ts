@@ -7,6 +7,7 @@
  *   pnpm -s mkan:read crm homes|brokers|consent|tiktok   the Twenty CRM (mkan workspace)
  *   pnpm -s mkan:read tiktok                     today's TikTok post: queue, uploads, log
  *   pnpm -s mkan:read lanes                      every pipeline: last run, how it went, the last 24 h
+ *   pnpm -s mkan:read funnel [--days=30]         real chats stage by stage, where each stopped, who it waits on
  *
  * It never writes and never sends. Its output reaches a third-party model, so phone
  * numbers show only their last 3 digits, long digit runs inside free text are masked
@@ -245,7 +246,7 @@ async function lanes(db: Db): Promise<string[]> {
 
 async function main(): Promise<void> {
   const [topic = 'brief', sub = ''] = words;
-  const needsDb = ['brief', 'chats', 'wa', 'whatsapp', 'lanes'].includes(topic);
+  const needsDb = ['brief', 'chats', 'wa', 'whatsapp', 'lanes', 'funnel'].includes(topic);
   const db = needsDb ? (await import('../../src/lib/db')).db : null;
   try {
     let lines: string[] = [];
@@ -254,10 +255,16 @@ async function main(): Promise<void> {
     else if (topic === 'crm') lines = await crm(sub);
     else if (topic === 'tiktok') lines = [...tiktok(), ...(await crm('consent'))];
     else if (topic === 'lanes') lines = await lanes(db!);
-    else if (topic === 'brief') {
+    else if (topic === 'funnel') {
+      // Its own window: a week holds too few chats to judge a stage (default 30 d, not the 1 d of the others).
+      const days = process.argv.some((a) => a.startsWith('--days=')) ? DAYS : 30;
+      const { loadChatFacts } = await import('../../src/lib/monetize/chat-funnel');
+      const { funnelLines } = await import('../../src/lib/monetize/chat-funnel-pure');
+      lines = funnelLines(await loadChatFacts(db!, days), new Date(), days);
+    } else if (topic === 'brief') {
       const { agentFunnel, funnelLine } = await import('../crm/agent-funnel');
       lines = [funnelLine(await agentFunnel(db!, DAYS)), '', ...tiktok().slice(0, 4), ...(await crm('consent').catch((e) => [`CRM: ${(e as Error).message}`]))];
-    } else lines = ['topics: brief (default) · chats · wa · crm homes|brokers|consent|tiktok · tiktok · lanes   (--days=N --n=N)'];
+    } else lines = ['topics: brief (default) · chats · wa · crm homes|brokers|consent|tiktok · tiktok · lanes · funnel   (--days=N --n=N)'];
     console.log(lines.join('\n'));
   } finally {
     await db?.$disconnect().catch(() => {});
