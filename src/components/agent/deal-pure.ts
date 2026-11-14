@@ -592,10 +592,20 @@ export function readAfterViewing(text: string): "want" | "not" | null {
   return null;
 }
 
-export function afterViewingWantText(lang: DealLang, title: string): string {
-  if (lang === "ar") return `رائع! سأخبر الوسيط أنك تريد «${title}»، وأعود إليك هنا بالعقد وما تدفعه.`;
-  if (lang === "rw") return `Ni byiza! Ndabwira komisiyoneri ko ushaka "${title}", ngaruke hano nkubwire ibijyanye n'amasezerano n'ibyo uzishyura.`;
-  return `Great! I'll tell the broker you want "${title}" and come back to you here with the lease and what to pay.`;
+/**
+ * The tenant wants the home. The line tells the broker at once (deal.ts recordAfterViewing); the person from
+ * Mkan who came to the viewing arranges the signing. It used to promise "I'll … come back to you here with
+ * the lease and what to pay", which nothing in the line did.
+ */
+export function afterViewingWantText(lang: DealLang, title: string, rep = "Mkan"): string {
+  if (lang === "ar") return `رائع! أخبرت الوسيط أنك تريد «${title}». ${rep} من مكان، الذي حضر المعاينة معك، يرتب معكما توقيع العقد وما تدفعه.`;
+  if (lang === "rw") return `Ni byiza! Nabwiye komisiyoneri ko ushaka "${title}". ${rep} wo muri Mkan, wari kumwe nawe mu gusura, ni we utegura gusinya amasezerano n'ibyo uzishyura.`;
+  return `Great! I've told the broker you want "${title}". ${rep} from Mkan, who came to the viewing with you, arranges the signing and what to pay with you both.`;
+}
+
+/** To the broker, the moment the tenant says they want the home. */
+export function tenantWantsBrokerMessage(v: { title: string; ref: string; rep: string }): string {
+  return `Good news from Mkan: our tenant wants to take ${v.title} (${v.ref}). ${v.rep} from Mkan will arrange the signing with you. Murakoze!`;
 }
 
 export function afterViewingNotText(lang: DealLang): string {

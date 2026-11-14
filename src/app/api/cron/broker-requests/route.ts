@@ -3,6 +3,7 @@ import { cronUnauthorized } from "@/lib/cron-auth";
 import { expireRequests, failStuckTasks, handOnUnanswered, nudgeUnanswered, settleOrphanedWaiting } from "@/components/agent/broker";
 import { viewingReminders } from "@/components/agent/deal";
 import { introSweep } from "@/components/agent/deal-intro";
+import { quietSweep } from "@/components/agent/quiet-nudge";
 import { viewingSweep } from "@/components/agent/viewing-loop";
 
 /**
@@ -24,7 +25,7 @@ import { viewingSweep } from "@/components/agent/viewing-loop";
 export async function GET(request: NextRequest) {
   const denied = cronUnauthorized(request);
   if (denied) return denied;
-  const [{ expired, nudged, handedOn, settled }, unstuck, reminded, intros, viewings] = await Promise.all([
+  const [{ expired, nudged, handedOn, settled }, unstuck, reminded, intros, viewings, quiet] = await Promise.all([
     expireRequests().then(async (expired) => ({
       expired,
       // The one nudge goes at 2 daytime hours, before the hand-on at 3.
@@ -58,6 +59,11 @@ export async function GET(request: NextRequest) {
       console.warn(`[cron] viewing sweep: ${(err as Error).message}`);
       return 0;
     }),
+    // A tenant who went quiet under the homes is asked once whether any of them fit (quiet-nudge.ts).
+    quietSweep().catch((err) => {
+      console.warn(`[cron] quiet sweep: ${(err as Error).message}`);
+      return 0;
+    }),
   ]);
-  return NextResponse.json({ ok: true, expired, nudged, handedOn, settled, unstuck, reminded, intros, viewings });
+  return NextResponse.json({ ok: true, expired, nudged, handedOn, settled, unstuck, reminded, intros, viewings, quiet });
 }

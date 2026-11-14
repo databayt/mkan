@@ -38,6 +38,7 @@ import {
   rwf,
   shareForStatus,
   shareLabel,
+  tenantWantsBrokerMessage,
   termsToAsk,
   unitEconomicsLine,
   viewingConfirmedMessage,
@@ -474,7 +475,7 @@ export async function setDealStatus(
       brokerCommission: true,
       viewingFeePaid: true,
       listingId: true,
-      broker: { select: { name: true, phones: true, sharePct: true, shareFlatRwf: true } },
+      broker: { select: { id: true, name: true, contactName: true, phones: true, whatsapp: true, optOut: true, sharePct: true, shareFlatRwf: true } },
       listing: { select: { title: true } },
     },
   });
@@ -525,12 +526,24 @@ export async function setDealStatus(
     const title = scrubTitle(before.listing.title) || `#${deal.listingId}`;
     const fee = before.viewingFeePaid ?? 0;
     if (status === "SIGNED" && share != null) {
-      // The invoice is drafted, never sent by itself: a person from Mkan sends it to the broker.
-      const phone = before.broker?.phones?.[0] ?? null;
-      const draft = invoiceDraft({ broker: before.broker?.name ?? null, amount: share, ref, title, payout: payoutLine() });
+      const phone = before.broker?.whatsapp ?? before.broker?.phones?.[0] ?? null;
+      const payout = payoutLine();
+      const draft = invoiceDraft({ broker: before.broker?.contactName?.trim() || before.broker?.name || null, amount: share, ref, title, payout });
+      // Since 2026-11-14 the share request goes by itself once there is somewhere to pay (MKAN_PAYOUT_MOMO): it
+      // used to wait in #mkan for a person to send, like every other step after a broker's yes. With no payout
+      // number, no broker number or a broker who opted out, the card still carries the draft for a person.
+      const auto = !!phone && !!payout && !!before.broker && !before.broker.optOut && process.env.MKAN_SHARE_REQUEST_AUTO?.trim().toLowerCase() !== "off";
+      if (auto) {
+        // auto-*: the line's word about the broker's own deal, never held as a new ask (outbox-pure.ts).
+        await sendMessages([{ kind: "BROKER_REQUEST", to: `+${phone!.replace(/\D/g, "")}`, body: draft, label: "auto-share-request", brokerId: before.broker!.id }], `Share request → broker (${ref})`);
+        const value = { at: now.toISOString(), amount: share, by: "line" };
+        await db.waState.upsert({ where: { key: `share-asked:${deal.id}` }, create: { key: `share-asked:${deal.id}`, value }, update: { value } }).catch(() => {});
+      }
       await postSlackCard(
-        `🧾 *Invoice* ${before.broker?.name ?? "the broker"} ${rwf(share)} for ${ref} (${title}) — ${phone ? `<${waLink(phone, draft)}|open the drafted WhatsApp>` : "no broker number on file"}; a person sends it.\n` +
-          `${payoutLine() ? "" : "⚠ No payout number set (MKAN_PAYOUT_MOMO): add where the broker should pay before sending.\n"}` +
+        (auto
+          ? `🧾 *Share requested* ${before.broker?.name ?? "the broker"} ${rwf(share)} for ${ref} (${title}) — the line sent the request on WhatsApp.\n`
+          : `🧾 *Invoice* ${before.broker?.name ?? "the broker"} ${rwf(share)} for ${ref} (${title}) — ${phone ? `<${waLink(phone, draft)}|open the drafted WhatsApp>` : "no broker number on file"}; a person sends it.\n` +
+            `${payout ? "" : "⚠ No payout number set (MKAN_PAYOUT_MOMO): add where the broker should pay, and the line sends this itself from then on.\n"}`) +
           `When it is in: \`${dealCommand(deal.id, "paid")}\``,
       ).catch(() => {});
     } else if (status === "SIGNED") {
@@ -574,8 +587,32 @@ export async function recordAfterViewing(
   await db.listingVisit.update({ where: { id: v.id }, data: { outcome: "Completed" } }).catch(() => {});
   if (verdict === "want") {
     if (v.deal && v.deal.status === "VIEWING_BOOKED") await db.deal.update({ where: { id: v.deal.id }, data: { status: "VIEWED", notes: `tenant wants it (WhatsApp ${stamp})` } });
-    await postSlackCard(`🎉 ${phone} wants to take *K${v.listingId}* (${title}) after the viewing — call the broker to sign.${v.deal ? `\nThen: \`${dealCommand(v.deal.id, "signed")}\`` : ""}\n> ${text.slice(0, 300)}`).catch(() => {});
-    return afterViewingWantText(lang, title);
+    // The broker hears it now, from the line; the person who was at the viewing arranges the signing.
+    const rep = viewingRep();
+    const broker = v.deal
+      ? await db.deal
+          .findUnique({ where: { id: v.deal.id }, select: { broker: { select: { id: true, phones: true, whatsapp: true, optOut: true } } } })
+          .then((d) => d?.broker ?? null)
+          .catch(() => null)
+      : null;
+    const brokerPhone = broker && !broker.optOut ? (broker.whatsapp ?? broker.phones[0] ?? null) : null;
+    if (brokerPhone && broker) {
+      await sendMessages(
+        [{ kind: "BROKER_REQUEST", to: `+${brokerPhone.replace(/\D/g, "")}`, body: tenantWantsBrokerMessage({ title, ref: `K${v.listingId}`, rep }), label: "auto-tenant-wants", brokerId: broker.id }],
+        `Tenant wants the home → broker (K${v.listingId})`,
+      ).catch(() => {});
+    }
+    const repPhone = process.env.MKAN_REP_WHATSAPP?.trim();
+    if (repPhone) {
+      await sendMessages(
+        [{ kind: "TENANT_ALERT", to: `+${repPhone.replace(/\D/g, "")}`, body: `${rep}, the tenant ${phone} wants to take ${title} (K${v.listingId}) after the viewing. Arrange the signing with the broker${brokerPhone ? ` (${brokerPhone})` : ""}.`, label: `rep-wants:v${v.id}` }],
+        `Tenant wants the home → ${rep}`,
+      ).catch(() => {});
+    }
+    await postSlackCard(
+      `🎉 ${phone} wants to take *K${v.listingId}* (${title}) after the viewing — ${brokerPhone ? "the line told the broker" : "no broker number on file, so call them"}; ${rep} arranges the signing.${v.deal ? `\nThen: \`${dealCommand(v.deal.id, "signed")}\`` : ""}\n> ${text.slice(0, 300)}`,
+    ).catch(() => {});
+    return afterViewingWantText(lang, title, rep);
   }
   if (verdict === "not") {
     if (v.deal && (v.deal.status === "VIEWING_BOOKED" || v.deal.status === "VIEWED")) await db.deal.update({ where: { id: v.deal.id }, data: { status: "LOST", notes: `not for the tenant (WhatsApp ${stamp})` } });
