@@ -305,6 +305,9 @@ export async function answerTerms(
     const title = await homeTitle(ask.listingId);
     if (answer === "yes") {
       const b = await recordAgreement(ask.brokerId);
+      // A viewing booked before they agreed (viewing-loop.ts books first, asks in the same message) is
+      // priced now: the open deal carries Mkan's share from here.
+      await priceOpenDeals(b.id, agreementOf(b)).catch((err) => console.warn(`[agent] price open deals: ${(err as Error).message}`));
       await postSlackCard(
         `🤝 *Terms agreed late* K${ask.listingId} (${title}): ${b.name} agreed Mkan's terms (10% + free viewing) after the tenant was handed to a person — ` +
           `the agreement is on record; book the viewing with them as planned.`,
@@ -323,6 +326,16 @@ export async function answerTerms(
   const b = await recordAgreement(ask.brokerId);
   const made = await makeIntro(ask.listingId, { ...b, phone: plus(phone) }, ask.tenants);
   return { answer, listingId: ask.listingId, reply: made.brokerText, tenants: ask.tenants.length };
+}
+
+/** A broker's open deals that were booked with no share on record get the share they have now agreed. */
+async function priceOpenDeals(brokerId: string, agreement: ReturnType<typeof agreementOf>): Promise<void> {
+  if (!agreement) return;
+  const open = await db.deal.findMany({ where: { brokerId, status: { in: ["VIEWING_BOOKED", "VIEWED"] }, mkanShare: null }, select: { id: true, brokerCommission: true } });
+  for (const d of open) {
+    const share = expectedShare(d.brokerCommission, agreement);
+    await db.deal.update({ where: { id: d.id }, data: { mkanShare: share, viewingFeePaid: 0, notes: "share agreed on WhatsApp after the booking" } });
+  }
 }
 
 /** The broker agreed Mkan's terms: the share and the free viewing on their record, and a partner from now on. */

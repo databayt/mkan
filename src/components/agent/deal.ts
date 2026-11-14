@@ -27,6 +27,7 @@ import { lastTenantAt, TENANT_REACH, tenantNumber } from "./broker-gate";
 import {
   afterViewingMessage,
   afterViewingNotText,
+  afterViewingUnsureText,
   afterViewingWantText,
   askedOnLabel,
   confirmedTermsLine,
@@ -64,8 +65,14 @@ async function saidStop(phone: string): Promise<boolean> {
 
 /** The deal sheet asked this tenant for a time; their next message may be one (WaState). */
 const askKey = (address: string) => `viewing-ask:${address.replace(/\D/g, "")}`;
+export const viewingAskKey = askKey;
 const ASK_TTL_MS = 72 * 3_600_000;
-export type ViewingAsk = { taskId: string; listingId: number; at: string; proposedAt?: string };
+/**
+ * `proposedAt`: the time the tenant named, now with the broker. `offered`: a time on the table for the
+ * tenant's yes — the broker's other time (`offeredBy` "broker"), or the nearest one Mkan's person can be
+ * there ("mkan") — viewing-loop.ts.
+ */
+export type ViewingAsk = { taskId: string; listingId: number; at: string; proposedAt?: string; offered?: string; offeredBy?: "broker" | "mkan" };
 
 const langOf = (l: string): DealLang => (l === "ar" || l === "rw" ? l : "en");
 
@@ -155,8 +162,21 @@ export async function readViewingAsk(address: string | null | undefined): Promis
   return ask;
 }
 
-/** The tenant named a time: the person from Mkan gets it in #mkan with both chats one tap away; the tenant hears so. */
+/**
+ * The tenant named a time. Since 2026-11-14 the line asks the broker itself and books on their yes
+ * (viewing-loop.ts proposeViewingAuto) — no viewing was ever booked while a person had to phone the broker
+ * and type `pnpm deal:book`. Where the line cannot (MKAN_VIEWING_AUTO=off, broker sends paused, a team
+ * number, no broker who said yes with a number, a share required and none agreed) the person from Mkan gets
+ * it in #mkan with both chats one tap away, as before. Dynamic import: viewing-loop.ts imports this file.
+ */
 export async function proposeViewing(ask: ViewingAsk, at: Date, tenant: string, lang: DealLang): Promise<string> {
+  const auto = await import("./viewing-loop")
+    .then((m) => m.proposeViewingAuto(ask, at, tenant, lang))
+    .catch((err) => {
+      console.warn(`[agent] viewing auto: ${(err as Error).message}`);
+      return null;
+    });
+  if (auto) return auto;
   const label = viewingLabel(at, lang);
   const [home, brokers, task] = await Promise.all([
     db.listing.findUnique({ where: { id: ask.listingId }, select: { title: true, location: { select: { address: true, neighbourhood: true, sector: true } } } }),
@@ -186,7 +206,7 @@ export async function proposeViewing(ask: ViewingAsk, at: Date, tenant: string, 
   await trace(ask.taskId, "viewing_proposed", "waiting_person", { listingId: ask.listingId, at: iso, decision: decided });
   const value = { ...ask, proposedAt: iso } satisfies ViewingAsk;
   await db.waState.update({ where: { key: askKey(tenant) }, data: { value } }).catch(() => {});
-  return viewingProposedMessage(lang, label, viewingRep());
+  return viewingProposedMessage(lang, label);
 }
 
 /**
@@ -562,9 +582,8 @@ export async function recordAfterViewing(
     await postSlackCard(`👎 ${phone} passed on *K${v.listingId}* (${title}) after the viewing.\n> ${text.slice(0, 300)}`).catch(() => {});
     return afterViewingNotText(lang);
   }
-  await postSlackCard(`💬 ${phone} wrote about the viewing of *K${v.listingId}* (${title}) — answer them yourself:\n> ${text.slice(0, 400)}`).catch(() => {});
-  return personAfterViewingText(lang);
+  // Neither a yes nor a no: the question again, plainly — never "someone from Mkan will answer you here"
+  // (nobody did). #mkan gets what they wrote, for the person who was at the viewing.
+  await postSlackCard(`💬 ${phone} wrote about the viewing of *K${v.listingId}* (${title}); the line asked them again whether they want it:\n> ${text.slice(0, 400)}`).catch(() => {});
+  return afterViewingUnsureText(lang, title);
 }
-
-const personAfterViewingText = (lang: DealLang) =>
-  lang === "ar" ? "شكراً! سيقرأ رسالتك شخص من فريق مكان ويرد عليك هنا." : lang === "rw" ? "Murakoze! Umuntu wo muri Mkan arasoma ubutumwa bwawe akagusubiza hano." : "Thanks! Someone from Mkan will read this and answer you here.";

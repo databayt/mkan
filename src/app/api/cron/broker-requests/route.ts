@@ -3,6 +3,7 @@ import { cronUnauthorized } from "@/lib/cron-auth";
 import { expireRequests, failStuckTasks, handOnUnanswered, nudgeUnanswered, settleOrphanedWaiting } from "@/components/agent/broker";
 import { viewingReminders } from "@/components/agent/deal";
 import { introSweep } from "@/components/agent/deal-intro";
+import { viewingSweep } from "@/components/agent/viewing-loop";
 
 /**
  * Hourly — a broker who has not answered the rental agent within 24 h is
@@ -14,7 +15,8 @@ import { introSweep } from "@/components/agent/deal-intro";
  * (a recycled Worker loses its `after()`); an open tab recovers its own sooner. A task left WAITING with
  * no question still open is settled (settleOrphanedWaiting).
  *
- * It also runs the direct-intro sweep (deal-intro.ts): terms asks, and follow-ups at 24 h and 7 days.
+ * It also runs the direct-intro sweep (deal-intro.ts): terms asks, and follow-ups at 24 h and 7 days —
+ * and the viewing sweep (viewing-loop.ts): a broker silent on a time the line asked them to confirm.
  *
  * Gated by `CRON_SECRET` like the other crons; `cf/worker.js` sends it as a
  * Bearer token on the schedule in `cf/crons.json`.
@@ -22,7 +24,7 @@ import { introSweep } from "@/components/agent/deal-intro";
 export async function GET(request: NextRequest) {
   const denied = cronUnauthorized(request);
   if (denied) return denied;
-  const [{ expired, nudged, handedOn, settled }, unstuck, reminded, intros] = await Promise.all([
+  const [{ expired, nudged, handedOn, settled }, unstuck, reminded, intros, viewings] = await Promise.all([
     expireRequests().then(async (expired) => ({
       expired,
       // The one nudge goes at 2 daytime hours, before the hand-on at 3.
@@ -51,6 +53,11 @@ export async function GET(request: NextRequest) {
       console.warn(`[cron] intro sweep: ${(err as Error).message}`);
       return 0;
     }),
+    // Viewing times the line asked a broker to confirm: one chase for a silent broker, then the tenant is told (viewing-loop.ts).
+    viewingSweep().catch((err) => {
+      console.warn(`[cron] viewing sweep: ${(err as Error).message}`);
+      return 0;
+    }),
   ]);
-  return NextResponse.json({ ok: true, expired, nudged, handedOn, settled, unstuck, reminded, intros });
+  return NextResponse.json({ ok: true, expired, nudged, handedOn, settled, unstuck, reminded, intros, viewings });
 }

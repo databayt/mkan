@@ -241,11 +241,14 @@ export function viewingLabel(at: Date, lang: DealLang): string {
   return `${WD[lang][k.getUTCDay()]} ${k.getUTCDate()} ${MO[k.getUTCMonth()]}, ${hm}`;
 }
 
-/** The tenant named a time: a person confirms it with the broker. */
-export function viewingProposedMessage(lang: DealLang, label: string, rep: string): string {
-  if (lang === "ar") return `تمام: ${label}. أتأكد من الموعد مع الوسيط الآن، وسيراسلك ${rep} هنا.`;
-  if (lang === "rw") return `Yego: ${label}. Ndimo kubyemeza na komisiyoneri, ${rep} arakwandikira hano.`;
-  return `Got it: ${label}. I'm confirming it with the broker now, and ${rep} will message you here.`;
+/**
+ * The tenant named a time: the broker is asked to confirm it, and the tenant hears back here. It used to
+ * end "and {rep} will message you here" — a person who, until 2026-11-14, had to phone the broker first.
+ */
+export function viewingProposedMessage(lang: DealLang, label: string): string {
+  if (lang === "ar") return `تمام: ${label}. أتأكد من الموعد مع الوسيط الآن، وسأراسلك هنا فور رده.`;
+  if (lang === "rw") return `Yego: ${label}. Ndimo kubyemeza na komisiyoneri, nzakwandikira hano akimara gusubiza.`;
+  return `Got it: ${label}. I'm confirming it with the broker now, and I'll message you here as soon as they answer.`;
 }
 
 /** A day with no time. */
@@ -550,9 +553,21 @@ export function viewingReminderMessage(lang: DealLang, v: { title: string; label
 
 /** The 48-hour rule's one nudge, a day after the broker said yes and the tenant has not named a time. */
 export function dealNudgeMessage(lang: DealLang, title: string, rep: string): string {
-  if (lang === "ar") return `ما زال «${title}» متاحاً. أخبرنا باليوم والساعة المناسبين لك وسيؤكد ${rep} من مكان المعاينة مع الوسيط.`;
-  if (lang === "rw") return `"${title}" iracyahari. Tubwire umunsi n'isaha bikubereye, ${rep} wa Mkan abyemeze na komisiyoneri.`;
-  return `"${title}" is still available. Tell us a day and time that suits you and ${rep} from Mkan will confirm the viewing with the broker.`;
+  // The line confirms the time with the broker itself now (viewing-loop.ts); the person from Mkan comes to the viewing.
+  if (lang === "ar") return `ما زال «${title}» متاحاً. أخبرني باليوم والساعة المناسبين لك وأؤكد المعاينة مع الوسيط. يحضر ${rep} من مكان معك.`;
+  if (lang === "rw") return `"${title}" iracyahari. Mbwira umunsi n'isaha bikubereye, mbyemeze na komisiyoneri. ${rep} wo muri Mkan azazana nawe.`;
+  return `"${title}" is still available. Tell me a day and time that suits you and I'll confirm the viewing with the broker. ${rep} from Mkan comes with you.`;
+}
+
+/**
+ * After "how did the viewing go?", an answer that is neither a yes nor a no. It used to be "Thanks! Someone
+ * from Mkan will read this and answer you here" — and nobody did (2026-11-14). The question is asked again,
+ * plainly; the person who was at the viewing reads what they wrote in #mkan.
+ */
+export function afterViewingUnsureText(lang: DealLang, title: string): string {
+  if (lang === "ar") return `شكراً لإخبارك. لأتأكد أنني فهمت: أرسل 1 إن أردت أخذ «${title}»، أو 2 إن لم يناسبك.`;
+  if (lang === "rw") return `Murakoze kumbwira. Kugira ngo mbyumve neza: ohereza 1 niba ushaka gufata "${title}", cyangwa 2 niba itakunogeye.`;
+  return `Thanks for telling me. To be sure I understood: reply 1 if you want to take "${title}", or 2 if it's not for you.`;
 }
 
 export function afterViewingMessage(lang: DealLang, title: string): string {

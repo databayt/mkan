@@ -29,6 +29,7 @@ import { aboutMeMessage, availableAckMessage, needReplyMessage, needSummary, off
 import { isOffer, parseBrokerReply, repostAnswer, type BrokerReply } from "./broker-reply";
 import { coerceRequirements, EMPTY_REQUIREMENTS, mergeRequirements } from "./requirements";
 import { answerTerms, introBrokerUpdate, introReplyFor } from "./deal-intro";
+import { brokerViewingReply, noteMeetingPlace, type ViewingReply } from "./viewing-loop";
 import { readState, writeState } from "./wa-state";
 
 /** An ask is still being answered this long after it went out. */
@@ -45,6 +46,8 @@ export type InboxAction =
   | { kind: "repost"; answer: "YES" | "NO" | null }
   /** The answer to Mkan's terms before an intro (deal-intro.ts); null: unclear, a person reads it. */
   | { kind: "terms"; answer: "yes" | "no" | null; listingId: number; tenants: number; reply: { text: string; outboundId: string } | null }
+  /** The answer to a viewing time, or where to meet (viewing-loop.ts): booked, another time relayed, asked when, taken. */
+  | { kind: "viewing"; listingId: number; outcome: ViewingReply["outcome"]; reply: { text: string; outboundId: string } | null }
   /** About an intro: did the tenant sign, and how good a fit (deal-intro.ts introBrokerUpdate). */
   | { kind: "intro"; listingId: number; outcome: string | null; rating: number | null; reply: { text: string; outboundId: string } | null }
   | { kind: "none" };
@@ -189,9 +192,33 @@ export async function handleBrokerReply(input: { brokerId: string; phone: string
     if (answer) await writeState(repostAskKey(phone), { at: null });
     return { kind: "repost", answer };
   }
-  // Mkan's terms before an intro (asked as the reply to their yes): the YES gets them the tenant's number.
   const newestAsk = last?.kind === "BROKER_REQUEST" && last.brokerRequestIds.length > 0 ? last.sentAt : null;
-  const quotedTerms = !!input.quotedId && last?.kind === "BROKER_REQUEST" && last.brokerRequestIds.length === 0;
+  // A message of the line's own that they quoted (the terms, a viewing time): it carries no requests.
+  const quotedOwn = !!input.quotedId && last?.kind === "BROKER_REQUEST" && last.brokerRequestIds.length === 0;
+  // A viewing time on the table (viewing-loop.ts): their yes books it, another time goes to the tenant,
+  // "taken" ends it. Read before the terms: the terms are only asked once the viewing is booked.
+  if (photoUrls.length === 0) {
+    const viewing = await brokerViewingReply(phone, text, at, { newestAvailabilityAskAt: newestAsk, quoted: quotedOwn }).catch((err) => {
+      console.warn(`[agent] viewing reply: ${(err as Error).message}`);
+      return null;
+    });
+    if (viewing) return { kind: "viewing", listingId: viewing.listingId, outcome: viewing.outcome, reply: viewing.reply ? await replyTo(phone, `auto-viewing-${viewing.outcome}`, viewing.reply, brokerId) : null };
+  }
+  // Where to meet, said after the booking: kept on the visit and sent on; the message is still read for the rest.
+  const placed = photoUrls.length === 0 ? await noteMeetingPlace(brokerId, text, at).catch(() => null) : null;
+  const action = await readReply(input, last, newestAsk, quotedOwn);
+  return action.kind === "none" && placed != null ? { kind: "viewing", listingId: placed, outcome: "place", reply: await replyTo(phone, "auto-viewing-place", "Thank you, noted.", brokerId) } : action;
+}
+
+/** The rest of a broker's reply: Mkan's terms, an intro's follow-up, a no-home ask, "is this available?". */
+async function readReply(
+  input: { brokerId: string; phone: string; text: string; photoUrls: string[]; at: Date; quotedId?: string | null },
+  last: Ask | null,
+  newestAsk: Date | null,
+  quotedTerms: boolean,
+): Promise<InboxAction> {
+  const { brokerId, phone, text, photoUrls, at } = input;
+  // Mkan's terms before an intro (asked as the reply to their yes): the YES gets them the tenant's number.
   const terms = photoUrls.length === 0 ? await answerTerms(phone, text, at, { newestAvailabilityAskAt: newestAsk, quotedTerms }) : null;
   if (terms) {
     const reply = terms.reply && last ? await replyOnce(last, terms.answer === "yes" ? "auto-intro" : "auto-terms-no", terms.reply) : terms.reply ? await replyTo(phone, "auto-intro", terms.reply, brokerId) : null;

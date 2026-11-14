@@ -29,6 +29,7 @@ import { busyText, checkText, formatWhatsApp, isFresh, readPick, readRef, retryP
 import { askAroundText, botText, firstMessageKind, isBareYes, isThanks, lastAgent, MAX_HOMES, personAfterHello, personText, asksForHome, readHomeRef, refSourceOf, shownHomes, thanksText, wantsPerson, whichOneText, type RefSource } from "./whatsapp-format";
 import { afterHomesKind, chatText, helloText, unsureText, videoNotFoundText, visitText } from "./whatsapp-format";
 import { homeForTikTokLink } from "./tiktok-link";
+import { acceptOffered } from "./viewing-loop";
 import { tiktokLink, withoutTikTokLink } from "./tiktok-link-pure";
 import { EMPTY_REQUIREMENTS } from "./requirements";
 import { canAnswer, noteRwSamples, writeHomeAnswer, writerFacts, type RwSample } from "./writer";
@@ -229,6 +230,18 @@ export async function handleTenantWhatsApp(input: {
   // A message about a home ("2 bedrooms, can I see one tomorrow?") is a search, not a time (2026-11-06).
   const viewingAsk = asksForHome(rest) ? null : await readViewingAsk(profile.waPhone);
   if (viewingAsk) {
+    // A yes to a time on the table (viewing-loop.ts): the broker's other time is booked at once; the nearest
+    // time Mkan's person can be there goes to the broker like any other.
+    if (viewingAsk.offered && isBareYes(rest)) {
+      const reply = await acceptOffered(viewingAsk, profile.waPhone ?? `+${digits}`, lang).catch((err) => {
+        console.warn(`[agent] viewing yes: ${(err as Error).message}`);
+        return null;
+      });
+      if (reply) {
+        await stampSeen(viewingAsk.taskId, input.msgId, viewingAsk.listingId);
+        return { reply, taskId: viewingAsk.taskId };
+      }
+    }
     const when = readViewingTime(rest, new Date());
     if (when && "at" in when) {
       const reply = await proposeViewing(viewingAsk, when.at, profile.waPhone!, lang);

@@ -479,6 +479,19 @@ async function replies(dry: boolean, log: Log, sendsOff: boolean): Promise<numbe
             ? "The 07:00 run records it on their CRM host; their videos stay off the page."
             : "Not a plain yes or no — read it. If it is a yes, tell Hermes: `these brokers said yes: <handle>`.";
       await postSlackCard(`📣 *${broker.name}* (+${g.phone}) answered the TikTok repost ask: *${action.answer ?? "unclear"}*\n> ${g.text.replace(/\n/g, "\n> ").slice(0, 400)}\n${next}`);
+    } else if (action.kind === "viewing") {
+      // The line agreed the viewing itself (viewing-loop.ts): #mkan hears what happened, with nothing to do.
+      const said = action.reply ? await sendReply(g.phone, action.reply, broker.name, log, sendsOff) : false;
+      const what: Record<typeof action.outcome, string> = {
+        booked: "confirmed the viewing time → booked",
+        countered: "offered another time → sent to the tenant for their yes",
+        "rep-cannot": "offered a time Mkan's person cannot make → the nearest one was proposed back",
+        "what-time": "named a day with no hour → asked the hour",
+        "asked-when": "cannot do the time → asked which one works; the tenant was told",
+        taken: "says the home is taken → the tenant was told",
+        place: "said where to meet → sent to the tenant",
+      };
+      await postSlackCard(`📅 *${broker.name}* (+${g.phone}) ${what[action.outcome]} · K${action.listingId}${action.reply && !said ? ` · the line's reply did not go — <${waLink(g.phone, action.reply.text)}|send it by hand>` : ""}\n> ${g.text.replace(/\n/g, "\n> ").slice(0, 400)}`);
     } else if (action.kind === "terms") {
       const said = action.reply ? await sendReply(g.phone, action.reply, broker.name, log, sendsOff) : false;
       const what =
