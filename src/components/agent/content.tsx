@@ -252,6 +252,8 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
 
                   {latest && !running && (
                     <>
+                      {/* The main next step under the homes: the same chat on WhatsApp, where a broker's answer can reach them. */}
+                      {m.kind === "shortlist" && m.count > 0 && <ToWhatsApp taskId={task.id} hint />}
                       {m.kind === "shortlist" && (
                         <Refine message={m} requirements={task.requirements} onPick={(text, filters, clear) => void say(text, false, filters, clear)} disabled={pending} />
                       )}

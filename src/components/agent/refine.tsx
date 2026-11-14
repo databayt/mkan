@@ -124,14 +124,14 @@ export function Retry({ onRetry, disabled, compact = false }: { onRetry: () => v
  * (a check that named it), the message asks for that home's check: sent from the tenant's phone, it
  * is the pick, the broker is asked at once and the answer comes back on that chat (run.ts).
  */
-export function ToWhatsApp({ taskId, listingId, compact = false }: { taskId: string; listingId?: number; compact?: boolean }) {
+export function ToWhatsApp({ taskId, listingId, compact = false, hint = false }: { taskId: string; listingId?: number; compact?: boolean; hint?: boolean }) {
   const dict = useDictionary();
   const c = dict?.agent?.chat;
   const card = dict?.agent?.card;
   const words = listingId
     ? fill(card?.checkWords ?? "Check {ref} for me", { ref: `K${listingId}` })
     : c?.whatsappText ?? "Continue my Mkan search";
-  return (
+  const link = (
     <a
       href={continueOnWhatsApp(taskId, words)}
       target="_blank"
@@ -144,6 +144,15 @@ export function ToWhatsApp({ taskId, listingId, compact = false }: { taskId: str
       <MessageCircle className={compact ? "size-3.5" : "size-4"} aria-hidden />
       {listingId ? card?.brokerAnswer ?? "Get the broker's answer on WhatsApp" : c?.whatsapp ?? "Continue on WhatsApp"}
     </a>
+  );
+  if (!hint) return link;
+  // Under the homes (2026-11-14): 31 of 32 real chats in a month were on the web, and the 4 brokers who said
+  // yes never reached a tenant again — a closed tab has no way back. WhatsApp does.
+  return (
+    <div>
+      {link}
+      <p className={cn("text-muted-foreground", compact ? "mt-1.5 text-xs" : "mt-2 text-sm")}>{c?.whatsappHint ?? "The broker's answer reaches you there, even after you close this page."}</p>
+    </div>
   );
 }
 
