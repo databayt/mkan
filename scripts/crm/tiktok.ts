@@ -1014,7 +1014,7 @@ async function upsert(): Promise<{ homes: number; hosts: number }> {
       }
       continue;
     }
-    const framePaths = propertyFramePaths((row.frames ?? []).filter((f) => existsSync(f)), read.propertyFrames);
+    const framePaths = propertyFramePaths(row.frames ?? [], read.propertyFrames, 6, row.ocr).filter((f) => existsSync(f));
     const profile = profileFor(row.handle);
     const hBody = clean({ ...hostBody(row, read, phone, profile), phone: twentyPhones(phone, phones.slice(1)) });
     const promptVersion = row.readVersion ?? TIKTOK_PROMPT_VERSION;

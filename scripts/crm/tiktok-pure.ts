@@ -317,7 +317,12 @@ export function propertyFramesByOcr(ocr: string[] | undefined, n: number, max = 
   if (!n) return [];
   const mid = (n + 1) / 2;
   const len = (i: number) => (ocr?.[i] ?? '').replace(/[^A-Za-z0-9]/g, '').length;
-  const frames = Array.from({ length: n }, (_, i) => i);
+  // A frame that shows the broker's number goes last: tenants would call past Mkan (2026-11-14). When
+  // every frame shows it (a number printed over the whole video — 411 of 993 homes), they all stay; the
+  // number is wiped from the photo instead (src/components/agent/ISSUE.md, 11-14).
+  const all = Array.from({ length: n }, (_, i) => i);
+  const free = all.filter((i) => !frameHasPhone(ocr, i + 1));
+  const frames = free.length ? free : all;
   const ranked = frames.sort((a, b) => len(a) - len(b) || Math.abs(a + 1 - mid) - Math.abs(b + 1 - mid));
   // A frame that is mostly a text card (≥ 60 letters) is never the house.
   const clean = ranked.filter((i) => len(i) < 60);
@@ -706,10 +711,27 @@ export function currencyAsWritten(priceAsWritten: string | null | undefined): 'U
 }
 
 /** Frame paths the reader said show the property (1-based), falling back to none rather than faces. */
-export function propertyFramePaths(frames: string[], picks: number[], max = 6): string[] {
+/**
+ * A frame (1-based) whose on-screen text carries a Rwandan phone number. The 11-14 /find check showed
+ * a home's cover reading "Contact: +25073…": under 60 letters, so propertyFramesByOcr took it as the
+ * house, and the vision reader's own picks were never checked at all. Mkan stands between tenant and
+ * broker; a number on the photo walks the tenant around it. In the ledger that day, 515 of 993 homes
+ * read by OCR had a photo showing a number.
+ */
+export function frameHasPhone(ocr: string[] | undefined, frame: number): boolean {
+  const text = ocr?.[frame - 1];
+  return !!text && rwandaPhonesInText(text).length > 0;
+}
+
+/**
+ * `ocr` (the frames' OCR, frame order): picks that show a phone number are dropped, whoever picked them —
+ * unless every pick does, when they stay (no photo is worse; the number is wiped later).
+ */
+export function propertyFramePaths(frames: string[], picks: number[], max = 6, ocr?: string[]): string[] {
   const seen = new Set<number>();
   const out: string[] = [];
-  for (const p of picks) {
+  const clean = picks.filter((p) => p >= 1 && p <= frames.length && !frameHasPhone(ocr, p));
+  for (const p of clean.length ? clean : picks) {
     if (p >= 1 && p <= frames.length && !seen.has(p)) {
       seen.add(p);
       out.push(frames[p - 1]);

@@ -46,6 +46,9 @@ describe('OCR text', () => {
     const card = 'HOUSE FOR RENT 600K 3 BEDROOMS 2 BATHROOMS CALL 0780000001 KABEZA';
     expect(propertyFramesByOcr([card, '', 'parking', '', card], 5, 3)).toEqual([2, 4, 3]);
     expect(propertyFramesByOcr(undefined, 0)).toEqual([]);
+    // A short line with a phone passes the 60-letter test; it must not pass as the house.
+    expect(propertyFramesByOcr(['Contact: +250 732 000 001', 'kitchen', ''], 3, 3)).toEqual([3, 2]);
+    expect(propertyFramesByOcr(['0788 000 002', 'Tel 0788000003'], 2)).toEqual([1, 2]);
   });
 });
 

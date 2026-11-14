@@ -48,6 +48,15 @@
   Mkan in the middle from the first deal is now the code's default (`intro-pure.ts introCap`, 0;
   `MKAN_INTRO_CAP=10` brings the direct intros back), so it is no longer a switch to flip. /monetize
   says what a paid deal earns and how many cover the month (`src/lib/monetize/path.ts`).
+- **Evening:** `pnpm mkan:read funnel` reads each real chat's furthest stage and who it waits on
+  (`87d17bd`). 30 d: 32 chats, 30 shown homes, 8 picks, 7 asked, 4 broker yes, 0 viewing times; 31
+  of 32 were web chats, so "Continue on WhatsApp" is now the main button under the homes (`8290214`).
+- **Broker numbers on home photos (open):** a /find cover read "Contact: +25073…". In the TikTok
+  ledger, 515 of the 993 homes with OCR have a photo frame showing a Rwandan number; for 411, every
+  frame does (a number printed over the whole video). New homes now prefer frames with no number
+  (`tiktok-pure.ts frameHasPhone`); the 411 need the number wiped from the photo (OCR boxes,
+  `ocr-frames.swift --boxes`, as the TikTok remaster's `stripText` does for video), and the 104 that
+  have a clean frame need their photos re-picked. Both rewrite production photos: Abdout's go.
 - **After the deploy (each is Abdout's go):** `pnpm wa:deal48h on`; `pnpm agent:stranded --apply`; a
   phone test from the team number through to a booked viewing (team numbers keep the old card path, so
   test the broker side with `pnpm deal:e2e`).

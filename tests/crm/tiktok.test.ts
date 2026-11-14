@@ -273,6 +273,13 @@ describe('what a read becomes', () => {
   it('keeps only the frames the reader picked, best first, in range', () => {
     expect(propertyFramePaths(['a', 'b', 'c'], [3, 2, 9, 3])).toEqual(['c', 'b']);
     expect(propertyFramePaths(['a', 'b'], [])).toEqual([]);
+    // A frame showing the broker's number is never a photo, whoever picked it (11-14 cover "Contact: +25073…").
+    const ocr = ['', 'Contact: +250 732 000 001', '', '0788 000 002 call now'];
+    expect(propertyFramePaths(['a', 'b', 'c', 'd'], [2, 1, 4, 3], 6, ocr)).toEqual(['a', 'c']);
+    // Every pick shows it (a number over the whole video): they stay, no photo is worse.
+    expect(propertyFramePaths(['a', 'b'], [2], 6, ['', 'Tel 0788000003'])).toEqual(['b']);
+    // Prices and sizes are not phone numbers.
+    expect(propertyFramePaths(['a'], [1], 6, ['500,000 RWF · 2 bedrooms · 120 m2'])).toEqual(['a']);
   });
 
   it('files a monthly Kigali rental at VETTING, never live', () => {
