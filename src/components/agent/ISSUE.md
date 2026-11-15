@@ -51,15 +51,14 @@
 - **Evening:** `pnpm mkan:read funnel` reads each real chat's furthest stage and who it waits on
   (`87d17bd`). 30 d: 32 chats, 30 shown homes, 8 picks, 7 asked, 4 broker yes, 0 viewing times; 31
   of 32 were web chats, so "Continue on WhatsApp" is now the main button under the homes (`8290214`).
-- **Broker numbers on home photos → fixed by `tt:web` (11-15):** the photos are re-made as stills of the
-  cleaned video (`uploads/listing-photo/<video id>/`), so no number survives. Tried on K6799, which has a number on
-  every frame: the caption band was cut off and the number was gone. The trust gate keeps a home with numbered photos
-  hidden until this has run on it (254 TikTok homes today).
+- **Broker numbers on home photos (11-15):** a TikTok home with its video shows only the video (Abdout: "post the
+  video direct, don't take photos from it"); cards and the chat show the video's poster. Its photos are never
+  re-made. The gate keeps a TikTok home with numbered photos hidden until it has its video.
 - **Trust gate + video homes (11-15):** `pnpm listings:gate` publishes only what a tenant can get (a contact,
   price, place, 3+ clean photos, not gone). Dry run: 4,687 public (all Airbnb, no contact) → 699 (376 TikTok,
   318 web, 3 manual). Broker homes stay leads when published (search.ts `isLead` by source) and live on
-  /k/K<id>, video first (`video-hero.tsx`). `Listing.videoUrl` / `videoPosterUrl` migration applied 11-15.
-  Order: deploy → `pnpm tt:web --limit=…` (about 50 s a home) → `listings:gate --apply` → load
+  /k/K<id>, video only once it has one (`video-hero.tsx`); `tt:web` puts the @mkan.rw enhance there (AI upscale, text and numbers off), reusing a render when one exists. `Listing.videoUrl` / `videoPosterUrl` migration applied 11-15.
+  Order: deploy → `pnpm tt:web --limit=…` (minutes a home with the AI upscale, ~1 min with `--fast`) → `listings:gate --apply` → load
   `install-listings-refresh-cron.sh`. A broker who wants their video off: `pnpm tt:web --remove=K<id> --apply`.
 - **After the deploy (each is Abdout's go):** `pnpm wa:deal48h on`; `pnpm agent:stranded --apply`; a
   phone test from the team number through to a booked viewing (team numbers keep the old card path, so
