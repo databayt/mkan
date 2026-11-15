@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useLocale } from "@/components/internationalization/use-locale";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 import { formatCurrency, formatNumber } from "@/lib/i18n/formatters";
-import { cardPrice } from "@/lib/listing-price"
+import { cardImages, cardPrice } from "@/lib/listing-price"
 import { PropertyImage } from "@/components/atom/property-image";
 import type { MapBounds } from "./search-provider";
 import type { Listing } from "@/types/listing";
@@ -345,7 +345,7 @@ export default function SearchMapMobile({
                   ? (sp?.forNights ?? "for {count} nights").replace("{count}", String(nights))
                   : (card?.night ?? "night");
               const hasRating = l.averageRating != null && (l.numberOfReviews ?? 0) > 0;
-              const photos = l.photoUrls ?? [];
+              const photos = cardImages(l);
 
               return (
                 <button

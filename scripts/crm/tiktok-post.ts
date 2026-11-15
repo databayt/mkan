@@ -55,7 +55,7 @@ import { dirname, join } from 'node:path';
 import sharp from 'sharp';
 import { postToMkan, recordRun, uploadToMkan } from './notify';
 import { twentyClient, phoneOf, type Phones } from './twenty-rest';
-import { frameTimes, ownTikTok } from './tiktok-pure';
+import { ownTikTok } from './tiktok-pure';
 import {
   brokerAsk,
   brokerPreviewAsk,
@@ -416,7 +416,7 @@ const UPSCALE_CHUNK = 50;
  * missing or `--fast` — the caller keeps today's ffmpeg-only enhance.
  */
 function upscale(src: string, dur: number, work: string, info: { w: number; h: number }): string | null {
-  if (flag('fast') || cmd === 'web' || !existsSync(REALESRGAN)) return null;
+  if (flag('fast') || !existsSync(REALESRGAN)) return null;
   const raw = join(work, 'raw');
   const ai = join(work, 'ai');
   mkdirSync(raw, { recursive: true });
@@ -1876,16 +1876,16 @@ async function askWithPreview(rows: { handle: string; name: string; phone: strin
 }
 
 
-// ── web: a broker home's video for its own page ──────────────────────────────
-const TIKTOK_LEDGER = join(__dirname, '.data', 'tiktok', 'videos.json');
-
-/** The intake's frame picks for a video: the frames its photos were chosen from, and the clip's length. */
-function intakePicks(videoId: string): { picks: number[]; duration: number } | null {
-  if (!existsSync(TIKTOK_LEDGER)) return null;
-  const raw = JSON.parse(readFileSync(TIKTOK_LEDGER, 'utf8')) as unknown;
-  const rows = (Array.isArray(raw) ? raw : Object.values(raw as Record<string, unknown>)) as { videoId?: string; meta?: { duration?: number }; read?: { propertyFrames?: number[] } }[];
-  const r = rows.find((x) => x.videoId === videoId);
-  return r ? { picks: r.read?.propertyFrames ?? [], duration: r.meta?.duration ?? 0 } : null;
+// ── web: a broker home's enhanced video, played on its own page ───────────────
+/** An enhanced render this lane already made for a home (a day's queue or a preview), newest first. */
+function existingRender(ref: string): string | null {
+  if (!existsSync(DATA)) return null;
+  const days = readdirSync(DATA).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort().reverse();
+  for (const dir of [...days, 'preview']) {
+    const f = join(DATA, dir, `${ref}.mp4`);
+    if (existsSync(f) && statSync(f).size > 100_000) return f;
+  }
+  return null;
 }
 
 async function putPublic(path: string, key: string, contentType: string): Promise<string> {
@@ -1898,18 +1898,17 @@ async function putPublic(path: string, key: string, contentType: string): Promis
 }
 
 /**
- * pnpm tt:web [--id=K5808] [--limit=20] [--apply] — every TikTok home gets its own video on its Mkan
- * page (Abdout, 2026-11-15: TikTok homes "displayed as a video"; the cleaned video for all of them).
- * The same clean as a repost, without the slow AI upscale: the broker's video framed 9:16, every
- * added text, number and logo wiped and the gate re-read (stripText), a number or handle said out
- * loud muted (audioGuard). Then a 720×1280 web encode, and the home's photos re-made as stills of
- * the CLEAN video at the frames the intake picked — no broker number on any photo (the 411 + 104 of
- * 11-14). A video that says the home is let marks it taken, like a render.
+ * pnpm tt:web [--id=K5808] [--limit=20] [--apply] [--fast] — a TikTok home's page plays its video
+ * directly (Abdout, 2026-11-15: "for tiktok source post the video direct, don't take photos from it;
+ * render the tiktok video after enhance"). The video is the repost's own enhance: the broker's
+ * TikTok (the link the CRM holds) AI-upscaled, stabilised and graded, every added text, number and
+ * logo off (stripText, fail-closed), a number said out loud muted (audioGuard), the reel encode.
+ * A home this lane already rendered for @mkan.rw reuses that file. The home's photos are never
+ * touched; the poster is the enhanced video's own first second.
  *
- * Dry by default: files land in .data/tiktok-post/web/<ref>/ for a look, nothing uploaded or saved.
- * --apply uploads (uploads/listing-video/, uploads/listing-photo/<video id>/ — new keys, the old
- * photos stay where they are) and sets Listing.videoUrl, videoPosterUrl and photoUrls.
- * `--remove=K5808` takes a home's video off its page (a broker who asked).
+ * The AI upscale takes minutes a home; `--fast` keeps the ffmpeg-only enhance. Dry by default (files
+ * in .data/tiktok-post/web/); --apply uploads to uploads/listing-video/ and sets Listing.videoUrl
+ * and videoPosterUrl. `--remove=K5808 --apply` takes a home's video off its page.
  */
 async function web(): Promise<void> {
   const { db } = await import('../../src/lib/db');
@@ -1923,7 +1922,7 @@ async function web(): Promise<void> {
   const id = Number(argv('id', '0').replace(/^K/i, ''));
   const limit = Number(argv('limit', '20')) || 20;
   const rows = (await loadRows(id ? { id } : { source: 'TIKTOK', lostAt: null, videoUrl: null })).sort((a, z) => z.id - a.id).slice(0, id ? 1 : limit);
-  console.log(`web video — ${rows.length} home(s)${apply ? '' : ' · dry run (files only)'}`);
+  console.log(`web video — ${rows.length} home(s)${apply ? '' : ' · dry run (files only)'}${flag('fast') ? ' · fast enhance (no AI upscale)' : ''}`);
   const outRoot = join(DATA, 'web');
   let done = 0;
   let failed = 0;
@@ -1931,69 +1930,45 @@ async function web(): Promise<void> {
     const ref = refOf(r);
     const vid = videoIdOf(r);
     if (!vid) {
-      console.log(`  - ${ref}: no TikTok video id on its photos — skipped`);
+      console.log(`  - ${ref}: no TikTok video on record — skipped`);
       continue;
     }
     ensureDisk();
     const work = join(outRoot, `.work-${ref}`);
-    const out = join(outRoot, ref);
-    rmSync(out, { recursive: true, force: true });
     mkdirSync(work, { recursive: true });
-    mkdirSync(out, { recursive: true });
+    mkdirSync(outRoot, { recursive: true });
     working.add(work);
     try {
-      const body = await videoBody(r, work);
-      if (!body) throw new Rejected('the broker video could not be fetched (gone, private, or a photo post)');
-      let clean: Awaited<ReturnType<typeof stripText>>;
-      try {
-        clean = await stripText(ref, body, work);
-      } catch (e) {
-        if (e instanceof TakenOnVideo && apply) await markTaken(r);
-        throw e;
-      }
-      const voiced = audioGuard(ref, clean, work);
-      const video = join(out, `${vid}.mp4`);
-      ffmpeg(['-i', voiced.path, '-t', String(MAX_BODY), '-map', '0:v:0', '-map', '0:a:0?', '-vf', 'scale=720:1280:flags=lanczos', '-c:v', 'libx264', '-preset', 'medium', '-crf', '27', '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-af', 'loudnorm=I=-16:TP=-1.5:LRA=11', '-c:a', 'aac', '-b:a', '96k', '-ar', '44100', '-movflags', '+faststart', video]);
-      // The stills: the intake's photo frames, at their times in the same clip, now clean.
-      const intake = intakePicks(vid);
-      const dur = voiced.dur;
-      const times = (() => {
-        const all = intake?.duration ? frameTimes(intake.duration) : [];
-        const picked = (intake?.picks ?? []).map((p) => all[p - 1]).filter((t): t is number => t != null && t < dur - 0.2);
-        const even = frameTimes(dur, 6).filter((t) => !picked.some((p) => Math.abs(p - t) < 1));
-        return [...picked, ...even].slice(0, 6);
-      })();
-      // Hand-held clips blur between steps: of three frames around each time, the sharpest (edge energy).
-      const sharpness = async (f: string) => (await sharp(f).greyscale().convolve({ width: 3, height: 3, kernel: [0, 1, 0, 1, -4, 1, 0, 1, 0] }).stats()).channels[0]!.stdev;
-      const stills: string[] = [];
-      for (const [i, t] of times.entries()) {
-        let best: { f: string; s: number } | null = null;
-        for (const [k, dt] of [-0.4, 0, 0.4].entries()) {
-          const at = Math.min(Math.max(0, t + dt), dur - 0.1);
-          const f = join(work, `still-${i}-${k}.jpg`);
-          ffmpeg(['-ss', String(at), '-i', voiced.path, '-frames:v', '1', '-vf', 'scale=1080:-2', '-q:v', '3', f]);
-          if (!existsSync(f)) continue;
-          const sc = await sharpness(f).catch(() => 0);
-          if (!best || sc > best.s) best = { f, s: sc };
+      let video = existingRender(ref);
+      let note = 'the @mkan.rw render, reused';
+      if (!video) {
+        const body = await videoBody(r, work);
+        if (!body) throw new Rejected('the broker video could not be fetched (gone, private, or a photo post)');
+        let clean: Awaited<ReturnType<typeof stripText>>;
+        try {
+          clean = await stripText(ref, body, work);
+        } catch (e) {
+          if (e instanceof TakenOnVideo && apply) await markTaken(r);
+          throw e;
         }
-        if (!best) continue;
-        const jpg = join(out, `${i + 1}.jpg`);
-        renameSync(best.f, jpg);
-        stills.push(jpg);
+        const voiced = audioGuard(ref, clean, work);
+        video = join(outRoot, `${ref}.mp4`);
+        reelEncode(voiced.path, video);
+        note = `enhanced; ${clean.note}; ${voiced.note}`;
       }
-      if (stills.length < 3) throw new Rejected(`only ${stills.length} stills from the clean video`);
+      const poster = join(work, 'poster.jpg');
+      ffmpeg(['-ss', '1', '-i', video, '-frames:v', '1', '-vf', 'scale=720:-2', '-q:v', '3', poster]);
       if (!apply) {
-        console.log(`  ✓ ${ref}: ${clean.note}; ${voiced.note} → ${out}`);
+        console.log(`  ✓ ${ref}: ${note} → ${video}`);
         done++;
         continue;
       }
       const stamp = Date.now().toString(36);
       const videoUrl = await putPublic(video, `listing-video/${vid}-${stamp}.mp4`, 'video/mp4');
-      const photoUrls: string[] = [];
-      for (const [i, jpg] of stills.entries()) photoUrls.push(await putPublic(jpg, `listing-photo/${vid}/${i + 1}-${stamp}.jpg`, 'image/jpeg'));
-      await db.listing.update({ where: { id: r.id }, data: { videoUrl, videoPosterUrl: photoUrls[0], photoUrls, coverBlur: null, coverBlurUrl: null }, select: { id: true } });
-      rmSync(out, { recursive: true, force: true });
-      console.log(`  ✓ ${ref}: video + ${photoUrls.length} clean photos on its page (${clean.note})`);
+      const videoPosterUrl = existsSync(poster) ? await putPublic(poster, `listing-video/${vid}-${stamp}.jpg`, 'image/jpeg') : null;
+      await db.listing.update({ where: { id: r.id }, data: { videoUrl, videoPosterUrl }, select: { id: true } });
+      if (video.startsWith(outRoot)) rmSync(video, { force: true });
+      console.log(`  ✓ ${ref}: video on its page (${note})`);
       done++;
     } catch (e) {
       failed++;

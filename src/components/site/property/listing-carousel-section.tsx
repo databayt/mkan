@@ -1,6 +1,6 @@
 "use client"
 
-import { cardPrice } from "@/lib/listing-price"
+import { cardImages, cardPrice } from "@/lib/listing-price"
 import React from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -79,7 +79,7 @@ export function ListingCarouselSection({
     // code via `linkId`.
     id: listing.id.toString(),
     linkId: listingSegment(listing),
-    images: listing.photoUrls || [],
+    images: cardImages(listing),
     coverBlur: coverBlurOf(listing),
     title: listing.title || "Property",
     location: `${listing.location?.city || ""}, ${listing.location?.state || ""}`,

@@ -10,7 +10,7 @@ import Link from 'next/link'
 import { useLocale } from '@/components/internationalization/use-locale'
 import { useDictionary } from '@/components/internationalization/dictionary-context'
 import { formatCurrency } from '@/lib/i18n/formatters'
-import { cardPrice } from '@/lib/listing-price'
+import { cardImages, cardPrice } from '@/lib/listing-price'
 import { addFavoriteProperty, removeFavoriteProperty } from '@/lib/actions/user-actions'
 import { useSession } from 'next-auth/react'
 import { qualifiesAsGuestFavorite } from '@/lib/guest-favorite'
@@ -81,7 +81,7 @@ export const PropertyListings = ({ properties, favoriteIds = [] }: PropertyListi
     // code via `linkId`.
     id: property.id.toString(),
     linkId: listingSegment(property),
-    images: property.photoUrls || [],
+    images: cardImages(property),
     coverBlur: coverBlurOf(property),
     title: property.title || "Property",
     location: `${property.location?.city || ""}, ${property.location?.state || ""}`,

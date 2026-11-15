@@ -14,6 +14,8 @@ export interface Listing {
   weeklyDiscount?: number | null;
   monthlyDiscount?: number | null;
   photoUrls: string[];
+  videoUrl?: string | null
+  videoPosterUrl?: string | null
   coverBlur?: string | null;
   coverBlurUrl?: string | null;
   amenities?: string[];

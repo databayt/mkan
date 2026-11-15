@@ -216,10 +216,11 @@ export default async function BrokerHomePage({ params }: HomePageProps) {
         </VideoHero>
       )}
 
-      {photos.length > 0 && (
-        <div className={`${home.videoUrl ? "mt-3 " : ""}-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1 no-scrollbar`}>
+      {/* A TikTok home is its video: no photos taken from it (Abdout, 2026-11-15). */}
+      {!home.videoUrl && photos.length > 0 && (
+        <div className={`-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1 no-scrollbar`}>
           {photos.map((src, i) => (
-            <div key={src} className={`relative aspect-[4/5] ${home.videoUrl ? "w-[42%]" : "w-[85%]"} shrink-0 snap-center overflow-hidden rounded-2xl bg-muted`}>
+            <div key={src} className={`relative aspect-[4/5] w-[85%] shrink-0 snap-center overflow-hidden rounded-2xl bg-muted`}>
               <BlurImage
                 src={src}
                 alt={i === 0 ? scrubTitle(home.title) || ref_ : ""}

@@ -4,7 +4,7 @@ import React from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { SearchCard } from "./property/search-card"
-import { cardPrice } from "@/lib/listing-price"
+import { cardImages, cardPrice } from "@/lib/listing-price"
 import { Listing } from "@/types/listing"
 import { useLocale } from "@/components/internationalization/use-locale"
 import { useDictionary } from "@/components/internationalization/dictionary-context"
@@ -117,7 +117,7 @@ export function SearchResults({
             imageVariant="search"
             id={l.id.toString()}
             linkId={listingSegment(l)}
-            images={l.photoUrls ?? []}
+            images={cardImages(l)}
             coverBlur={coverBlurOf(l)}
             title={l.title ?? ""}
             subtitle={buildLocationSubtitle(l)}

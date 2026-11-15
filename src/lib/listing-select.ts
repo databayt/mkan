@@ -32,6 +32,9 @@ export const SEARCH_LISTING_SELECT = {
   weeklyDiscount: true,
   monthlyDiscount: true,
   photoUrls: true,
+  // A TikTok home's enhanced video: its card shows the poster (cardImages).
+  videoUrl: true,
+  videoPosterUrl: true,
   // The cover's blurred preview and the photo it was made from (coverBlurOf).
   coverBlur: true,
   coverBlurUrl: true,

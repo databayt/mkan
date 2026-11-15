@@ -6,14 +6,14 @@
  * one pass: the swap of the contact-less Airbnb homes for the broker homes that pass.
  *
  * Photos with a broker number on them: the TikTok intake's ledger (scripts/crm/.data/tiktok/videos.json)
- * holds each video's frame OCR; a home whose picked frames show a Rwandan number fails until
- * `pnpm tt:web` re-makes its photos from the cleaned video (CDN key /listing-photo/).
+ * holds each video's frame OCR; a home whose picked frames show a Rwandan number fails, unless it has its
+ * enhanced video (`pnpm tt:web`), which its page plays instead of photos.
  */
 import { config } from 'dotenv';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { gateMove, gateOf, photosAreClean, type GateContact, type GateReason } from '../../src/lib/listing-gate-pure';
+import { gateMove, gateOf, type GateContact, type GateReason } from '../../src/lib/listing-gate-pure';
 import { frameHasPhone } from './tiktok-pure';
 
 config({ path: join(process.cwd(), '.env'), quiet: true });
@@ -45,7 +45,7 @@ async function main(): Promise<void> {
     where: only ? { source: only as never } : {},
     select: {
       id: true, sourceListingId: true, source: true, isPublished: true, draft: true, rentPeriod: true, priceMonth: true, pricePerNight: true,
-      photoUrls: true, lostAt: true, claimedAt: true,
+      photoUrls: true, videoUrl: true, lostAt: true, claimedAt: true,
       host: { select: { phoneNumber: true } },
       location: { select: { state: true, sector: true, neighbourhood: true, address: true, latitude: true, longitude: true } },
       brokers: { select: { user: { select: { phoneNumber: true } }, broker: { select: { phones: true, whatsapp: true, optOut: true, mergedIntoId: true } } } },
@@ -69,7 +69,8 @@ async function main(): Promise<void> {
       hostPhone: r.host?.phoneNumber ?? null,
       contacts,
       hasPlace: !!loc && (!!(loc.state || loc.sector || loc.neighbourhood || loc.address) || (loc.latitude != null && loc.longitude != null)),
-      photosShowPhone: (phones.get(r.sourceListingId ?? '') ?? false) && !photosAreClean(r.photoUrls),
+      photosShowPhone: phones.get(r.sourceListingId ?? '') ?? false,
+      hasVideo: !!r.videoUrl,
     });
     const key = r.source ?? 'HOST';
     const t = by.get(key) ?? { total: 0, ok: 0, shown: 0, publish: 0, hide: 0, reasons: {} };

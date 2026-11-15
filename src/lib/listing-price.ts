@@ -23,3 +23,8 @@ export function cardPrice(l: {
     ? { amount: l.pricePerNight, per: "night" }
     : null;
 }
+
+/** A card's pictures: a TikTok home with its video shows the video's poster, never photos taken from it. */
+export function cardImages(l: { photoUrls?: string[] | null; videoUrl?: string | null; videoPosterUrl?: string | null }): string[] {
+  return l.videoUrl && l.videoPosterUrl ? [l.videoPosterUrl] : (l.photoUrls ?? []);
+}

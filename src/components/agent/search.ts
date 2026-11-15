@@ -74,6 +74,8 @@ const DISPLAY_SELECT = {
   bedrooms: true,
   bathrooms: true,
   photoUrls: true,
+  videoUrl: true,
+  videoPosterUrl: true,
   averageRating: true,
   numberOfReviews: true,
   isPublished: true,
@@ -269,7 +271,8 @@ export async function toShortlist(ranked: Ranked[], lang: Locale, near?: string 
         path: isLead(row) ? row.sourceUrl ?? "" : listingPath(lang, row),
         // A broker's number, handle or link written into an ad's title never reaches the tenant.
         title: scrubTitle(titleById.get(row.id) ?? row.title ?? ""),
-        photo: row.photoUrls[0] ?? null,
+        // A TikTok home with its video: the video's poster, never a photo taken from it.
+        photo: (row.videoUrl && row.videoPosterUrl) || row.photoUrls[0] || null,
         district: row.location?.state ?? null,
         zone: row.location?.neighbourhood ?? row.location?.sector ?? null,
         homeType: homeTypeOf(row.propertyType),

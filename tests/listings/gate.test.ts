@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { gateMove, gateOf, photosAreClean, type GateHome } from "@/lib/listing-gate-pure";
+import { gateMove, gateOf, type GateHome } from "@/lib/listing-gate-pure";
 
 const broker: GateHome = {
   rentPeriod: "MONTHLY",
@@ -51,11 +51,10 @@ describe("gateOf", () => {
   });
 });
 
-describe("photosAreClean", () => {
-  it("is true only when every photo was re-made from the cleaned video", () => {
-    expect(photosAreClean(["https://cdn/x/listing-photo/K1-1.jpg", "https://cdn/x/listing-photo/K1-2.jpg"])).toBe(true);
-    expect(photosAreClean(["https://cdn/x/listing-photo/K1-1.jpg", "https://cdn/x/tiktok/1.jpg"])).toBe(false);
-    expect(photosAreClean([])).toBe(false);
+describe("a home with its video", () => {
+  it("skips the photo checks: the video replaces the photos", () => {
+    expect(gateOf({ ...broker, photoUrls: ["a"], photosShowPhone: true, hasVideo: true }).ok).toBe(true);
+    expect(gateOf({ ...broker, contacts: [], hasVideo: true }).reasons).toEqual(["no-contact"]);
   });
 });
 

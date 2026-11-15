@@ -1,6 +1,6 @@
 "use client"
 
-import { cardPrice } from "@/lib/listing-price"
+import { cardImages, cardPrice } from "@/lib/listing-price"
 import React from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -106,7 +106,7 @@ export const PropertyListings = ({ properties, favoriteIds = [] }: PropertyListi
     // code via `linkId`.
     id: property.id.toString(),
     linkId: listingSegment(property),
-    images: property.photoUrls ?? [],
+    images: cardImages(property),
     title: property.title ?? "Property",
     location: `${property.location?.city ?? ""}, ${property.location?.state ?? ""}`,
     dates: undefined, // You can add availability dates logic here
@@ -141,7 +141,7 @@ export const PropertyListings = ({ properties, favoriteIds = [] }: PropertyListi
                 key={l.id}
                 id={l.id.toString()}
                 linkId={listingSegment(l)}
-                images={l.photoUrls ?? []}
+                images={cardImages(l)}
                 coverBlur={coverBlurOf(l)}
                 title={l.title ?? ''}
                 subtitle={buildLocationSubtitle(l)}
