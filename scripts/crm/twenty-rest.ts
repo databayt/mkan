@@ -43,16 +43,9 @@ async function throttle(): Promise<void> {
   lastCallAt = Date.now();
 }
 
-/**
- * A failure worth repeating: Twenty's own query timeout (it answers 400 QUERY_READ_TIMEOUT when
- * its Postgres is busy — the 11-08 directory run died on it, twice), a 5xx, or a dropped
- * connection. A real 400 (bad field, bad cursor) is NOT transient and stays fatal.
- */
-export function isTransientTwenty(status: number | null, bodyText: string): boolean {
-  if (status === null) return true; // fetch threw: reset, refused, timeout
-  if (status >= 500) return true;
-  return status === 400 && /QUERY_READ_TIMEOUT|Query read timeout/i.test(bodyText);
-}
+// One copy of the transient-failure rule, shared with the Worker's client (2026-11-15).
+import { isTransientTwenty } from '../../src/lib/crm/transient';
+export { isTransientTwenty };
 
 export interface TwentyClient {
   rest<T = unknown>(method: 'GET' | 'POST' | 'PATCH' | 'DELETE', path: string, body?: unknown): Promise<T>;

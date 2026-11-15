@@ -66,6 +66,8 @@
     "crm:post-mkan": "tsx scripts/crm/post-mkan.ts",
     "crm:merge-tiktok-dupes": "tsx scripts/crm/merge-tiktok-dupes.ts",
     "crm:brokers": "tsx scripts/crm/brokers.ts",
+    "crm:reconcile": "tsx --require ./scripts/agent/no-server-only.js scripts/crm/reconcile.ts",
+    "crm:backfill": "tsx --require ./scripts/agent/no-server-only.js scripts/crm/backfill.ts",
     "crm:zones": "tsx scripts/crm/zones.ts",
     "crm:backfill-terms": "tsx scripts/crm/backfill-terms.ts",
     "crm:agencies": "tsx scripts/crm/agencies-discover.ts",

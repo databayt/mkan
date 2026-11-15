@@ -40,6 +40,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { twentyClient, fromMicros, type Currency } from './twenty-rest';
 import { errorText } from './error-text';
+import { twentyBrokerState } from '../../src/lib/crm/broker-edit-pure';
 import { phonesFromTwenty, twentyPhones } from '../../src/lib/phone';
 import { DISTRICTS } from '../../src/lib/geo/rwanda-places';
 import {
@@ -54,7 +55,6 @@ import {
   resolveMerges,
   summarise,
   withoutLocked,
-  RELATIONSHIPS,
   TWENTY_KEYS,
   type BrokerKindT,
   type BrokerRowFull,
@@ -62,7 +62,6 @@ import {
   type HomeFact,
   type LockableField,
   type MergedBroker,
-  type Relationship,
   type SourceTag,
   type TwentyBrokerState,
 } from './brokers-pure';
@@ -399,7 +398,6 @@ const BROKER_FULL = {
 } as const;
 type BrokerRow = BrokerRowFull & { twentyId: string | null };
 
-const KINDS = new Set<BrokerKindT>(['BROKER', 'AGENCY', 'LANDLORD']);
 
 /** Every record of an object, or null when the object is not in the workspace yet (crm:seed-objects not applied). */
 async function allOrNull(client: ReturnType<typeof twentyClient>, plural: string): Promise<Row[] | null> {
@@ -439,40 +437,9 @@ async function readTwentyDirectory(client: ReturnType<typeof twentyClient>): Pro
   };
 }
 
-const actorOf = (v: unknown): string | null => ((v as Row | null)?.source as string | undefined) ?? null;
-
-/** A Twenty broker record as the pure two-way logic reads it. */
-export function twentyBrokerState(t: Row, junction: Row[] | null, zoneSlugById: Map<string, string> | null): TwentyBrokerState {
-  const rows = junction && zoneSlugById ? junction.filter((j) => String(j.brokerId) === String(t.id)) : null;
-  const kind = String(t.kind ?? '') as BrokerKindT;
-  return {
-    id: String(t.id),
-    updatedAt: dateOf(t.updatedAt),
-    updatedBy: actorOf(t.updatedBy),
-    kind: KINDS.has(kind) ? kind : null,
-    name: typeof t.name === 'string' ? t.name : null,
-    phones: phonesFromTwenty(t.phone as never, 'RW'),
-    whatsapp: phonesFromTwenty(t.whatsapp as never, 'RW')[0] ?? null,
-    optOut: t.optOut === true,
-    zoneSlugs: rows ? [...new Set(rows.map((j) => zoneSlugById!.get(String(j.zoneId))).filter((z): z is string => !!z))] : null,
-    zonesByPerson: (rows ?? []).some((j) => {
-      const by = actorOf(j.createdBy);
-      return !!by && by !== 'API' && by !== 'SYSTEM';
-    }),
-    mergeIntoId: t.mergeIntoId ? String(t.mergeIntoId) : null,
-    // Present once crm:seed-objects added the partnership fields; the share is a percent in Twenty.
-    partnership:
-      'relationship' in t || 'sharePct' in t
-        ? {
-            relationship: (RELATIONSHIPS as readonly string[]).includes(String(t.relationship)) ? (t.relationship as Relationship) : undefined,
-            sharePct: typeof t.sharePct === 'number' ? t.sharePct / 100 : null,
-            shareFlatRwf: typeof t.shareFlatRwf === 'number' ? Math.round(t.shareFlatRwf) : null,
-            agreementNote: typeof t.agreementNote === 'string' && t.agreementNote.trim() ? t.agreementNote.trim() : null,
-            agreedAt: dateOf(t.agreedAt),
-          }
-        : null,
-  };
-}
+// The Twenty → Prisma broker mapping moved to src/lib/crm/broker-edit-pure.ts (2026-11-15) so the webhook
+// applies a person's edit live with the same code this daily run uses.
+export { twentyBrokerState };
 
 /**
  * Step one of every run: what people did in Twenty since our last write.

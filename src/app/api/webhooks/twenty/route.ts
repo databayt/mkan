@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { parseTwentyEvent, verifyTwentySignature } from '@/lib/twenty-webhook';
 import { ensureListingCode } from '@/lib/listing-code-server';
+import { onBrokerUpdated, onDealUpdated, onTenantUpdated } from '@/lib/crm/twenty-inbound';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -17,6 +18,13 @@ export const dynamic = 'force-dynamic';
  *   - `home.updated`: Price changes, publish state overrides, delisting signals
  *   - `host.updated`: Phone & WhatsApp contact verification updates
  *   - `opportunity.updated`: Host agreement / claim stage advances
+ *   - `deal.updated`, `tenant.updated`, `broker.updated` (2026-11-15, src/lib/crm/twenty-inbound.ts):
+ *     Twenty is the CRM of record, so a person's edit there acts here and now.
+ *
+ * Truth rule: Twenty wins on the fields a person edits (a deal's stage, terms, viewing time and share, a
+ * tenant's opt-out, a broker's relationship and share); mkan reports what it observes (messages,
+ * timestamps, counts). An event whose fields are only what mkan's own last write set is our echo and is
+ * ignored (CrmLink.pushedFields, 2 minutes).
  *
  * FIXED 2026-08-18: this handler had never processed a single event. It read
  * `body.event` / `body.object` / `body.action`, none of which Twenty sends, so
@@ -213,6 +221,14 @@ export async function POST(req: Request) {
       }
 
       return NextResponse.json({ received: true, stage });
+    }
+
+    // ── 4. The CRM of record (Phase 4): deals, tenants, brokers ─────────────
+    // Only `updated` is a person's edit; a record mkan created comes back as `created`/`upserted` and is ours.
+    if (evt.action === 'updated') {
+      if (object === 'deal') return NextResponse.json(await onDealUpdated(evt));
+      if (object === 'tenant') return NextResponse.json(await onTenantUpdated(evt));
+      if (object === 'broker') return NextResponse.json(await onBrokerUpdated(evt));
     }
 
     // A real object we have no branch for. 200 is correct here — Twenty

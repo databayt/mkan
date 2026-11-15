@@ -16,6 +16,7 @@
  */
 
 import { CITY_OPTIONS, STATE_OPTIONS } from './sudan-places';
+import { DEAL_STEPS } from '@/components/agent/deal-event-pure';
 import { CITY_OPTIONS as RW_CITY_OPTIONS, DISTRICTS as RW_DISTRICTS, ZONE_OPTIONS as RW_ZONE_OPTIONS } from '@/lib/geo/rwanda-places';
 
 export type TwentyFieldType =
@@ -504,8 +505,69 @@ export const BROKER_ZONE: ObjectDef = {
   ],
 };
 
-/** Objects the seeder creates, in dependency order (home + host first; relations wired last). */
-export const OBJECTS: ObjectDef[] = [HOST, HOME, TIKTOK_POST, BROKER, ZONE, BROKER_ZONE];
+// ── Tenant ───────────────────────────────────────────────────────────────────
+// Phase 4 (2026-11-15): Twenty is the CRM of record. Every real person who writes to the Mkan line is a
+// tenant here, written by the Worker within about a minute (src/lib/crm/tenant-sync.ts) — never scraped.
+// A person edits `stage` and `optOut` here; the webhook acts on optOut (= STOP). Everything else is mkan
+// reporting what it observed. `mkanProfileId` is the dedupe key (AgentProfile.id, or "phone:<digits>").
+export const TENANT: ObjectDef = {
+  nameSingular: 'tenant',
+  namePlural: 'tenants',
+  labelSingular: 'Tenant',
+  labelPlural: 'Tenants',
+  icon: 'IconUserSearch',
+  description: 'A person looking for a home in Kigali through the Mkan WhatsApp line or the site.',
+  fields: [
+    { name: 'phone', label: 'Phone', type: 'PHONES', icon: 'IconPhone' },
+    { name: 'whatsapp', label: 'WhatsApp', type: 'PHONES', icon: 'IconBrandWhatsapp' },
+    { name: 'language', label: 'Language', type: 'SELECT', icon: 'IconLanguage', options: ['EN', 'AR', 'RW', 'FR', 'SW'] },
+    { name: 'needSummary', label: 'What they need', type: 'TEXT', icon: 'IconNotes', description: 'Bedrooms, place and budget, in a line.' },
+    { name: 'source', label: 'Source', type: 'SELECT', icon: 'IconRoute', options: ['TIKTOK_CODE', 'TIKTOK_LINK', 'TIKTOK_BIO', 'TODAY', 'K_PAGE', 'WEB', 'WHATSAPP', 'REFERRAL', 'ORGANIC'], description: 'How they first reached Mkan.' },
+    { name: 'district', label: 'District', type: 'SELECT', icon: 'IconMap2', options: ['GASABO', 'KICUKIRO', 'NYARUGENGE'] },
+    { name: 'budgetRwf', label: 'Budget (RWF/month)', type: 'NUMBER', icon: 'IconCash' },
+    { name: 'bedrooms', label: 'Bedrooms', type: 'NUMBER', icon: 'IconBed' },
+    { name: 'stage', label: 'Stage', type: 'SELECT', icon: 'IconProgressCheck', options: ['NEW', 'SHOWN_HOMES', 'PICKED', 'VIEWING', 'SIGNED', 'LOST'], defaultValue: 'NEW', description: 'The Kanban group field. Follows the tenant\'s deals; a person may move it.' },
+    { name: 'firstContactAt', label: 'First contact', type: 'DATE_TIME', icon: 'IconCalendar' },
+    { name: 'lastMessageAt', label: 'Last message', type: 'DATE_TIME', icon: 'IconMessage' },
+    { name: 'chatLink', label: 'Chat', type: 'LINKS', icon: 'IconMessages', description: 'Signed read-only link to their chat (src/components/agent/chat-link.ts).' },
+    { name: 'optOut', label: 'Opted out', type: 'BOOLEAN', icon: 'IconBan', defaultValue: false, description: 'Tick to stop every message to them — the same as the tenant sending STOP.' },
+    { name: 'mkanProfileId', label: 'mkan profile ID', type: 'TEXT', description: 'AgentProfile.id, or phone:<digits> (dedupe key).' },
+  ],
+};
+
+// ── Deal ─────────────────────────────────────────────────────────────────────
+// One tenant × one home × one broker, from the tenant's pick to Mkan's share in hand. `stage` uses the
+// dealEvent steps (src/components/agent/deal-event-pure.ts) — the Deals Kanban group field. A person
+// moving a deal to VIEWED / SIGNED / PAID / LOST runs the same code as the rep words (setDealStatus).
+// `mkanKey` is "<taskId>:<listingId>" from the pick; `mkanDealId` is Prisma Deal.id once a viewing is booked.
+export const DEAL: ObjectDef = {
+  nameSingular: 'deal',
+  namePlural: 'deals',
+  labelSingular: 'Deal',
+  labelPlural: 'Deals',
+  icon: 'IconHomeDollar',
+  description: 'A tenant Mkan brought to a broker\'s home — from the pick to the signed lease and Mkan\'s share.',
+  fields: [
+    { name: 'stage', label: 'Stage', type: 'SELECT', icon: 'IconProgressCheck', options: [...DEAL_STEPS], defaultValue: 'PICKED', description: 'The Kanban group field.' },
+    { name: 'stageChangedAt', label: 'Stage changed', type: 'DATE_TIME', icon: 'IconCalendar' },
+    { name: 'viewingAt', label: 'Viewing at', type: 'DATE_TIME', icon: 'IconCalendarEvent', description: 'Editing it moves the viewing and restarts its reminders.' },
+    { name: 'meetingPoint', label: 'Meeting point', type: 'TEXT', icon: 'IconMapPin' },
+    { name: 'rentRwf', label: 'Rent (RWF/month)', type: 'NUMBER', icon: 'IconCash' },
+    { name: 'commissionRwf', label: 'Broker commission (RWF)', type: 'NUMBER', icon: 'IconCash' },
+    { name: 'mkanShareRwf', label: 'Mkan share (RWF)', type: 'NUMBER', icon: 'IconCoins', description: 'Needed to move a deal to SIGNED or PAID, unless the broker\'s agreement gives it.' },
+    { name: 'tripCostRwf', label: 'Trip cost (RWF)', type: 'NUMBER', icon: 'IconCar', description: 'What going to the viewing cost Mkan\'s person.' },
+    { name: 'terms', label: 'Terms', type: 'TEXT', icon: 'IconFileText', description: 'What the broker confirmed: deposit, advance, fees.' },
+    { name: 'lostReason', label: 'Lost because', type: 'TEXT', icon: 'IconCircleX' },
+    { name: 'mkanKey', label: 'mkan key', type: 'TEXT', description: '<taskId>:<listingId> (dedupe key).' },
+    { name: 'mkanDealId', label: 'mkan deal ID', type: 'TEXT', description: 'Prisma Deal.id, once a viewing is booked.' },
+    { name: 'tenant', label: 'Tenant', type: 'RELATION', icon: 'IconUserSearch', relation: { target: 'tenant', type: 'MANY_TO_ONE', targetFieldLabel: 'Deals', targetFieldIcon: 'IconHomeDollar' } },
+    { name: 'broker', label: 'Broker', type: 'RELATION', icon: 'IconBuildingEstate', relation: { target: 'broker', type: 'MANY_TO_ONE', targetFieldLabel: 'Deals', targetFieldIcon: 'IconHomeDollar' } },
+    { name: 'home', label: 'Home', type: 'RELATION', icon: 'IconHome', relation: { target: 'home', type: 'MANY_TO_ONE', targetFieldLabel: 'Deals', targetFieldIcon: 'IconHomeDollar' } },
+  ],
+};
+
+/** Objects the seeder creates, in dependency order (home + host first; relations wired last — deal after tenant, broker and home). */
+export const OBJECTS: ObjectDef[] = [HOST, HOME, TIKTOK_POST, BROKER, ZONE, BROKER_ZONE, TENANT, DEAL];
 
 // ── Opportunity (standard object) — custom fields for the onboarding funnel ───
 // One Opportunity per host. The funnel lives in `onboardingStage`; the standard
