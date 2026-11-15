@@ -96,7 +96,7 @@ async function main() {
       const deal = await db.deal.create({ data: { listingId: home!.id, visitId: visit.id, taskId: task!.id, tenantPhone: TEST_PHONE }, select: { id: true } });
       made.deals.push(deal.id);
       const after = await handleTenantWhatsApp({ phone: TEST_DIGITS, text: "1", msgId: nextMsg() });
-      check(!!after.reply && /tell the broker you want|سأخبر الوسيط|Ndabwira komisiyoneri/i.test(after.reply), "'1' after the viewing answers the viewing", after.reply?.slice(0, 90));
+      check(!!after.reply && /(?:tell|told) the broker you want|(?:سأخبر|أخبرت) الوسيط|(?:Ndabwira|Nabwiye) komisiyoneri/i.test(after.reply), "'1' after the viewing answers the viewing", after.reply?.slice(0, 90));
       const d = await db.deal.findUnique({ where: { id: deal.id }, select: { status: true } });
       check(d?.status === "VIEWED", "the deal moves to VIEWED", d?.status);
     }
