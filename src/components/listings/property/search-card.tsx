@@ -2,7 +2,6 @@
 
 import React from "react"
 import { Heart, Star } from "lucide-react"
-import { cn } from "@/lib/utils"
 import { useFavorites } from "@/components/favorites/favorites-context"
 import { useDictionary } from "@/components/internationalization/dictionary-context"
 import { useLocale } from "@/components/internationalization/use-locale"

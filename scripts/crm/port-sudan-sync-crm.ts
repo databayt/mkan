@@ -18,9 +18,6 @@ import { join } from 'node:path';
 config({ override: true });
 
 const APPLY = process.argv.includes('--apply');
-const API_URL = (process.env.TWENTY_API_URL ?? '').replace(/\/+$/, '');
-const API_KEY = process.env.TWENTY_API_KEY ?? '';
-const REST = `${API_URL}/rest`;
 
 interface LeadBusiness {
   id: string;

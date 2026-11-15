@@ -32,7 +32,7 @@ config({ override: true });
 // The mirror opens Prisma; its per-query log was 1,405 lines of sweep.log a day.
 process.env.PRISMA_QUIET ??= '1';
 
-import { execFileSync, execSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';

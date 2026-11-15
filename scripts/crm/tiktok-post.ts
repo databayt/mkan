@@ -101,7 +101,6 @@ import {
   nextSlotGap,
   pickFresh,
   pickToday,
-  POSTS_CEILING,
   POSTS_FLOOR,
   CADENCE,
   cadenceEvidence,

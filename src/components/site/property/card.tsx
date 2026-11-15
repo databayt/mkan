@@ -3,7 +3,6 @@
 import React, { useState } from 'react'
 import { Heart, Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useFavorites } from "@/components/favorites/favorites-context"
 import { useDictionary } from '@/components/internationalization/dictionary-context'
