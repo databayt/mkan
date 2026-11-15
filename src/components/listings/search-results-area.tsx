@@ -11,6 +11,7 @@ import { useIsDesktop } from "@/hooks/use-is-desktop"
 import { useDictionary } from "@/components/internationalization/dictionary-context"
 import { useLocale } from "@/components/internationalization/use-locale"
 import { formatCurrency } from "@/lib/i18n/formatters"
+import { cardPrice } from "@/lib/listing-price"
 
 // mapbox-gl touches `window` at import time — load the mobile map client-side
 // only, and only when the user opens it.
@@ -40,16 +41,19 @@ export function SearchResultsArea() {
 
   const markers = listings
     .filter((l) => l.location?.latitude != null && l.location?.longitude != null)
-    .map((l) => ({
+    .map((l) => {
+      const cp = cardPrice(l)
+      return {
       id: l.id,
-      price: l.pricePerNight ?? null,
+      price: cp?.amount ?? null,
       // Pre-formatted in the listing currency (per listing) so the map price pills match
       // the cards — "SDG 185" / "185 ج.س", not a hardcoded "$".
-      priceLabel: l.pricePerNight != null ? formatCurrency(l.pricePerNight, locale, l.currency ?? "SDG") : null,
+      priceLabel: cp ? formatCurrency(cp.amount, locale, l.currency ?? "SDG") : null,
       lat: l.location!.latitude,
       lng: l.location!.longitude,
       title: l.title ?? undefined,
-    }))
+      }
+    })
 
   const homesLabel = total === 1 ? (sp?.home ?? "home") : (sp?.homes ?? "homes")
 

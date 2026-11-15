@@ -5,6 +5,8 @@ export interface Listing {
   title: string | null;
   description: string | null;
   pricePerNight: number | null;
+  rentPeriod?: "NIGHTLY" | "MONTHLY" | null;
+  priceMonth?: number | null;
   currency?: string | null;
   securityDeposit?: number | null;
   applicationFee?: number | null;

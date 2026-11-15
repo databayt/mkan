@@ -19,6 +19,8 @@ interface PropertyCardProps {
   location: string
   dates?: string
   price: number
+  /** "month" for MONTHLY (broker) homes; default "night". */
+  per?: "night" | "month"
   /** ISO 4217 code of the listing (default SDG). */
   currency?: string
   rating: number
@@ -48,6 +50,7 @@ export function PropertyCard({
   location,
   dates,
   price,
+  per = "night",
   currency,
   rating,
   isSuperhostBadge = false,
@@ -180,8 +183,8 @@ export function PropertyCard({
         {/* Price and Rating Row */}
         <div className="flex items-center gap-2 leading-tight">
           <div className="text-gray-500 text-xs leading-tight">
-            <span className="font-medium text-gray-900 leading-tight">{formatCurrency(price, locale, currency ?? "SDG")}</span>
-            <span className="text-gray-500 text-xs leading-tight"> {dict.rental?.property?.card?.night}</span>
+            <span className="font-medium text-gray-900 leading-tight">{price > 0 ? formatCurrency(price, locale, currency ?? "SDG") : "—"}</span>
+            {price > 0 && <span className="text-gray-500 text-xs leading-tight"> {per === "month" ? (dict.rental?.property?.card?.month ?? "month") : dict.rental?.property?.card?.night}</span>}
           </div>
           <div className="flex items-center leading-tight">
             <Star className="w-3 h-3 text-gray-500 fill-current" />

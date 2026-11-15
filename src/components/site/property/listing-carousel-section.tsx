@@ -1,5 +1,6 @@
 "use client"
 
+import { cardPrice } from "@/lib/listing-price"
 import React from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -83,7 +84,8 @@ export function ListingCarouselSection({
     title: listing.title || "Property",
     location: `${listing.location?.city || ""}, ${listing.location?.state || ""}`,
     dates: undefined,
-    price: listing.pricePerNight || 0,
+    price: cardPrice(listing)?.amount ?? 0,
+    per: cardPrice(listing)?.per ?? "night",
     currency: listing.currency ?? "SDG",
     rating: listing.averageRating || 4.5,
     isSuperhostBadge: false,

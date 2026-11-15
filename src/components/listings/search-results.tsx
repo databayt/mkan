@@ -4,6 +4,7 @@ import React from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { SearchCard } from "./property/search-card"
+import { cardPrice } from "@/lib/listing-price"
 import { Listing } from "@/types/listing"
 import { useLocale } from "@/components/internationalization/use-locale"
 import { useDictionary } from "@/components/internationalization/dictionary-context"
@@ -96,11 +97,13 @@ export function SearchResults({
       className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-2 gap-x-4 sm:gap-x-6 gap-y-10"
     >
       {properties.map((l, index) => {
-        const price = l.pricePerNight ?? 0
+        const cp = cardPrice(l)
+        const price = cp?.amount ?? 0
+        const monthly = cp?.per === "month"
         // Length-of-stay discount (weekly ≥ 7 nights, monthly ≥ 28), as a percent.
         // Drives Airbnb's struck-through "was" price when a trip total applies.
         const discountPct =
-          nights && nights >= 28
+          monthly ? 0 : nights && nights >= 28
             ? l.monthlyDiscount ?? 0
             : nights && nights >= 7
             ? l.weeklyDiscount ?? 0
@@ -121,9 +124,10 @@ export function SearchResults({
             specs={buildSpecs(l)}
             dates={datesLabel}
             pricePerNight={price}
+            per={cp?.per ?? "night"}
             currency={l.currency ?? "SDG"}
-            totalPrice={nights ? discountedTotal : undefined}
-            originalPrice={nights && discountPct > 0 ? baseTotal : undefined}
+            totalPrice={nights && !monthly ? discountedTotal : undefined}
+            originalPrice={nights && !monthly && discountPct > 0 ? baseTotal : undefined}
             nights={nights}
             rating={l.averageRating}
             reviewsCount={l.numberOfReviews ?? 0}

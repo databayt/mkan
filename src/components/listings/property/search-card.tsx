@@ -30,6 +30,8 @@ export interface SearchCardProps {
   dates?: string
   /** Per-night price. Always present. */
   pricePerNight: number
+  /** "month" for MONTHLY (broker) homes — `pricePerNight` then carries the monthly rent. */
+  per?: "night" | "month"
   /** ISO 4217 code of the listing (default SDG). */
   currency?: string
   /** When a date range is active, the trip total + its night count render as
@@ -67,6 +69,7 @@ export function SearchCard({
   specs,
   dates,
   pricePerNight,
+  per = "night",
   currency = "SDG",
   totalPrice,
   originalPrice,
@@ -103,14 +106,21 @@ export function SearchCard({
   }
 
   // Price line: trip total when dates are set, otherwise per-night.
-  const priceNumber =
-    nights && totalPrice != null
+  // Monthly homes never show a trip total or "night": rent per month, or a dash.
+  const monthly = per === "month"
+  const noPrice = !(pricePerNight > 0)
+  const priceNumber = noPrice
+    ? "—"
+    : !monthly && nights && totalPrice != null
       ? formatCurrency(totalPrice, locale, currency)
       : formatCurrency(pricePerNight, locale, currency)
-  const priceSuffix =
-    nights && totalPrice != null
-      ? (sp?.forNights ?? "for {count} nights").replace("{count}", String(nights))
-      : (card?.night ?? "night")
+  const priceSuffix = noPrice
+    ? ""
+    : monthly
+      ? (card?.month ?? "month")
+      : nights && totalPrice != null
+        ? (sp?.forNights ?? "for {count} nights").replace("{count}", String(nights))
+        : (card?.night ?? "night")
   // Struck-through pre-discount price (only when it genuinely exceeds the shown price).
   const shownPrice = nights && totalPrice != null ? totalPrice : pricePerNight
   const originalNumber =

@@ -1,5 +1,6 @@
 "use client"
 
+import { cardPrice } from "@/lib/listing-price"
 import React from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -109,7 +110,8 @@ export const PropertyListings = ({ properties, favoriteIds = [] }: PropertyListi
     title: property.title ?? "Property",
     location: `${property.location?.city ?? ""}, ${property.location?.state ?? ""}`,
     dates: undefined, // You can add availability dates logic here
-    price: property.pricePerNight ?? 0,
+    price: cardPrice(property)?.amount ?? 0,
+    per: cardPrice(property)?.per ?? "night",
     currency: property.currency ?? "SDG",
     rating: property.averageRating ?? 4.5, // Default rating
     isSuperhostBadge: false, // You can add logic for this
@@ -144,7 +146,8 @@ export const PropertyListings = ({ properties, favoriteIds = [] }: PropertyListi
                 title={l.title ?? ''}
                 subtitle={buildLocationSubtitle(l)}
                 specs={buildSpecs(l)}
-                pricePerNight={l.pricePerNight ?? 0}
+                pricePerNight={cardPrice(l)?.amount ?? 0}
+                per={cardPrice(l)?.per ?? "night"}
                 currency={l.currency ?? "SDG"}
                 rating={l.averageRating}
                 reviewsCount={l.numberOfReviews ?? 0}
@@ -179,7 +182,7 @@ export const PropertyListings = ({ properties, favoriteIds = [] }: PropertyListi
                 <div className="flex-1">
                   <h3 className="font-semibold text-lg mb-2">{property.title}</h3>
                   <p className="text-gray-600 mb-2">{property.location}</p>
-                  <p className="font-semibold text-lg">{formatCurrency(property.price, locale, property.currency)} / {dict.rental?.listing?.perNight ?? 'night'}</p>
+                  <p className="font-semibold text-lg">{property.price > 0 ? <>{formatCurrency(property.price, locale, property.currency)} / {property.per === "month" ? (dict.rental?.property?.card?.month ?? 'month') : (dict.rental?.listing?.perNight ?? 'night')}</> : "—"}</p>
                 </div>
               </div>
             </div>

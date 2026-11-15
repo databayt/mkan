@@ -22,6 +22,9 @@ export const SEARCH_LISTING_SELECT = {
   title: true,
   description: true,
   pricePerNight: true,
+  // MONTHLY (broker) homes carry their rent here; see cardPrice().
+  rentPeriod: true,
+  priceMonth: true,
   currency: true,
   securityDeposit: true,
   applicationFee: true,

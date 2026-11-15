@@ -10,6 +10,7 @@ import Link from 'next/link'
 import { useLocale } from '@/components/internationalization/use-locale'
 import { useDictionary } from '@/components/internationalization/dictionary-context'
 import { formatCurrency } from '@/lib/i18n/formatters'
+import { cardPrice } from '@/lib/listing-price'
 import { addFavoriteProperty, removeFavoriteProperty } from '@/lib/actions/user-actions'
 import { useSession } from 'next-auth/react'
 import { qualifiesAsGuestFavorite } from '@/lib/guest-favorite'
@@ -85,7 +86,8 @@ export const PropertyListings = ({ properties, favoriteIds = [] }: PropertyListi
     title: property.title || "Property",
     location: `${property.location?.city || ""}, ${property.location?.state || ""}`,
     dates: undefined, // You can add availability dates logic here
-    price: property.pricePerNight || 0,
+    price: cardPrice(property)?.amount ?? 0,
+    per: cardPrice(property)?.per ?? "night",
     currency: property.currency ?? "SDG",
     rating: property.averageRating || 4.5, // Default rating
     isSuperhostBadge: false, // You can add logic for this
@@ -137,7 +139,7 @@ export const PropertyListings = ({ properties, favoriteIds = [] }: PropertyListi
                 <div className="flex-1">
                   <h3 className="font-semibold text-lg mb-2">{property.title}</h3>
                   <p className="text-gray-600 mb-2">{property.location}</p>
-                  <p className="font-semibold text-lg">{formatCurrency(property.price, locale, property.currency)}/{dict?.rental?.property?.card?.night ?? 'night'}</p>
+                  <p className="font-semibold text-lg">{property.price > 0 ? <>{formatCurrency(property.price, locale, property.currency)}/{property.per === "month" ? (dict?.rental?.property?.card?.month ?? 'month') : (dict?.rental?.property?.card?.night ?? 'night')}</> : "—"}</p>
                 </div>
               </div>
             </div>

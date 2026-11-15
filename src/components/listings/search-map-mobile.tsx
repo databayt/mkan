@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useLocale } from "@/components/internationalization/use-locale";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 import { formatCurrency, formatNumber } from "@/lib/i18n/formatters";
+import { cardPrice } from "@/lib/listing-price"
 import { PropertyImage } from "@/components/atom/property-image";
 import type { MapBounds } from "./search-provider";
 import type { Listing } from "@/types/listing";
@@ -194,7 +195,7 @@ export default function SearchMapMobile({
       el.className =
         "flex items-center h-8 rounded-full px-3 text-sm font-semibold border shadow-md cursor-pointer transition";
       el.textContent =
-        l.pricePerNight != null ? formatCurrency(l.pricePerNight, locale, l.currency ?? "SDG") : "—";
+        cardPrice(l) ? formatCurrency(cardPrice(l)!.amount, locale, l.currency ?? "SDG") : "—";
       if (l.title) el.title = l.title;
       paintPin(el, id === activeIdRef.current);
       el.addEventListener("click", (e) => {
@@ -319,9 +320,11 @@ export default function SearchMapMobile({
           >
             {placed.map((l) => {
               const id = String(l.id);
-              const price = l.pricePerNight ?? 0;
+              const cp = cardPrice(l);
+              const price = cp?.amount ?? 0;
+              const monthly = cp?.per === "month";
               const discountPct =
-                nights && nights >= 28
+                monthly ? 0 : nights && nights >= 28
                   ? l.monthlyDiscount ?? 0
                   : nights && nights >= 7
                   ? l.weeklyDiscount ?? 0
@@ -329,12 +332,16 @@ export default function SearchMapMobile({
               const baseTotal = nights ? price * nights : price;
               const total =
                 discountPct > 0 ? Math.round(baseTotal * (1 - discountPct / 100)) : baseTotal;
-              const priceNumber =
-                nights && total != null
+              const priceNumber = !cp
+                ? "—"
+                : !monthly && nights && total != null
                   ? formatCurrency(total, locale, l.currency ?? "SDG")
                   : formatCurrency(price, locale, l.currency ?? "SDG");
-              const priceSuffix =
-                nights != null
+              const priceSuffix = !cp
+                ? ""
+                : monthly
+                ? (card?.month ?? "month")
+                : nights != null
                   ? (sp?.forNights ?? "for {count} nights").replace("{count}", String(nights))
                   : (card?.night ?? "night");
               const hasRating = l.averageRating != null && (l.numberOfReviews ?? 0) > 0;

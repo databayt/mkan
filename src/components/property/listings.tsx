@@ -1,5 +1,6 @@
 "use client"
 
+import { cardPrice } from "@/lib/listing-price"
 import React from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -92,7 +93,8 @@ const Listings = ({ properties, favoriteIds = [] }: ListingsProps) => {
     dates: undefined, // You can add availability dates logic here
     // `pricePerMonth` is not a column — this read was undefined, so the card
     // rendered "$undefined/month". mkan prices per night.
-    price: property.pricePerNight,
+    price: cardPrice(property)?.amount ?? 0,
+    per: cardPrice(property)?.per ?? "night",
     currency: property.currency ?? "SDG",
     rating: property.averageRating || 4.5, // Default rating
     isSuperhostBadge: false, // You can add logic for this
@@ -139,8 +141,12 @@ const Listings = ({ properties, favoriteIds = [] }: ListingsProps) => {
                   <h3 className="font-semibold text-lg mb-2">{property.title}</h3>
                   <p className="text-gray-600 mb-2">{property.location}</p>
                   <p className="font-semibold text-lg">
-                    {formatCurrency(property.price ?? 0, locale, property.currency)}
-                    <span className="text-gray-600 font-normal"> / {t?.night ?? "night"}</span>
+                    {property.price ? (
+                      <>
+                        {formatCurrency(property.price, locale, property.currency)}
+                        <span className="text-gray-600 font-normal"> / {property.per === "month" ? (dict?.rental?.property?.card?.month ?? "month") : (t?.night ?? "night")}</span>
+                      </>
+                    ) : "—"}
                   </p>
                 </div>
               </div>

@@ -477,10 +477,20 @@ function buildSearchWhere(
   }
 
   if (f.priceMin !== undefined || f.priceMax !== undefined) {
-    where.pricePerNight = {
-      ...(f.priceMin !== undefined ? { gte: f.priceMin } : {}),
-      ...(f.priceMax !== undefined ? { lte: f.priceMax } : {}),
-    };
+    // Nightly homes match on pricePerNight; MONTHLY homes on priceMonth/30
+    // against the same nightly bounds (priceMonth within [min*30, max*30]).
+    const range = (k: number) => ({
+      ...(f.priceMin !== undefined ? { gte: f.priceMin * k } : {}),
+      ...(f.priceMax !== undefined ? { lte: f.priceMax * k } : {}),
+    });
+    where.AND = [
+      {
+        OR: [
+          { pricePerNight: range(1) },
+          { rentPeriod: "MONTHLY", priceMonth: range(30) },
+        ],
+      },
+    ];
   }
 
   if (f.beds !== undefined) where.bedrooms = { gte: f.beds };
