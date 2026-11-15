@@ -27,8 +27,9 @@ mkan itself wrote in the last 2 minutes (`CrmLink.pushedFields`) is our own echo
 `pnpm crm:backfill [--apply]` queues the last 60 days of real tenants and deals.
 
 **Keys.** A deal is `"<taskId>:<listingId>"` from the pick to the payment (deal-event-pure.ts `dealKey`); a
-tenant is their profile id; `CrmLink.key` is `"<object>:<mkan key>"`. Team and test chats never reach Twenty
-(`REAL_PERSON`, src/lib/monetize/team.ts).
+tenant is their profile id; `CrmLink.key` is `"<object>:<mkan key>"`. Team and test chats never reach Twenty:
+`REAL_PERSON` (src/lib/monetize/team.ts) on the profile, and `isOurPhone` (ours.ts) on the tenant's number itself —
+a team number typed into a web chat got past the first alone on 11-15.
 
 **Twenty objects** (scripts/crm/twenty-schema.ts, `pnpm crm:seed-objects`): `tenant` (stage NEW → SHOWN_HOMES
 → PICKED → VIEWING → SIGNED / LOST), `deal` (stage = DEAL_STEPS, money, viewing, terms, relations to tenant,
