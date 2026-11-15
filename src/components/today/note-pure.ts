@@ -59,9 +59,10 @@ function list(names: string[], lang: NoteLang): string {
   return `${names.slice(0, -1).join(lang === "ar" ? "، " : ", ")}${and}${names.at(-1)}`;
 }
 
+/** The object of "نشرنا", so the accusative: منزلاً واحداً، منزلين (2026-11-15: the dual read منزلان on the live page). */
 function homesAr(n: number): string {
-  if (n === 1) return "منزل واحد";
-  if (n === 2) return "منزلان";
+  if (n === 1) return "منزلاً واحداً";
+  if (n === 2) return "منزلين";
   return n <= 10 ? `${n} منازل` : `${n} منزلاً`;
 }
 
@@ -74,7 +75,7 @@ export function templateNote(f: NoteFacts, lang: NoteLang): string {
     return [
       `نشرنا اليوم على مكان ${homesAr(f.count)}${areas ? ` في ${areas}` : ""}.`,
       range ? `الإيجار الشهري ${range}.` : null,
-      beds ? `عدد الغرف: ${beds}.` : null,
+      beds ? `عدد غرف النوم: ${beds}.` : null,
     ]
       .filter(Boolean)
       .join(" ");
