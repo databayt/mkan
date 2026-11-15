@@ -62,6 +62,11 @@ kill -- "-$watchdog" 2>/dev/null
 mins=$(( ($(date +%s) - started) / 60 ))
 
 if [ "$code" -eq 0 ]; then
+  # The day's new homes get their video on mkan web (Abdout, 2026-11-15): the clean + the ffmpeg enhance
+  # (--fast: the AI upscale is ~20 min a home), newest first, from the files the intake just kept.
+  # A failure here never fails the sweep; tt:web records its own run (tiktok-web).
+  /usr/bin/caffeinate -i /usr/bin/timeout "${TIKTOK_WEB_MAX_MINUTES:-60}m" \
+    pnpm -s tt:web --fast --apply --limit="${TIKTOK_WEB_LIMIT:-40}" >>"$LOGDIR/sweep.log" 2>>"$LOGDIR/sweep.err.log" || true
   lane_end ok
 else
   lane_end fail "TikTok sweep exit $code after ${mins} min: $(grep -v '^[[:space:]]*$' "$LOGDIR/sweep.err.log" | tail -n 1 | cut -c1-160)"

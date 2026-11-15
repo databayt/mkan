@@ -847,10 +847,11 @@ export function sceneMotion(frames: GrayFrame[], opts: { gw: number; gh: number;
  * "kigali", a bare "rent" and "available" are NOT here (2026-11-09): they are on real signs too
  * ("KIGALI HEIGHTS", "Car rental", "Rooms available"), and text in the scene must never be wiped —
  * a broker's caption with a place in it is still caught by its price, rooms or ad words, or by
- * holding still on the screen while the camera moves.
+ * holding still on the screen while the camera moves. A count glued to its word ("5beds", "5.5baths",
+ * "3br") is caught too: `\b` sees no word edge between a digit and a letter (K6498, 2026-11-15).
  */
 const LISTING_TEXT =
-  /\b\d+\s*(?:k|m|rwf|frw|usd|\$)\b|\$\s*\d|\b(?:rwf|frw)\b|\b(?:bed(?:room)?s?|bath(?:room)?s?|for\s+rent|to\s+let|price|deposit|furnished|call|whatsapp|dm|inbox|contact|per\s+month|monthly)\b|inzu|ibyumba|icyumba|ikodeshwa|irakodeshwa|amafaranga|ukwezi/i;
+  /\d\s*(?:bed(?:room)?s?|bath(?:room)?s?|bdrm?s?|br|ba)\b|\b\d+\s*(?:k|m|rwf|frw|usd|\$)\b|\$\s*\d|\b(?:rwf|frw)\b|\b(?:bed(?:room)?s?|bath(?:room)?s?|for\s+rent|to\s+let|price|deposit|furnished|call|whatsapp|dm|inbox|contact|per\s+month|monthly)\b|inzu|ibyumba|icyumba|ikodeshwa|irakodeshwa|amafaranga|ukwezi/i;
 
 const normText = (t: string) => t.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
 

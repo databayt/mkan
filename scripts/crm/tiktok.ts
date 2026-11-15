@@ -129,6 +129,8 @@ const VIDEOS = join(DATA, 'videos.json');
 const SEEDS = join(DATA, 'seeds.json');
 const FRAMES = join(DATA, 'frames');
 const TMP = join(DATA, 'tmp');
+/** tiktok-post.ts fetchSource's cache: the daily intake leaves each fetched video here for `tt:web`. */
+const WEB_SRC = join(process.cwd(), 'scripts/crm/.data/tiktok-post/src');
 const LOCK = join(DATA, 'run.lock');
 /** How many videos the last read stage got through — the next fetch is sized to it. */
 const CAPACITY = join(DATA, 'capacity.json');
@@ -669,7 +671,12 @@ async function fetchStage(): Promise<void> {
         if ((row.attempts ?? 0) >= MAX_FETCH_ATTEMPTS) Object.assign(row, { state: 'failed' });
         console.warn(`  ! ${row.videoId}: ${row.error}${row.state === 'failed' ? ` — given up after ${MAX_FETCH_ATTEMPTS} tries` : ''}`);
       } finally {
-        rmSync(mp4, { force: true });
+        // A fetched video is kept for its home's page (Abdout, 2026-11-15: the videos fetched daily are what
+        // mkan web shows): `tt:web` finds it where fetchSource looks, so it is never downloaded twice.
+        if (existsSync(mp4) && !row.error && row.frames?.length) {
+          mkdirSync(WEB_SRC, { recursive: true });
+          renameSync(mp4, join(WEB_SRC, `${row.videoId}.mp4`));
+        } else rmSync(mp4, { force: true });
       }
       await sleep(DELAY_MS / 2);
     }

@@ -651,6 +651,17 @@ describe("only the text added on top of the video is wiped (2026-11-06)", () => 
     expect(addedText(f, { motion: moving }).flatMap((x) => x.boxes.map((b) => b.text))).toEqual(["2 bedrooms 300k Kimironko"]);
   });
 
+  it("wipes a room count glued to its word: \"5beds |5.5baths\", \"3br\" (K6498, 2026-11-15)", async () => {
+    const { addedText } = await import("../../scripts/crm/tiktok-post-pure");
+    // A small label that moves with the picture would otherwise read as the scene.
+    const f = frames(
+      [box(0.3, 0.25, "5beds |5.5baths Kitchen", 0.02, 0.3, 0.9)],
+      [box(0.42, 0.27, "5beds |5.5baths Kitchen", 0.02, 0.3, 0.9)],
+      [box(0.55, 0.29, "3br apartment", 0.02, 0.3, 0.9)],
+    );
+    expect(addedText(f, { motion: moving }).flatMap((x) => x.boxes).length).toBe(3);
+  });
+
   it("a word glimpsed once while the camera moves is the scene", async () => {
     const { addedText } = await import("../../scripts/crm/tiktok-post-pure");
     const f = frames([box(0.6, 0.2, "EXIT", 0.02, 0.06, 0.9)], [], []);

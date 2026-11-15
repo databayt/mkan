@@ -1941,7 +1941,14 @@ async function web(): Promise<void> {
     try {
       let video = existingRender(ref);
       let note = 'the @mkan.rw render, reused';
-      if (!video) {
+      if (video) {
+        // Made under an older text rule maybe (11-15: "5beds" was kept): the strip and its gate run again.
+        const info = probe(video);
+        if (!info) throw new Rejected('the existing render cannot be read');
+        const again = await stripText(ref, { path: video, dur: info.dur, pic: { x: 0, y: 0, w: W, h: H } }, work);
+        video = again.path;
+        note = `the @mkan.rw render, re-stripped (${again.note})`;
+      } else {
         const body = await videoBody(r, work);
         if (!body) throw new Rejected('the broker video could not be fetched (gone, private, or a photo post)');
         let clean: Awaited<ReturnType<typeof stripText>>;
