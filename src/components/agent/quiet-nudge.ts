@@ -12,6 +12,7 @@ import { inSendWindow, phoneKey } from "../../../scripts/wa/outbox-pure";
 import { lastTenantAt } from "./broker-gate";
 import { awakeMs } from "./broker-rank";
 import { testPhones } from "./broker-sends";
+import { dealEvent } from "./deal-event";
 import type { DealLang } from "./deal-pure";
 import { isPersonal } from "./personal";
 import { QUIET_LABEL, QUIET_MAX_MS, quietKey, quietNudgeMessage, quietNudgeOn, quietVerdict } from "./quiet-nudge-pure";
@@ -67,6 +68,9 @@ export async function quietSweep(now = new Date()): Promise<number> {
     const lang: DealLang = t.locale === "ar" || t.locale === "rw" ? t.locale : "en";
     await sendMessages([{ kind: "TENANT_ALERT", to, body: quietNudgeMessage(lang, Math.min(MAX_HOMES, shortlist.length)), label: QUIET_LABEL }], "Quiet tenant nudge");
     await db.agentTask.update({ where: { id: t.id }, data: { updatedAt: now } }).catch(() => {});
+    // A tenant gone quiet is a stalled deal: Mkan's person hears it with the home they last looked at.
+    const home = shortlist.find((s) => s.availability === "confirmed" || s.availability === "asked") ?? shortlist[0];
+    if (home) void dealEvent("STALLED", { listingId: home.id, taskId: t.id, tenantPhone: to, note: "tenant went quiet, the line nudged them once" });
     n += 1;
   }
   return n;

@@ -8,8 +8,9 @@ import "server-only";
 import { db } from "@/lib/db";
 import { waLink } from "../../../scripts/crm/public-links";
 import { TENANT_REACH, tenantNumber } from "./broker-gate";
+import { dealEvent } from "./deal-event";
 import { postSlackCard } from "./whatsapp";
-import type { AgentMessage } from "./types";
+import type { AgentMessage, ShortlistItem } from "./types";
 
 export type FailWhy = "deadline" | "threw" | "turn-failed" | "stuck";
 
@@ -35,8 +36,11 @@ export function lastUserText(messages: unknown): string | null {
 
 export async function handOffFailedChat(taskId: string, why: FailWhy): Promise<void> {
   try {
-    const task = await db.agentTask.findUnique({ where: { id: taskId }, select: { messages: true, ...TENANT_REACH } });
+    const task = await db.agentTask.findUnique({ where: { id: taskId }, select: { messages: true, shortlist: true, ...TENANT_REACH } });
     await postSlackCard(failedChatCard(taskId, why, lastUserText(task?.messages), tenantNumber(task)));
+    // A chat that failed on a tenant with homes in front of them is a stalled deal (2026-11-15).
+    const home = ((task?.shortlist as unknown as ShortlistItem[] | null) ?? [])[0];
+    if (home) void dealEvent("STALLED", { listingId: home.id, taskId, tenantPhone: tenantNumber(task), note: `the agent could not answer (${why})` });
   } catch (err) {
     console.warn(`[agent] failed-chat hand-off not posted for ${taskId}: ${(err as Error).message}`);
   }

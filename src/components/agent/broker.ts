@@ -32,6 +32,7 @@ import { coerceRequirements, EMPTY_REQUIREMENTS, mergeRequirements, type Require
 import type { EventKind, ShortlistItem, StepStatus } from "./types";
 import { postSlackCard, sendMessages, sendToBroker } from "./whatsapp";
 import { handOffFailedChat } from "./failed-handoff";
+import { dealEvent } from "./deal-event";
 
 export const REQUEST_TTL_HOURS = 24;
 const json = (v: unknown) => v as Prisma.InputJsonValue;
@@ -487,6 +488,8 @@ export async function applyAnswer(listingId: number, answer: Answer, brokerPhone
   );
   await settleTasks(tasks.map((t) => t.id));
   await markOriginChats(found, listingId, availability);
+  // The broker's word is a deal step for every chat that asked (2026-11-15): Mkan's person reads it live.
+  if (answer === "AVAILABLE" || answer === "RENTED") await noteAnswerSteps(tasks, listingId, answer);
   const introduced = await tellWhatsAppTenants(tasks, listingId, answer, brokerPhone ?? null, via === "typed");
   if (answer === "AVAILABLE") {
     // Available again lifts an earlier "taken".
@@ -496,6 +499,29 @@ export async function applyAnswer(listingId: number, answer: Answer, brokerPhone
   }
   // A broker's "taken" means the home is lost: out of /find and the TikTok pick for good (it was hidden 30 days).
   if (answer === "RENTED") await db.listing.update({ where: { id: listingId }, data: { lostAt: new Date(), lostReason: "RENTED" } });
+}
+
+/** BROKER_YES (with how long the broker took) or LOST("taken") for each chat that asked about this home. Never throws. */
+async function noteAnswerSteps(tasks: AnsweredTask[], listingId: number, answer: Answer): Promise<void> {
+  try {
+    for (const t of tasks) {
+      const row = await db.brokerRequest.findFirst({
+        where: { taskId: t.id, listingId, respondedAt: { not: null }, ...(answer === "AVAILABLE" ? { status: "AVAILABLE" as const } : {}) },
+        orderBy: { respondedAt: "desc" },
+        select: { sentAt: true, respondedAt: true, brokerUserId: true },
+      }).catch(() => null);
+      const hours = row?.sentAt && row.respondedAt ? Math.max(0, (row.respondedAt.getTime() - row.sentAt.getTime()) / 3_600_000) : null;
+      void dealEvent(answer === "AVAILABLE" ? "BROKER_YES" : "LOST", {
+        listingId,
+        taskId: t.id,
+        tenantPhone: t.profile?.waPhone ?? null,
+        hours,
+        note: answer === "RENTED" ? "taken" : null,
+      });
+    }
+  } catch (err) {
+    console.warn(`[agent] deal event (broker answer): ${(err as Error).message}`);
+  }
 }
 
 /**

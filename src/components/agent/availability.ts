@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { waLink } from "../../../scripts/crm/public-links";
 import { appendTaskEvent, homeLink, requestConfirmations } from "./broker";
 import { gateForTask } from "./broker-sends";
+import { dealEvent } from "./deal-event";
 import { coerceRequirements } from "./requirements";
 import type { ShortlistItem } from "./types";
 import { postSlackCard } from "./whatsapp";
@@ -70,6 +71,7 @@ export async function askAvailabilityFor(taskId: string, listingId: number): Pro
   if (!item.lead) {
     // A host's own home has no broker to ask: its page is where the tenant requests it.
     await handPickToPerson(task.id, item, "not-a-lead");
+    void dealEvent("PICKED", { listingId: item.id, taskId: task.id, note: "a host's own home, no broker to ask" });
     return { ok: true, asked: false, why: "host" };
   }
   // "no_reply": the broker went quiet on it in this chat. The tenant picking it is worth one more ask.
@@ -91,6 +93,8 @@ export async function askAvailabilityFor(taskId: string, listingId: number): Pro
  */
 export async function askBroker(taskId: string, item: ShortlistItem, requirementsJson: unknown, locale: string): Promise<AskOutcome> {
   const gate = await gateForTask(taskId);
+  // The pick is a deal step whoever answers it — the line, or a person after a hand-off (2026-11-15).
+  void dealEvent("PICKED", { listingId: item.id, taskId, tenantPhone: gate.waPhone });
   if (!gate.ok) {
     if (gate.why === "not-whatsapp") return { ok: true, asked: false, why: "web" };
     await handPickToPerson(taskId, item, gate.why === "test-phone" ? "test" : "paused", gate.waPhone);
@@ -114,6 +118,7 @@ export async function askBroker(taskId: string, item: ShortlistItem, requirement
     // shared with the broker only when they pick a viewing time.
     db.brokerRequest.updateMany({ where: { taskId, listingId: item.id, consentAt: null }, data: { consentAt: new Date() } }),
   ]);
+  void dealEvent("BROKER_ASKED", { listingId: item.id, taskId, tenantPhone: gate.waPhone, note: overrides.has(item.id) ? "re-asked a broker who was silent before" : null });
   return { ok: true, asked: true, ...(overrides.has(item.id) ? { slow: true } : {}) };
 }
 

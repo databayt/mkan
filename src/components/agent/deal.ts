@@ -22,6 +22,9 @@ import "server-only";
 import { db } from "@/lib/db";
 import { waLink } from "../../../scripts/crm/public-links";
 import { viewingRep } from "./broker-message";
+import { dealEvent } from "./deal-event";
+import { repAfterMessage, repReminderMessage } from "./loop-schedule-pure";
+import { repDigits } from "./rep-word-pure";
 import { longStayCost, type CostEstimate, type ListingTerms } from "./cost";
 import { lastTenantAt, TENANT_REACH, tenantNumber } from "./broker-gate";
 import {
@@ -388,6 +391,18 @@ export async function bookViewing(input: {
     data: { chosenSlot: input.at, visitId: visit.id, ...(terms ? { terms: terms as never } : {}) },
   });
   await trace(task.id, "viewing_confirmed", "done", { listingId: input.listingId, at: input.at.toISOString(), visitId: visit.id });
+  // The one place a viewing is booked — the broker loop, the web path and `pnpm deal:book` all end here (2026-11-15).
+  void dealEvent("VIEWING_BOOKED", {
+    listingId: input.listingId,
+    taskId: task.id,
+    dealId: deal.id,
+    tenantPhone: tenant,
+    brokerId: link?.brokerId ?? null,
+    viewingAt: input.at,
+    meetingPoint: input.place?.trim() || null,
+    rent: round(cost?.headline),
+    share,
+  });
   if (tenant) {
     const lang = langOf(task.locale);
     const body = viewingConfirmedMessage(lang, {
@@ -418,7 +433,7 @@ export async function viewingReminders(now = new Date()): Promise<number> {
   const visits = await db.listingVisit.findMany({
     // 18 h back: an evening viewing's "how did it go?" is queued the next morning.
     where: { outcome: "Scheduled", taskId: { not: null }, scheduledFor: { gte: new Date(now.getTime() - 18 * 3_600_000), lte: new Date(now.getTime() + 25 * 3_600_000) } },
-    select: { id: true, scheduledFor: true, contactPhone: true, reminders: true, repName: true, meetingPoint: true, taskId: true, listing: { select: { title: true } } },
+    select: { id: true, listingId: true, scheduledFor: true, contactPhone: true, reminders: true, repName: true, meetingPoint: true, taskId: true, listing: { select: { title: true } } },
   });
   let sent = 0;
   for (const v of visits) {
@@ -439,6 +454,14 @@ export async function viewingReminders(now = new Date()): Promise<number> {
     const title = v.listing.title?.trim() || `#${v.id}`;
     const rep = v.repName || viewingRep();
     let note: string = `${mark}:none`;
+    // Mkan's person goes to every viewing: he is reminded 2 h before and asked how it went 3 h after, in his own
+    // words (the tenant has theirs below). Labelled with the visit, so the outbox never sends one twice (2026-11-15).
+    const repNumber = repDigits();
+    if (repNumber && (mark === "2h" || mark === "after")) {
+      const ref = `K${v.listingId}`;
+      const body = mark === "2h" ? repReminderMessage({ listingId: v.listingId, title, at: v.scheduledFor, meetingPoint: v.meetingPoint, tenantPhone: v.contactPhone }) : repAfterMessage(ref);
+      await sendMessages([{ kind: "TENANT_ALERT", to: `+${repNumber}`, body, label: `rep-${mark === "2h" ? "reminder-2h" : "after"}:v${v.id}` }], `Viewing ${mark} → ${rep}`).catch(() => {});
+    }
     if (v.contactPhone) {
       if (await saidStop(v.contactPhone)) note = `${mark}:stopped`;
       else {
@@ -475,6 +498,10 @@ export async function setDealStatus(
       brokerCommission: true,
       viewingFeePaid: true,
       listingId: true,
+      taskId: true,
+      tenantPhone: true,
+      tenantName: true,
+      rentMonthly: true,
       broker: { select: { id: true, name: true, contactName: true, phones: true, whatsapp: true, optOut: true, sharePct: true, shareFlatRwf: true } },
       listing: { select: { title: true } },
     },
@@ -519,6 +546,21 @@ export async function setDealStatus(
   if (status === "PAID") await db.deal.updateMany({ where: { id: deal.id, signedAt: null }, data: { signedAt: now } });
   if (status === "SIGNED" || status === "PAID") {
     await db.listing.update({ where: { id: deal.listingId }, data: { lostAt: now, lostReason: "RENTED" } });
+  }
+  // One line to Mkan's person and one record in Twenty, once per change — every way to close a deal ends here:
+  // the rep's words, `pnpm deal:status`, /monetize (2026-11-15).
+  if (before.status !== status) {
+    void dealEvent(status, {
+      listingId: deal.listingId,
+      taskId: before.taskId,
+      dealId: deal.id,
+      tenantPhone: before.tenantPhone,
+      tenantName: before.tenantName,
+      brokerId: deal.brokerId,
+      note: extras.notes ?? null,
+      rent: before.rentMonthly,
+      share: deal.mkanShare,
+    });
   }
   // #mkan hears the money steps once, when the status changes.
   if (before.status !== status) {
@@ -586,7 +628,10 @@ export async function recordAfterViewing(
   const stamp = new Date().toISOString().slice(0, 16).replace("T", " ");
   await db.listingVisit.update({ where: { id: v.id }, data: { outcome: "Completed" } }).catch(() => {});
   if (verdict === "want") {
-    if (v.deal && v.deal.status === "VIEWING_BOOKED") await db.deal.update({ where: { id: v.deal.id }, data: { status: "VIEWED", notes: `tenant wants it (WhatsApp ${stamp})` } });
+    if (v.deal && v.deal.status === "VIEWING_BOOKED") {
+      await db.deal.update({ where: { id: v.deal.id }, data: { status: "VIEWED", notes: `tenant wants it (WhatsApp ${stamp})` } });
+      void dealEvent("VIEWED", { listingId: v.listingId, taskId: v.taskId, dealId: v.deal.id, tenantPhone: phone, note: "the tenant wants it" });
+    }
     // The broker hears it now, from the line; the person who was at the viewing arranges the signing.
     const rep = viewingRep();
     const broker = v.deal
@@ -615,7 +660,10 @@ export async function recordAfterViewing(
     return afterViewingWantText(lang, title, rep);
   }
   if (verdict === "not") {
-    if (v.deal && (v.deal.status === "VIEWING_BOOKED" || v.deal.status === "VIEWED")) await db.deal.update({ where: { id: v.deal.id }, data: { status: "LOST", notes: `not for the tenant (WhatsApp ${stamp})` } });
+    if (v.deal && (v.deal.status === "VIEWING_BOOKED" || v.deal.status === "VIEWED")) {
+      await db.deal.update({ where: { id: v.deal.id }, data: { status: "LOST", notes: `not for the tenant (WhatsApp ${stamp})` } });
+      void dealEvent("LOST", { listingId: v.listingId, taskId: v.taskId, dealId: v.deal.id, tenantPhone: phone, note: "the tenant passed on it after the viewing" });
+    }
     await postSlackCard(`👎 ${phone} passed on *K${v.listingId}* (${title}) after the viewing.\n> ${text.slice(0, 300)}`).catch(() => {});
     return afterViewingNotText(lang);
   }

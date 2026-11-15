@@ -130,7 +130,9 @@ export function answerTenant(m: TenantMessage): Promise<TenantOutcome> {
       }
       // Mkan's person closing a step from their phone ("signed K5811", rep-word.ts): theirs, not a tenant's.
       // Only from the number in MKAN_REP_WHATSAPP; anything else they write goes the usual way, except a bare
-      // "ok" to one of the line's own notices, which needs no answer.
+      // "ok" to one of the line's own notices, which needs no answer. Read before anything that looks at who
+      // the number is — so a number that is BOTH the rep's and on the team's test list still gets its words
+      // (the test list only gates what reaches a broker, broker-sends.ts; nothing here reads it).
       const rep = repDigits();
       if (rep && m.phone === rep && !m.media) {
         const word = readRepWord(m.text);
@@ -139,7 +141,7 @@ export function answerTenant(m: TenantMessage): Promise<TenantOutcome> {
           const text = await applyRepWord(word);
           await sendLine(m, text, claim.tries);
           await settleMessage(m.msgId);
-          log(`rep word: ${word.kind === "status" ? `${word.status} K${word.listingId}` : "list"}`);
+          log(`rep word: ${word.kind === "status" ? `${word.status} K${word.listingId}` : word.kind}`);
           return "sent";
         }
         if (/^(?:ok(?:ay)?|thanks|thank you|noted|👍|تمام|شكرا|شكراً)[\s.!]*$/iu.test(m.text.trim())) {

@@ -22,6 +22,7 @@ import { applyAnswer, appendTaskEvent, homeLink } from "./broker";
 import { takenAckMessage, viewingRep } from "./broker-message";
 import { awakeMs } from "./broker-rank";
 import { gateForTask } from "./broker-sends";
+import { dealEvent } from "./deal-event";
 import { agreementOf, bookViewing, viewingAskKey, type ViewingAsk } from "./deal";
 import { shareLabel, viewingLabel, viewingProposedMessage, type DealLang } from "./deal-pure";
 import { termsAskKey, type TermsAsk } from "./deal-intro";
@@ -33,11 +34,14 @@ import {
   counterOfferMessage,
   nextSlot,
   noSlotMessage,
+  REP_OFF_PREFIX,
+  repGapMs,
   readBrokerViewingReply,
   repBusyMessage,
   repHours,
   slotVerdict,
   sweepPlan,
+  type SlotOpts,
   VIEWING_ASK_TTL_MS,
   viewingBookedBrokerMessage,
   viewingChaseMessage,
@@ -68,6 +72,17 @@ const variants = (phone: string) => [plus(phone), phoneKey(phone)];
 const labels = (at: Date) => ({ en: viewingLabel(at, "en"), rw: viewingLabel(at, "rw") });
 /** The outbox label of every word to a broker about a viewing: the line's own reply, never held for "asked today". */
 const brokerLabel = (what: string, listingId: number) => `auto-viewing-${what}:${listingId}`;
+
+/** The rep's gap between viewings and the days they marked off (WaState `rep-off:<date>`, set by the word `off`). */
+async function slotOpts(): Promise<SlotOpts> {
+  let rows: { key: string }[] = [];
+  try {
+    rows = await db.waState.findMany({ where: { key: { startsWith: REP_OFF_PREFIX } }, select: { key: true } });
+  } catch {
+    // No days-off read is no days off: a viewing is never refused for a database hiccup.
+  }
+  return { gapMs: repGapMs(), off: new Set(rows.map((r) => r.key.slice(REP_OFF_PREFIX.length))) };
+}
 
 /** The other viewings Mkan's person has around `at` (this chat's own viewing of this home is the one being moved). */
 async function repBusy(at: Date, taskId: string, listingId: number): Promise<Date[]> {
@@ -146,8 +161,9 @@ export async function proposeViewingAuto(ask: ViewingAsk, at: Date, tenant: stri
   const askable = firstSendableAt({ kind: "BROKER_REQUEST", label: "auto-viewing" }, now);
   const busy = await repBusy(at, ask.taskId, ask.listingId);
   const hours = repHours();
-  if (slotVerdict(at, askable, busy, hours) !== "ok") {
-    const alt = nextSlot(at, askable, busy, hours);
+  const opts = await slotOpts();
+  if (slotVerdict(at, askable, busy, hours, opts) !== "ok") {
+    const alt = nextSlot(at, askable, busy, hours, opts);
     if (!alt) return noSlotMessage(lang);
     // The nearest time Mkan's person can be there: the tenant's yes proposes it to the broker.
     await setTenantAsk(tenant, { taskId: ask.taskId, listingId: ask.listingId, offered: alt.toISOString(), offeredBy: "mkan" });
@@ -163,6 +179,7 @@ export async function proposeViewingAuto(ask: ViewingAsk, at: Date, tenant: stri
   );
   await setTenantAsk(tenant, { taskId: ask.taskId, listingId: ask.listingId, proposedAt: iso, offered: undefined, offeredBy: undefined });
   await appendTaskEvent(ask.taskId, "viewing_proposed", "waiting_person", { listingId: ask.listingId, at: iso, auto: true }).catch(() => {});
+  void dealEvent("TIME_PROPOSED", { listingId: ask.listingId, taskId: ask.taskId, tenantPhone: plus(tenant), brokerId: broker.brokerId, viewingAt: at, note: "the tenant's time, asked of the broker" });
   await postSlackCard(`📅 *Viewing asked* — ${broker.title} (K${ask.listingId}), *${viewingLabel(at, "en")}*. The line asked the broker to confirm; ${rep} is told when it is booked. Nothing to do.`).catch(() => {});
   return viewingProposedMessage(lang, viewingLabel(at, lang));
 }
@@ -247,14 +264,16 @@ export async function brokerViewingReply(phone: string, text: string, at: Date, 
     const askable = firstSendableAt({ kind: "BROKER_REQUEST", label: "auto-viewing" }, at);
     const busy = await repBusy(r.at, ask.taskId, ask.listingId);
     const hours = repHours();
-    if (slotVerdict(r.at, askable, busy, hours) !== "ok") {
-      const alt = nextSlot(r.at, askable, busy, hours);
+    const opts = await slotOpts();
+    if (slotVerdict(r.at, askable, busy, hours, opts) !== "ok") {
+      const alt = nextSlot(r.at, askable, busy, hours, opts);
       if (!alt) return null;
       await savePending(phone, withAsk(rest, { ...ask, at: alt.toISOString(), stage: "time", askedAt: at.toISOString(), chasedAt: undefined }));
       return { listingId: ask.listingId, outcome: "rep-cannot", reply: viewingRepCannotMessage({ en: viewingLabel(r.at, "en"), alt: viewingLabel(alt, "en") }) };
     }
     await savePending(phone, withAsk(rest, { ...ask, at: r.at.toISOString(), stage: "tenant", askedAt: at.toISOString(), chasedAt: undefined }));
     await setTenantAsk(ask.tenant, { taskId: ask.taskId, listingId: ask.listingId, offered: r.at.toISOString(), offeredBy: "broker" });
+    void dealEvent("TIME_PROPOSED", { listingId: ask.listingId, taskId: ask.taskId, tenantPhone: ask.tenant, viewingAt: r.at, note: "the broker's other time, asked of the tenant" });
     await sendMessages([{ kind: "TENANT_ALERT", to: ask.tenant, body: counterOfferMessage(ask.lang, { title, label: tenantLabel(r.at) }), label: ALERT_LABEL.brokerAnswer }], `Viewing time → tenant (home #${ask.listingId})`);
     return { listingId: ask.listingId, outcome: "countered", reply: viewingCounterAckMessage(viewingLabel(r.at, "en")) };
   }

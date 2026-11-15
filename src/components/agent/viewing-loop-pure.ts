@@ -68,29 +68,45 @@ export function repHours(hours: string | undefined = process.env.MKAN_VIEWING_HO
   return start >= 0 && end <= 24 && start < end ? { start, end, days: list } : { start: 9, end: 18, days: [1, 2, 3, 4, 5, 6] };
 }
 
-export type SlotVerdict = "ok" | "past" | "soon" | "hours" | "busy";
+export type SlotVerdict = "ok" | "past" | "soon" | "hours" | "busy" | "off";
+
+/** Minutes kept between the rep's viewings: MKAN_VIEWING_GAP_MIN, 90 when unset or not a number (2026-11-15). */
+export function repGapMs(env: string | undefined = process.env.MKAN_VIEWING_GAP_MIN): number {
+  const n = Number(env?.trim());
+  return env?.trim() && Number.isFinite(n) && n >= 0 && n <= 600 ? Math.round(n) * 60_000 : REP_GAP_MS;
+}
+
+/** WaState key of a day Mkan's person is not available: `off 2026-11-20` (rep-word.ts) writes it. */
+export const repOffKey = (day: string) => `rep-off:${day}`;
+export const REP_OFF_PREFIX = "rep-off:";
+
+/** What a slot check also needs beyond the weekly hours: the gap between viewings, and the days off (Kigali YYYY-MM-DD). */
+export type SlotOpts = { gapMs?: number; off?: ReadonlySet<string> };
 
 /**
  * Can the viewing be at `at`? `askableAt` is when the broker can first be asked (now, or 08:00 after quiet
  * hours); `busy` are the person's other viewings. The last start is an hour before their day ends.
  */
-export function slotVerdict(at: Date, askableAt: Date, busy: readonly Date[], hours: RepHours = repHours()): SlotVerdict {
+export function slotVerdict(at: Date, askableAt: Date, busy: readonly Date[], hours: RepHours = repHours(), opts: SlotOpts = {}): SlotVerdict {
   if (at.getTime() <= askableAt.getTime()) return "past";
   if (at.getTime() - askableAt.getTime() < MIN_LEAD_MS) return "soon";
   const k = new Date(at.getTime() + KIGALI_OFFSET_MS);
   const h = k.getUTCHours() + k.getUTCMinutes() / 60;
   if (!hours.days.includes(k.getUTCDay()) || h < hours.start || h > hours.end - 1) return "hours";
-  if (busy.some((b) => Math.abs(b.getTime() - at.getTime()) < REP_GAP_MS)) return "busy";
+  // A day marked off (`off 2026-11-20`): nothing is offered on it, whatever the weekly hours say.
+  if (opts.off?.has(k.toISOString().slice(0, 10))) return "off";
+  const gap = opts.gapMs ?? repGapMs();
+  if (busy.some((b) => Math.abs(b.getTime() - at.getTime()) < gap)) return "busy";
   return "ok";
 }
 
 /** The nearest time at or after `from` that works (half-hour steps, a fortnight at most); null when none does. */
-export function nextSlot(from: Date, askableAt: Date, busy: readonly Date[], hours: RepHours = repHours()): Date | null {
+export function nextSlot(from: Date, askableAt: Date, busy: readonly Date[], hours: RepHours = repHours(), opts: SlotOpts = {}): Date | null {
   const first = Math.max(from.getTime(), askableAt.getTime() + MIN_LEAD_MS);
   let t = Math.ceil(first / (30 * 60_000)) * 30 * 60_000;
   for (let i = 0; i < 14 * 48; i++, t += 30 * 60_000) {
     const at = new Date(t);
-    if (slotVerdict(at, askableAt, busy, hours) === "ok") return at;
+    if (slotVerdict(at, askableAt, busy, hours, opts) === "ok") return at;
   }
   return null;
 }

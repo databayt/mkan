@@ -15,6 +15,7 @@ import {
   noSlotMessage,
   readBrokerViewingReply,
   repBusyMessage,
+  repGapMs,
   repHours,
   slotVerdict,
   sweepPlan,
@@ -33,6 +34,25 @@ const kigali = (s: string) => new Date(`${s}:00+02:00`);
 // Monday 16 Nov 2026, 10:00 in Kigali.
 const now = kigali("2026-11-16T10:00");
 const hours = repHours(undefined, undefined);
+
+describe("the gap between viewings and the days off (2026-11-15)", () => {
+  it("reads MKAN_VIEWING_GAP_MIN, 90 when unset or nonsense", () => {
+    expect(repGapMs(undefined)).toBe(90 * 60_000);
+    expect(repGapMs("120")).toBe(120 * 60_000);
+    expect(repGapMs("0")).toBe(0);
+    expect(repGapMs("soon")).toBe(90 * 60_000);
+  });
+
+  it("keeps the longer gap the rep asked for, and refuses a day marked off", () => {
+    const at = kigali("2026-11-17T10:00");
+    const other = kigali("2026-11-17T11:30");
+    expect(slotVerdict(at, now, [other], hours, { gapMs: 90 * 60_000 })).toBe("ok");
+    expect(slotVerdict(at, now, [other], hours, { gapMs: 120 * 60_000 })).toBe("busy");
+    expect(slotVerdict(at, now, [], hours, { off: new Set(["2026-11-17"]) })).toBe("off");
+    // The day after is still free, and nextSlot walks past the day off.
+    expect(nextSlot(at, now, [], hours, { off: new Set(["2026-11-17"]) })?.toISOString()).toBe(kigali("2026-11-18T09:00").toISOString());
+  });
+});
 
 describe("when Mkan's person can be there", () => {
   it("defaults to Monday–Saturday, 09:00–18:00, and reads other hours from the env", () => {

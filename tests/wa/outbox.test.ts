@@ -425,3 +425,35 @@ describe('wa outbox — the line\'s own replies', () => {
   });
 });
 
+
+describe('messages to Mkan\'s person (2026-11-15)', () => {
+  const rep = '250788000111';
+  const row = (id: string, to: string, label: string, kind: OutboxRow['kind'] = 'TENANT_ALERT'): OutboxRow => ({ id, kind, to, brokerId: null, createdAt: kigali('2026-10-21T09:59:00'), label } as OutboxRow);
+
+  it('are exempt from the daily cap, and do not spend it', () => {
+    const plan = base([row('a', `+${rep}`, 'loop:t1:5811:PICKED'), row('b', '+250788999999', 'tenant-match')], { sentToday: 40, capExempt: new Set([rep]) });
+    expect(plan.send.map((r) => r.id)).toEqual(['a']);
+    expect(plan.hold.map((h) => [h.row.id, h.reason])).toEqual([['b', 'daily-cap']]);
+  });
+
+  it('read MKAN_REP_WHATSAPP when no list is given', () => {
+    const was = process.env.MKAN_REP_WHATSAPP;
+    process.env.MKAN_REP_WHATSAPP = `+${rep}`;
+    try {
+      const plan = base([row('a', `+${rep}`, 'rep-after:v1')], { sentToday: 40 });
+      expect(plan.send.map((r) => r.id)).toEqual(['a']);
+    } finally {
+      if (was === undefined) delete process.env.MKAN_REP_WHATSAPP;
+      else process.env.MKAN_REP_WHATSAPP = was;
+    }
+  });
+
+  it('may go from 06:00 to 22:00, so the 20:00 schedule does not wait for the morning', () => {
+    const at2000 = { now: kigali('2026-10-21T20:00:00') };
+    const mine = row('s', `+${rep}`, 'loop:schedule:2026-10-21:pm');
+    expect(base([mine], { ...at2000, capExempt: new Set([rep]) }).send).toHaveLength(1);
+    expect(base([mine], { now: kigali('2026-10-21T07:00:00'), capExempt: new Set([rep]) }).send).toHaveLength(1);
+    // A tenant's alert is still held after 20:00.
+    expect(base([row('t', '+250788999999', 'tenant-match')], at2000).hold.map((h) => h.reason)).toEqual(['quiet-hours']);
+  });
+});

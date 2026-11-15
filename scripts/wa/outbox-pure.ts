@@ -98,6 +98,8 @@ export interface PlanInput<R extends OutboxRow = OutboxRow> {
   /** phoneKey()s of tenants who said STOP: nothing reaches them — no deal sheet, no reminder, no alert. */
   stoppedTenants?: Set<string>;
   cap: number;
+  /** phoneKey()s that never count against the daily cap — Mkan's person (default: MKAN_REP_WHATSAPP), 2026-11-15. */
+  capExempt?: Set<string>;
 }
 
 /** A broker ask that waited this long is about a search the tenant has moved on from. */
@@ -156,8 +158,22 @@ export function reminderOf(label: string | null | undefined): { mark: '24h' | '2
 export const LATE_WINDOW_END_HOUR = 22;
 const LATE_LABELS: ReadonlySet<string> = new Set([ALERT_LABEL.dealSheet, ALERT_LABEL.viewingConfirmed, ALERT_LABEL.intro]);
 
+/**
+ * Mkan's person is the human in the loop (2026-11-15): the feed, the 07:00 and 20:00 schedule and his reminders
+ * are written to HIM, so they may go from 06:00 to 22:00 — the 20:00 schedule would otherwise wait for the morning.
+ */
+export const isRepLabel = (label: string | null | undefined) => !!label && (label.startsWith('loop:') || label.startsWith('rep-'));
+export const REP_WINDOW: [number, number] = [6, 22];
+
+/** The number Mkan's person writes from (MKAN_REP_WHATSAPP), digits only; null when none is set. */
+export function repNumber(env: string | undefined = process.env.MKAN_REP_WHATSAPP): string | null {
+  const d = phoneKey(env ?? '');
+  return d.length >= 9 ? d : null;
+}
+
 /** [first hour, end hour) in Kigali time this row may be sent. */
 export function sendWindowFor(row: Pick<OutboxRow, 'kind' | 'label'>): [number, number] {
+  if (row.kind === 'TENANT_ALERT' && isRepLabel(row.label)) return REP_WINDOW;
   return row.kind === 'TENANT_ALERT' && row.label != null && LATE_LABELS.has(row.label) ? [WINDOW_START_HOUR, LATE_WINDOW_END_HOUR] : [WINDOW_START_HOUR, WINDOW_END_HOUR];
 }
 
@@ -222,6 +238,8 @@ export function planOutbox<R extends OutboxRow>(input: PlanInput<R>): Plan<R> {
   for (const [key, at] of input.lastSentAt) if (kigaliDay(at) === today) takenToday.add(key);
   let budget = Math.max(0, cap - input.sentToday);
   const reserve = alertReserve(cap);
+  const rep = repNumber();
+  const exempt = input.capExempt ?? new Set(rep ? [rep] : []);
 
   for (const row of rows) {
     const isAlert = row.kind === 'TENANT_ALERT';
@@ -271,12 +289,15 @@ export function planOutbox<R extends OutboxRow>(input: PlanInput<R>): Plan<R> {
       plan.hold.push({ row, reason: rest });
       continue;
     }
-    if (budget <= (isAlert ? 0 : reserve)) {
+    // Messages to Mkan's person are the loop's own eyes: the cap protects the line's number from tenants and
+    // brokers, never from him. They still never go twice (the label is checked by the writers).
+    const toRep = exempt.has(phoneKey(row.to));
+    if (!toRep && budget <= (isAlert ? 0 : reserve)) {
       plan.hold.push({ row, reason: 'daily-cap' });
       continue;
     }
     plan.send.push(row);
-    budget -= 1;
+    if (!toRep) budget -= 1;
     if (!isAlert && !reply) takenToday.add(key);
   }
   return plan;
