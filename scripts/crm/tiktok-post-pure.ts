@@ -1519,3 +1519,61 @@ export function fillUnreadFrames<T>(frames: (T[] | null)[], maxSkips = 1): T[][]
     return [];
   });
 }
+
+/** How long a post waits for its upload: 30 s per MB, at least 5 min, at most 15 min. */
+export function uploadTimeoutMs(bytes: number): number {
+  const mb = bytes / (1024 * 1024);
+  return Math.min(15 * 60_000, Math.max(5 * 60_000, Math.round(mb * 30_000)));
+}
+
+/** Studio's page text while the file is still going up (or its checks cannot start). */
+export function uploadInProgress(text: string): boolean {
+  return /checks can only start after the file is uploaded|\buploading\b/i.test(text);
+}
+
+/** Studio dropped the form: back at the picker, or the draft was not kept. */
+export function studioLostTheForm(text: string): boolean {
+  return /a video you were editing wasn['’]?t saved|select video to upload/i.test(text);
+}
+
+/** A video on the page, reduced to what settling needs. */
+export interface PagePost {
+  ref: string;
+  /** Posted, epoch ms. */
+  at: number;
+  url: string;
+  id: string;
+}
+
+export interface Settled {
+  /** Clicked and found on the page: move to uploads. */
+  posted: { key: string; at: number; url: string; id: string }[];
+  /** Clicked, never appeared, old enough: drop from pending, post again. */
+  retry: string[];
+  /** Still unresolved (young, or the page could not be read). */
+  keep: string[];
+  /** Subset of keep that is simply young with a readable page: waiting, not red. */
+  waiting: string[];
+}
+
+/** pending.json says "clicked at <iso>". Settle each key against what the page shows. */
+export function settlePending(pending: Record<string, string>, pagePosts: PagePost[] | null, now: number): Settled {
+  const out: Settled = { posted: [], retry: [], keep: [], waiting: [] };
+  for (const [key, iso] of Object.entries(pending)) {
+    const clicked = Date.parse(iso);
+    const age = Number.isFinite(clicked) ? now - clicked : 0;
+    if (age < 30 * 60_000) {
+      out.keep.push(key);
+      out.waiting.push(key);
+      continue;
+    }
+    const hit = pagePosts?.filter((v) => v.ref === key && v.at >= clicked - 10 * 60_000).sort((a, b) => a.at - b.at)[0];
+    if (hit) out.posted.push({ key, at: hit.at, url: hit.url, id: hit.id });
+    else if (pagePosts && age > 2 * 3_600_000) out.retry.push(key);
+    else {
+      out.keep.push(key);
+      if (age <= 2 * 3_600_000) out.waiting.push(key);
+    }
+  }
+  return out;
+}

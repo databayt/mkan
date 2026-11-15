@@ -40,12 +40,13 @@ config({ override: true });
 
 import { refuseUnattended } from '../unattended';
 import { execFileSync, spawn } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { chromium, type Page, type Response } from 'playwright';
 import { postToMkan, recordRun } from './notify';
-import { CADENCE, clock, dayPieces, errorText, kigaliMinute, postsInWindow, slotQuota, windowRoom, type Ledger } from './tiktok-post-pure';
+import { CADENCE, clock, dayPieces, errorText, kigaliMinute, postsInWindow, refInText, settlePending, slotQuota, studioLostTheForm, uploadInProgress, uploadTimeoutMs, windowRoom, type Ledger, type PagePost, type Settled } from './tiktok-post-pure';
+import { readPage } from './tiktok-page-read';
 import { ownTikTok } from './tiktok-pure';
 import { parseSoundRow, pickSound, type SoundUse } from './tiktok-v2-pure';
 
@@ -371,11 +372,30 @@ async function postOne(p: Page, piece: Piece): Promise<{ result: string; url?: s
   await dismissPrompts(p);
 
   const post = p.locator('button[data-e2e="post_video_button"]').or(p.getByRole('button', { name: /^post$/i })).first();
-  // Post stays disabled until the upload finishes processing.
-  await post.waitFor({ timeout: 120_000 });
-  for (let i = 0; i < 60 && (await post.isDisabled().catch(() => true)); i++) await p.waitForTimeout(3000);
+  // Post stays disabled until the upload finishes processing — and even enabled, Studio says
+  // "Checks can only start after the file is uploaded" while the file is still going up (11-15).
+  // Never click before both are clear; a click too early lost the draft (K6671, K6785).
   const shot = join(dirname(piece.mp4), `${piece.key}.upload.png`);
+  const mb = statSync(piece.mp4).size / (1024 * 1024);
+  const limit = uploadTimeoutMs(statSync(piece.mp4).size);
+  const started = Date.now();
+  await post.waitFor({ timeout: 120_000 });
+  let finished = false;
+  while (Date.now() - started < limit) {
+    const disabled = await post.isDisabled().catch(() => true);
+    const text = await p.locator('body').innerText().catch(() => '');
+    if (!disabled && !uploadInProgress(text)) {
+      // Stable for a few seconds, not a flicker between states.
+      await p.waitForTimeout(4000);
+      if (!(await post.isDisabled().catch(() => true)) && !uploadInProgress(await p.locator('body').innerText().catch(() => ''))) {
+        finished = true;
+        break;
+      }
+    }
+    await p.waitForTimeout(3000);
+  }
   await p.screenshot({ path: shot, fullPage: true });
+  if (!finished) throw new Error(`upload never finished (${mb.toFixed(0)} MB in ${Math.round(limit / 60_000)} min)`);
   if (dry) return { result: `dry run — filled, not posted (${shot}); ${sound}` };
 
   // Studio's answer to the publish call names the new post: watch for it while Post is clicked.
@@ -404,6 +424,14 @@ async function postOne(p: Page, piece: Piece): Promise<{ result: string; url?: s
       }
     });
     await p.waitForTimeout(3000);
+    // Back at the picker, or "wasn't saved": the click did not post anything.
+    if (studioLostTheForm(await p.locator('body').innerText().catch(() => ''))) {
+      const left = readJson<Record<string, string>>(PENDING, {});
+      delete left[piece.key];
+      writeFileSync(PENDING, JSON.stringify(left, null, 2));
+      await p.screenshot({ path: shot, fullPage: true });
+      throw new Error(`Studio lost the draft after Post (screenshot ${shot})`);
+    }
   } finally {
     p.off('response', watch);
   }
@@ -488,10 +516,93 @@ async function capRoom(room: number, now = Date.now()): Promise<{ room: number; 
 }
 
 /** --plan: the slot's dry run — which pieces it would post, read from the day's files only. --at=HH:MM plays another slot's time. */
+const dayBefore = (d: string): string => new Date(Date.parse(`${d}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
+
+/** The page's recent posts, one yt-dlp read; null when it cannot be read. */
+async function pagePosts(): Promise<PagePost[] | null> {
+  const secUid = (process.env.TIKTOK_PAGE_SECUID ?? '').trim();
+  try {
+    const raw = await readPage(secUid ? `tiktokuser:${secUid}` : `https://www.tiktok.com/@${PAGE}`, PAGE);
+    const entries = (JSON.parse(raw) as { entries?: Record<string, unknown>[] }).entries ?? [];
+    const out: PagePost[] = [];
+    for (const v of entries) {
+      const ref = refInText((v.description as string) ?? (v.title as string));
+      const id = String(v.id ?? '');
+      if (!ref) continue;
+      out.push({ ref, at: Number(v.timestamp ?? 0) * 1000, id, url: (v.url as string) || `https://www.tiktok.com/@${PAGE}/video/${id}` });
+    }
+    return out;
+  } catch (e) {
+    console.warn(`  ! settle: page not read (${errorText(e).slice(0, 140)}) — pending stays as it is`);
+    return null;
+  }
+}
+
+/**
+ * Pending keys of today and yesterday, settled from the page: found = posted, never appeared after
+ * 2 h = retried (--plan only says so). Returns today's still-unresolved and waiting keys.
+ */
+async function settleStale(write: boolean): Promise<Settled> {
+  const total: Settled = { posted: [], retry: [], keep: [], waiting: [] };
+  const days = [dayBefore(date), date].map((d) => ({ d, dir: join(DATA, d) }));
+  const jobs = days.map((x) => ({ ...x, pend: readJson<Record<string, string>>(join(x.dir, 'pending.json'), {}) })).filter((x) => Object.keys(x.pend).length);
+  if (!jobs.length) return total;
+  const now = Date.now();
+  // Only a key old enough to judge needs the page.
+  const needsPage = jobs.some((x) => Object.values(x.pend).some((iso) => now - Date.parse(iso) >= 30 * 60_000));
+  const posts = needsPage ? await pagePosts() : null;
+  for (const { d, dir, pend } of jobs) {
+    const r = settlePending(pend, posts, now);
+    const uploadsPath = join(dir, 'uploads.json');
+    const queue = readJson<{ id: number; code: string | null; postId?: string }[]>(join(dir, 'queue.json'), []);
+    const rowOf = (key: string): Piece => ({ key, mp4: '', caption: '', aigc: false, postId: queue.find((q) => (q.code?.trim() || `K${q.id}`) === key)?.postId });
+    const ledger = readJson<Ledger>(LEDGER, {});
+    for (const x of r.posted) {
+      console.log(`  settled: ${x.key} (${d}) was up — ${x.url}`);
+      if (!write) continue;
+      const up = readJson<Record<string, string>>(uploadsPath, {});
+      up[x.key] = new Date(x.at).toISOString();
+      writeFileSync(uploadsPath, JSON.stringify(up, null, 2));
+      if (ledger[x.key]) ledger[x.key] = { ...ledger[x.key]!, postedAt: up[x.key], url: x.url };
+      await markRow(rowOf(x.key), { status: 'POSTED', postedAt: new Date(x.at), reason: null, tiktokUrl: x.url, tiktokId: x.id });
+    }
+    for (const key of r.retry) {
+      console.log(`  settled: ${key} (${d}) clicked ${pend[key]!.slice(11, 16)} UTC, never appeared on the page — ${write ? 'retried' : 'would retry'}${d === date ? '' : ' (an earlier day: not re-posted today)'}`);
+      if (write) await markRow(rowOf(key), { reason: 'Post clicked, never appeared on the page — retried' });
+    }
+    if (write) {
+      const left = { ...pend };
+      for (const x of r.posted) delete left[x.key];
+      for (const k of r.retry) delete left[k];
+      writeFileSync(join(dir, 'pending.json'), JSON.stringify(left, null, 2));
+      writeFileSync(LEDGER, JSON.stringify(ledger, null, 2));
+    }
+    if (d === date) {
+      total.posted.push(...r.posted);
+      total.retry.push(...r.retry);
+      total.keep.push(...r.keep);
+      total.waiting.push(...r.waiting);
+    } else {
+      // Yesterday's leftovers still count for the job's colour.
+      total.keep.push(...r.keep.map((k) => `${d}:${k}`));
+      total.waiting.push(...r.waiting.map((k) => `${d}:${k}`));
+    }
+  }
+  return total;
+}
+
 async function plan(): Promise<void> {
   const pieces = todaysPieces();
   const done = readJson<Record<string, string>>(UPLOADS, {});
   const pending = readJson<Record<string, string>>(PENDING, {});
+  // The settle step, dry: what it would do, then the plan as if it had.
+  const settled = await settleStale(false);
+  for (const x of settled.posted) {
+    done[x.key] = new Date(x.at).toISOString();
+    delete pending[x.key];
+  }
+  for (const k of settled.retry) delete pending[k];
+  for (const k of settled.waiting) console.log(`  waiting: ${k} clicked recently — TikTok has not shown it yet`);
   const at = /^(\d{1,2}):(\d{2})$/.exec(argv('at'));
   const minute = at ? Number(at[1]) * 60 + Number(at[2]) : kigaliMinute();
   const sc = slotCap(pieces, done, pending, minute);
@@ -508,6 +619,10 @@ async function plan(): Promise<void> {
 async function main(): Promise<void> {
   if (flag('plan')) return await plan();
   refuseUnattended('uploading to the public TikTok page');
+  // Stale clicked-but-unconfirmed keys settle from the page before anything is computed.
+  const settled = await settleStale(!dry);
+  const waiting = new Set(settled.waiting);
+  const staleBefore = settled.keep.filter((k) => k.includes(':') && !waiting.has(k));
   const pieces = todaysPieces();
   const done = readJson<Record<string, string>>(UPLOADS, {});
   const pending = readJson<Record<string, string>>(PENDING, {});
@@ -529,13 +644,20 @@ async function main(): Promise<void> {
   const later = flag('spread') ? Math.max(0, total - out - due.length) : ready.length - due.length;
   if (ready.length && !due.length) return void console.log(`slot quota reached for ${date}: ${out} of ${total} out, ${later} left for the next slots`);
   const unsureLine = (key: string, at: string) => `• ⚠️ ${key}: Post was clicked at ${at.slice(11, 16)} UTC but TikTok never confirmed — look at @${PAGE}; if it is not there: \`pnpm tt:upload --repost=${key}\``;
-  const unsureLines = unsure.map((x) => unsureLine(x.key, pending[x.key]!));
-  if (!due.length && !unsure.length) {
+  const hardUnsure = unsure.filter((x) => !waiting.has(x.key));
+  const waitNote = unsure.length - hardUnsure.length ? `${unsure.length - hardUnsure.length} waiting for TikTok` : '';
+  const unsureLines = hardUnsure.map((x) => unsureLine(x.key, pending[x.key]!));
+  if (!due.length && !hardUnsure.length && !staleBefore.length) {
+    if (waitNote) {
+      console.log(`${waitNote}: ${unsure.filter((x) => waiting.has(x.key)).map((x) => x.key).join(', ')}`);
+      if (!dry) await recordRun('tiktok-upload', true, `0/0 posted, ${waitNote}`);
+      return;
+    }
     if (flag('spread') && total > out) return void console.log(`nothing rendered to post yet for ${date}: ${out} of ${total} out, ${total - out} still to render`);
     return void console.log(pieces.length ? `all ${pieces.length} pieces for ${date} already posted` : `nothing rendered for ${date} — run tt:run`);
   }
   if (!due.length) {
-    for (const l of unsureLines) console.warn(l);
+    for (const l of [...unsureLines, ...staleBefore.map((k) => `• ⚠️ ${k}: still unconfirmed from an earlier day — look at @${PAGE}`)]) console.warn(l);
     if (flag('notify') && !dry) await postToMkan([`📲 *TikTok @${PAGE}* — nothing re-posted; needs a look:`, ...unsureLines].join('\n'));
     process.exitCode = 77; // needs Abdout: kun's job-run/lanes record it so, and nothing re-runs it
     return;
@@ -586,11 +708,12 @@ async function main(): Promise<void> {
   if (dry) return;
   // Clicked but never confirmed — before this run or in it: never re-posted on its own.
   const left = readJson<Record<string, string>>(PENDING, {});
-  const unconfirmed = pieces.filter((x) => !done[x.key] && left[x.key]).map((x) => unsureLine(x.key, left[x.key]!));
+  const unconfirmedKeys = pieces.filter((x) => !done[x.key] && left[x.key]);
+  const unconfirmed = unconfirmedKeys.filter((x) => !waiting.has(x.key)).map((x) => unsureLine(x.key, left[x.key]!));
   // Up to 16 slots a day: a clean --spread slot stays out of #mkan until the day's last home is up.
   const quiet = flag('spread') && ok === due.length && !unconfirmed.length && later > 0;
   if (flag('notify') && !quiet) await postToMkan([`📲 *TikTok @${PAGE}* — ${ok}/${due.length} posted automatically${later ? ` (${later} more later today)` : ''}`, ...lines, ...unconfirmed, `https://www.tiktok.com/@${PAGE}`].join('\n'));
-  await recordRun('tiktok-upload', ok === due.length && !unconfirmed.length, `${ok}/${due.length} posted${unconfirmed.length ? `, ${unconfirmed.length} unconfirmed` : ''}`);
+  await recordRun('tiktok-upload', ok === due.length && !unconfirmed.length, `${ok}/${due.length} posted${unconfirmed.length ? `, ${unconfirmed.length} unconfirmed` : ''}${unconfirmedKeys.length - unconfirmed.length ? `, ${unconfirmedKeys.length - unconfirmed.length} waiting for TikTok` : ''}`);
   if (unconfirmed.length) process.exitCode = 77; // needs Abdout: a retry could post it twice
   else if (ok < due.length) process.exitCode = 1;
 }
