@@ -1881,7 +1881,7 @@ async function askWithPreview(rows: { handle: string; name: string; phone: strin
 function existingRender(ref: string): string | null {
   if (!existsSync(DATA)) return null;
   const days = readdirSync(DATA).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort().reverse();
-  for (const dir of [...days, 'preview']) {
+  for (const dir of [...days, 'preview', 'web']) {
     const f = join(DATA, dir, `${ref}.mp4`);
     if (existsSync(f) && statSync(f).size > 100_000) return f;
   }
@@ -1956,15 +1956,20 @@ async function web(): Promise<void> {
         reelEncode(voiced.path, video);
         note = `enhanced; ${clean.note}; ${voiced.note}`;
       }
+      // The reel encode is TikTok's (tens of MB); the page gets a light copy of the same enhanced picture.
+      const light = join(work, 'web.mp4');
+      ffmpeg(['-i', video, '-t', String(MAX_BODY), '-map', '0:v:0', '-map', '0:a:0?', '-vf', 'scale=720:-2:flags=lanczos', '-c:v', 'libx264', '-preset', 'slow', '-crf', '24', '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-maxrate', '1600k', '-bufsize', '3200k', '-c:a', 'aac', '-b:a', '96k', '-movflags', '+faststart', light]);
       const poster = join(work, 'poster.jpg');
-      ffmpeg(['-ss', '1', '-i', video, '-frames:v', '1', '-vf', 'scale=720:-2', '-q:v', '3', poster]);
+      ffmpeg(['-ss', '1', '-i', light, '-frames:v', '1', '-vf', 'scale=720:-2', '-q:v', '3', poster]);
       if (!apply) {
-        console.log(`  ✓ ${ref}: ${note} → ${video}`);
+        const mb = (statSync(light).size / 1e6).toFixed(1);
+        renameSync(light, join(outRoot, `${ref}-web.mp4`));
+        console.log(`  ✓ ${ref}: ${note} → ${join(outRoot, `${ref}-web.mp4`)} (${mb} MB)`);
         done++;
         continue;
       }
       const stamp = Date.now().toString(36);
-      const videoUrl = await putPublic(video, `listing-video/${vid}-${stamp}.mp4`, 'video/mp4');
+      const videoUrl = await putPublic(light, `listing-video/${vid}-${stamp}.mp4`, 'video/mp4');
       const videoPosterUrl = existsSync(poster) ? await putPublic(poster, `listing-video/${vid}-${stamp}.jpg`, 'image/jpeg') : null;
       await db.listing.update({ where: { id: r.id }, data: { videoUrl, videoPosterUrl }, select: { id: true } });
       if (video.startsWith(outRoot)) rmSync(video, { force: true });
