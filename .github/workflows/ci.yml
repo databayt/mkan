@@ -40,8 +40,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       # Ratchet: 934 legacy warnings on 2026-11-06, the first day lint ran at all (the config used to
-      # crash). Lower this as warnings are fixed; never raise it.
-      - run: pnpm exec eslint . --max-warnings 940
+      # crash). Lower this as warnings are fixed; never raise it. 939 on 2026-11-15.
+      - run: pnpm exec eslint . --max-warnings 939
 
   test:
     name: Unit Tests
