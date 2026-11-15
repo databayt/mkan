@@ -1,5 +1,36 @@
 # Agent — open issues
 
+## 2026-11-15 — Abdout in the loop for the first 10 deals; Twenty is the record; Today on Mkan
+
+- **Why:** Abdout: "make me man in the loop for the first 10 deals … send me schedule to go with them to
+  visit and track this number to see what it means"; "mkan agent should control crm and send daily posts to
+  mkan web app … accessible for in-app chatbot and whatsapp chatbot"; "ensure flow works end to end … all
+  needed CTA". His calls: no approvals (watch + take over + he goes to every viewing); Twenty is the source
+  of truth; daily posts = the day's @mkan.rw homes + a note.
+- **Live first** (Phase 0): main had sat 42 commits ahead of prod since 11-09 — deployed (`305bac9`), then the
+  trust gate applied (732 public, 4,685 Airbnb homes with no contact hidden), the 12 Nov stranded tenant told,
+  the 48-hour rule on, the vault Chrome back (a stale profile lock; kun `64d45d2`), CI lint under its ratchet.
+- **Shipped:** `deal-event.ts` (one call per step → the feed + a CrmOp), the feed / schedule / words / numbers
+  (README "Abdout in the loop"), Today on Mkan (`/today`, the homepage strip with "Tell Mkan what you need" +
+  "Chat on WhatsApp", the `today` intent in both chats), Twenty `tenant` + `deal` objects (seeded), the CRM
+  queue and webhook (src/lib/crm/README.md), the /monetize First 10 tile. Migration
+  `20261115180000_loop_crm_today` applied (restore point: Neon branch `pre-loop-crm-today-2026-11-15`).
+  Proof: 2,615 unit tests; `wa:e2e` and `deal:e2e` (now through the rep words to PAID) exit 0 with equal
+  counts; `tests/e2e/doors.spec.ts` 6/6 on a Neon test branch.
+- **Settings:** `MKAN_REP_WHATSAPP` +249 919 071 294 (also a team number — rep words are read first),
+  `MKAN_PAYOUT_MOMO` 0780 984 777 (his own MoMo until the merchant code), viewing hours 9–18 Mon–Sat, gap 90 min.
+- **Owed:**
+  - The homepage hero still sells nightly stays ("Book unique accommodations", islands, boats) and the English
+    page ends on "Inspiration for your next trip in Sudan". The strip under it carries the Kigali CTAs; the hero
+    itself is Abdout's call (it is shared with the Sudan site).
+  - 230 TikTok homes stay hidden until `tt:web` gives them a clean video; re-run `pnpm listings:gate --apply`
+    after each batch (the refresh cron does not run the gate).
+  - Deal terms from Twenty land as a "terms:" line in `Deal.notes` (no column); unticking optOut in Twenty does
+    not undo a STOP; a broker's NO_REPLY is not yet a STALLED step; `deal-intro.ts applyOutcome` writes status
+    without a dealEvent.
+  - The CRM drain runs on events and the outbox ticks — overnight that is hourly.
+  - Native rw read of the new `today.*`, `agent.today.*` and `monetize.deals.firstTen.*` strings.
+
 ## 2026-11-14 — The chat closes the loop by itself: no step waits for a person to type
 
 - **Why:** Abdout: "we still didn't close any deal end to end … we asked the tenant to wait, someone from
