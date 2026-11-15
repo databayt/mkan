@@ -49,7 +49,7 @@ import { config } from 'dotenv';
 config({ override: true });
 
 import { execFileSync, spawn } from 'node:child_process';
-import { appendFileSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { appendFileSync, copyFileSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import sharp from 'sharp';
@@ -1038,11 +1038,49 @@ async function renderV2(r: PostRow, dir: string, phone: string, work: string): P
   ]);
   const voiced = audioGuard(ref, { path: mezz, dur }, work);
   reelEncode(voiced.path, out);
+  meta.edit = editProject(ref, dir, body, stills.face, voiced.path, dur);
   meta.card = { tint };
   meta.seconds = Math.round((Date.now() - t0) / 1000);
   writeFileSync(join(dir, `${ref}.meta.json`), JSON.stringify(meta, null, 2));
   const note = `v2 ${plan.mode}${plan.mode === 'fill' ? ` (${plan.masks.length} region${plan.masks.length === 1 ? '' : 's'})` : ''}; card tint ${tint}; ${voiced.note}; ${meta.seconds} s`;
   return { out, note };
+}
+
+/**
+ * A FilmCraft project beside the reel (`<ref>.fcproj`), so any post can be opened and re-cut by
+ * hand: the cleaned video on V1, the card's face on V2, the guarded sound on A1. Its media are
+ * kept as `<ref>.clean.mp4` and `<ref>.card.png` (pruneOldVideos ages the mp4 out with the reel).
+ * Best effort: no FilmCraft, or any failure, and the reel still posts. The glass blur under the
+ * card is an ffmpeg effect, so the project's card is the face alone.
+ */
+function editProject(ref: string, dir: string, body: string, face: string, sound: string, dur: number): string | null {
+  const cli = process.env.FILMCRAFT_CLI || join(homedir(), '.local/bin/filmcraft-cli');
+  if (!existsSync(cli) || process.env.TIKTOK_FCPROJ === 'off') return null;
+  const clean = join(dir, `${ref}.clean.mp4`);
+  const card = join(dir, `${ref}.card.png`);
+  const proj = join(dir, `${ref}.fcproj`);
+  const TPS = 254016000000;
+  try {
+    copyFileSync(body, clean);
+    copyFileSync(face, card);
+    const fc = (id: string, params: object, save = true): any => {
+      const a = save ? ['--project', proj, '--save'] : ['--save-as', proj];
+      const out = execFileSync(cli, [...a, 'exec', id, JSON.stringify(params)], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 60_000 });
+      return out.trim() ? JSON.parse(out) : null;
+    };
+    fc('file.newSequence', { name: ref, width: 1080, height: 1920, fps: 30 }, false);
+    const [v, c, a] = (fc('file.import', { paths: [clean, card, sound] }).items as unknown[]).map((x: any) => (typeof x === 'object' ? x.item : x));
+    const body1 = fc('timeline.place', { item: v, track: 'V1', seconds: 0, audio: false });
+    fc('clip.fillFrame', { clips: body1.clips });
+    const cardClip = fc('timeline.place', { item: c, track: 'new', seconds: 0, duration: Math.round(dur * TPS) });
+    // Where the reel's glassGraph puts it (CARD is its top-left; motion position is the centre).
+    fc('effects.setParam', { clip: cardClip.clips[0], effect: 'motion', param: 'position', value: [CARD.x + CARD.w / 2, CARD.y + CARD.h / 2] });
+    fc('timeline.place', { item: a, track: 'A1', seconds: 0, video: false });
+    return proj;
+  } catch (e) {
+    console.warn(`  … ${ref}: no FilmCraft project (${firstLine(e)})`);
+    return null;
+  }
 }
 
 /** A home whose own video says it is taken ("yabonetse"): off /find and the TikTok queue for good. */
