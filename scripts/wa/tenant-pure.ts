@@ -51,6 +51,24 @@ export function startText(lang: string): string {
   return 'Welcome back! Tell me the area, the number of bedrooms and your budget.';
 }
 
+/** Mkan's TikTok page: the chat sends viewers back to follow it (the 1k-follower push, 2026-11-15). */
+export const TIKTOK_PAGE_URL = 'https://www.tiktok.com/@mkan.rw';
+
+/** A reply that shows a home names its code (K6671). Only such a reply carries the follow line. */
+export function showsAHome(reply: string): boolean {
+  return /\bK\d{3,6}\b/.test(reply);
+}
+
+/**
+ * One line under the first reply that shows homes, once per phone, ever. rw reuses the caption's
+ * line (tiktok-post.ts), machine-written like the rest (native review sheet).
+ */
+export function followLine(lang: string): string {
+  if (lang === 'ar') return `📲 بيوت جديدة في كيغالي كل يوم على تيك توك: ${TIKTOK_PAGE_URL}`;
+  if (lang === 'rw') return `📲 Kurikira kugira ngo ubone amazu mashya yo gukodesha i Kigali buri munsi: ${TIKTOK_PAGE_URL}`;
+  return `📲 New Kigali homes every day on TikTok: ${TIKTOK_PAGE_URL}`;
+}
+
 /** The first line of a late answer (LATE_AFTER_MS). rw is machine-written (native review sheet). */
 export function lateLead(lang: string): string {
   if (lang === 'ar') return 'آسف على تأخري في الرد.';

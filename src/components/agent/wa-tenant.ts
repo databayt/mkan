@@ -8,7 +8,7 @@ import "server-only";
  * shows "typing…", runs the turn in-process (whatsapp-chat.ts) and sends the
  * reply. The turn dedupes by message id, so the two paths answer once.
  */
-import { langOfWords, LATE_AFTER_MS, lateLead, MAX_AGE_MS, MEDIA_NUDGE_MS, REPEAT_WINDOW_MS, saidJustNow, startText, stopConfirmText, tenantDecision, textHash, typePleaseText, type Sent, type TenantDecision } from "../../../scripts/wa/tenant-pure";
+import { followLine, langOfWords, LATE_AFTER_MS, lateLead, MAX_AGE_MS, MEDIA_NUDGE_MS, REPEAT_WINDOW_MS, saidJustNow, showsAHome, startText, stopConfirmText, tenantDecision, textHash, typePleaseText, type Sent, type TenantDecision } from "../../../scripts/wa/tenant-pure";
 import { db } from "@/lib/db";
 import { sendPresence, sendText } from "@/lib/whatsapp/evolution";
 import { isPersonal } from "./personal";
@@ -238,7 +238,11 @@ export function answerTenant(m: TenantMessage): Promise<TenantOutcome> {
       }
       // A message the line took long to reach (the webhook missed it, a restart): say sorry first.
       const late = now.getTime() - m.sentAt.getTime() > LATE_AFTER_MS;
-      const reply = late ? `${lateLead(await chatLocale(m.phone, m.text))}\n\n${res.reply}` : res.reply;
+      const body = late ? `${lateLead(await chatLocale(m.phone, m.text))}\n\n${res.reply}` : res.reply;
+      // The first reply that shows homes points to the TikTok page, once per phone, ever; never to Abdout's own contacts.
+      const followKey = `tfollow:${m.phone}`;
+      const askFollow = !personal && showsAHome(body) && !(await readState<{ at?: string }>(followKey, {})).at;
+      const reply = askFollow ? `${body}\n\n${followLine(await chatLocale(m.phone, m.text))}` : body;
       // The same words twice in a row read as a machine: an "Okay" after a status line got that line again
       // (11-07 and 11-12, three times in one chat). Said once; the second message needs no answer.
       if (saidJustNow(await readState<Sent>("tenant-sent", []), m.phone, reply, Date.now())) {
@@ -247,11 +251,13 @@ export function answerTenant(m: TenantMessage): Promise<TenantOutcome> {
         return "nothing";
       }
       await holdReply(m.msgId, reply, claim.tries);
+      // Marked with the held reply: a failed send is re-sent with the line already in it.
+      if (askFollow) await writeState(followKey, { at: new Date().toISOString() });
       await recordSent(m.phone, undefined, reply);
       const out = await sendText(m.phone, reply);
       await recordSent(m.phone, out?.key?.id, reply);
       await settleMessage(m.msgId);
-      log(`tenant +${m.phone} answered${late ? " late" : ""} (${reply.length} chars)`);
+      log(`tenant +${m.phone} answered${late ? " late" : ""}${askFollow ? " + TikTok follow line" : ""} (${reply.length} chars)`);
       return "sent";
     } catch (err) {
       // The claim stays: "working" goes stale and is retried, "reply" is re-sent.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { HOOK_MISS_ALERT_AT, HOOK_MISS_WINDOW_MS, HUMAN_HOLD_MS, isDirectChat, isTenantStop, langOfWords, lateLead, MAX_AGE_MS, noteMisses, PER_PHONE_PER_HOUR, startText, stopConfirmText, tenantDecision, typePleaseText } from "../../scripts/wa/tenant-pure";
+import { followLine, showsAHome, TIKTOK_PAGE_URL, HOOK_MISS_ALERT_AT, HOOK_MISS_WINDOW_MS, HUMAN_HOLD_MS, isDirectChat, isTenantStop, langOfWords, lateLead, MAX_AGE_MS, noteMisses, PER_PHONE_PER_HOUR, startText, stopConfirmText, tenantDecision, typePleaseText } from "../../scripts/wa/tenant-pure";
 
 const now = new Date("2026-10-24T10:00:00Z");
 const base = { text: "2 bedroom in Kicukiro", sentAt: now, now, stopped: false, humanAt: null, phoneRepliesLastHour: 0, lineRepliesLastHour: 0 };
@@ -100,5 +100,18 @@ describe("a voice note, photo or location", () => {
     expect(typePleaseText("en")).toMatch(/type/i);
     expect(typePleaseText("ar")).toMatch(/[؀-ۿ]/);
     expect(typePleaseText("rw")).toMatch(/andika/i);
+  });
+});
+
+describe("the TikTok follow line (2026-11-15)", () => {
+  it("goes only under a reply that shows a home", () => {
+    expect(showsAHome("Here are 3 homes: K6671, K6628 and K6619")).toBe(true);
+    expect(showsAHome("Which area are you looking in?")).toBe(false);
+    expect(showsAHome("Kicukiro, 2 bedrooms, 400k?")).toBe(false);
+  });
+  it("names the page in the chat's language", () => {
+    for (const lang of ["en", "rw", "ar", "fr"]) expect(followLine(lang)).toContain(TIKTOK_PAGE_URL);
+    expect(followLine("ar")).toMatch(/[؀-ۿ]/);
+    expect(followLine("rw")).toContain("Kurikira");
   });
 });
