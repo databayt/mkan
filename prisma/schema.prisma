@@ -267,7 +267,7 @@ model Listing {
   videoUrl                    String?
   /// The still shown before videoUrl plays — a frame with no broker number on it.
   videoPosterUrl              String?
-  amenities                  Amenity[]           @default([])
+  amenities                   Amenity[]           @default([])
   highlights                  Highlight[]         @default([])
   isPetsAllowed               Boolean             @default(false)
   isParkingIncluded           Boolean             @default(false)
@@ -1523,69 +1523,69 @@ enum BrokerKind {
  * from the ads they posted; it is who the agent asks when nothing matches.
  */
 model Broker {
-  id               String     @id @default(cuid())
-  kind             BrokerKind @default(BROKER)
-  name             String
-  userId           String?    @unique
+  id                String             @id @default(cuid())
+  kind              BrokerKind         @default(BROKER)
+  name              String
+  userId            String?            @unique
   /// Normalised +250… numbers, the first is the one messaged.
-  phones           String[]
-  whatsapp         String?
-  tiktokHandle     String?    @unique
-  facebookUrl      String?
-  website          String?
-  email            String?
-  districts        String[]
-  neighbourhoods   String[]
+  phones            String[]
+  whatsapp          String?
+  tiktokHandle      String?            @unique
+  facebookUrl       String?
+  website           String?
+  email             String?
+  districts         String[]
+  neighbourhoods    String[]
   /// "night" | "month"
-  stays            String[]
+  stays             String[]
   /// RWF per month, 10th–90th percentile of their rents.
-  priceMin         Int?
-  priceMax         Int?
-  listingsCount    Int        @default(0)
+  priceMin          Int?
+  priceMax          Int?
+  listingsCount     Int                @default(0)
   /// Their newest ad anywhere.
-  lastSeenAt       DateTime?
-  lastAskedAt      DateTime?
-  asks             Int        @default(0)
-  answers          Int        @default(0)
-  availableAnswers Int        @default(0)
-  optOut           Boolean    @default(false)
-  optOutAt         DateTime?
-  twentyId         String?    @unique
+  lastSeenAt        DateTime?
+  lastAskedAt       DateTime?
+  asks              Int                @default(0)
+  answers           Int                @default(0)
+  availableAnswers  Int                @default(0)
+  optOut            Boolean            @default(false)
+  optOutAt          DateTime?
+  twentyId          String?            @unique
   /// tiktok | facebook | web | maps | site | airbnb | whatsapp
-  sources          String[]
+  sources           String[]
   /// Zones served (kigali-zones slugs), derived from their ads unless a person set them in Twenty.
-  zoneSlugs        String[]   @default([])
+  zoneSlugs         String[]           @default([])
   /// Fields a person edited in Twenty; `crm:brokers` never overwrites them.
-  lockedFields     String[]   @default([])
+  lockedFields      String[]           @default([])
   /// When this row last went to Twenty — a later Twenty `updatedAt` is a person's edit.
-  syncedAt         DateTime?
+  syncedAt          DateTime?
   /// Merged into another broker in Twenty; kept only until the merge is applied.
-  mergedIntoId     String?
+  mergedIntoId      String?
   /// RWF they ask to show a home (Kigali's usual is 5k), from their chats or replies.
-  visitFee         Int?
+  visitFee          Int?
   /// Median minutes they take to answer a WhatsApp message.
-  replyMinutes     Int?
+  replyMinutes      Int?
   /// Their last WhatsApp message to Mkan or to Abdout.
-  lastReplyAt      DateTime?
+  lastReplyAt       DateTime?
   /// The person their ads say to call ("call Eric").
   contactName       String?
   /// RW | EN | FR | SW | AR — the language their ads are written in; write to them in it.
   preferredLanguage String?
   /// Every language their ads use, most used first.
-  languages         String[]   @default([])
+  languages         String[]           @default([])
   /// Where Mkan stands with them (2026-11-01): NEW → INTRODUCED (our first message
   /// went out) → ACTIVE (they answered) → PARTNER (a share agreed); PAUSED; DO_NOT_CONTACT.
   relationship      BrokerRelationship @default(NEW)
   introducedAt      DateTime?
   /// The share of their commission Mkan earns on a tenant it brings (0.5 = half), or a flat amount.
-  sharePct          Decimal?   @db.Decimal(5, 4)
+  sharePct          Decimal?           @db.Decimal(5, 4)
   shareFlatRwf      Int?
   agreementNote     String?
   agreedAt          DateTime?
   /// The last message Mkan sent them — asks and replies alike.
   lastMessagedAt    DateTime?
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 
   user     User?             @relation("BrokerUser", fields: [userId], references: [id], onDelete: SetNull)
   listings ListingBroker[]
@@ -1641,6 +1641,8 @@ model Deal {
   introducedAt     DateTime?
   /// Intro follow-ups already queued: "tenant-24h", "tenant-7d", "broker-7d" (deal-intro.ts).
   introFollowUps   String[]   @default([])
+  /// What going to the viewing cost Mkan's person (RWF): "cost K5811 3000" (rep-word.ts) — net per deal.
+  tripCost         Int?
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
 
@@ -1928,4 +1930,59 @@ model TikTokPost {
 
   @@index([status, pickedAt])
   @@index([listingId, postedAt])
+}
+
+/// The day's "Today on Mkan" note (2026-11-15): the homes @mkan.rw posted that Kigali day, in a few
+/// words, under /today, the homepage strip and the chat's "today". Written at 21:30 Kigali
+/// (api/cron/today-note) from facts only — writer.ts' guard — else the template.
+model DailyNote {
+  /// The Kigali day, YYYY-MM-DD.
+  day       String   @id
+  en        String
+  ar        String?
+  rw        String?
+  /// The facts the words were written from: count, areas, rent range, listing ids.
+  stats     Json?
+  /// "claude" | "template"
+  writtenBy String   @default("template")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// A write to Twenty, the CRM of record (2026-11-15: "Twenty is the source of truth"). Every deal step
+/// and tenant change queues one (deal-event.ts → src/lib/crm); the drain sends them on events and on the
+/// outbox's backstop ticks, so a Twenty outage delays the record and never stops the line.
+model CrmOp {
+  id        String    @id @default(cuid())
+  /// Twenty object: "tenant" | "deal" | "task" | "broker" | "note"
+  object    String
+  /// mkan's key for the record (CrmLink.key): a profile id, "<taskId>:<listingId>", a broker id…
+  key       String
+  /// The fields to write (Twenty REST shape), or the note / task body.
+  payload   Json
+  /// QUEUED | SENT | FAILED | SKIPPED
+  status    String    @default("QUEUED")
+  tries     Int       @default(0)
+  error     String?
+  createdAt DateTime  @default(now())
+  sentAt    DateTime?
+
+  @@index([status, createdAt])
+  @@index([object, key])
+}
+
+/// mkan's key ↔ the Twenty record it was written to, and what mkan last wrote there — so the webhook can
+/// tell a person's edit in Twenty from the echo of our own write.
+model CrmLink {
+  /// "<object>:<mkan key>", e.g. "deal:clx…:5811", "tenant:<profileId>"
+  key          String    @id
+  object       String
+  twentyId     String
+  /// The field names mkan wrote last, and when (echo suppression).
+  pushedFields String[]  @default([])
+  pushedAt     DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([object, twentyId])
 }

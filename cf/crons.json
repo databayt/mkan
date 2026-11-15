@@ -1,5 +1,5 @@
 {
-  "_note": "Generated from vercel.json crons. Keyed by cron expression (UTC) \u2192 route paths.",
+  "_note": "Generated from vercel.json crons. Keyed by cron expression (UTC) → route paths.",
   "schedules": {
     "0 2 * * *": [
       "/api/cron/mark-overdue"
@@ -15,7 +15,8 @@
       "/api/cron/topup-trips"
     ],
     "0 5 * * *": [
-      "/api/cron/complete-bookings"
+      "/api/cron/complete-bookings",
+      "/api/cron/loop-schedule"
     ],
     "0 * * * *": [
       "/api/cron/broker-requests",
@@ -24,7 +25,14 @@
     "15,30,45 5-19 * * *": [
       "/api/cron/wa-outbox",
       "/api/cron/intro-sweep"
+    ],
+    "0 18 * * *": [
+      "/api/cron/loop-schedule"
+    ],
+    "30 19 * * *": [
+      "/api/cron/today-note"
     ]
   },
-  "_outbox_note": "wa-outbox runs on events (kickOutbox: a message queued, a broker writing); these ticks are the backstop \u2014 :00 hourly, plus :15/:30/:45 from 07:00 to 21:45 Kigali (05\u201319 UTC). The */2 tick kept Neon awake around the clock (2026-11-07)."
+  "_outbox_note": "wa-outbox runs on events (kickOutbox: a message queued, a broker writing); these ticks are the backstop — :00 hourly, plus :15/:30/:45 from 07:00 to 21:45 Kigali (05–19 UTC). The */2 tick kept Neon awake around the clock (2026-11-07).",
+  "_loop_note": "loop-schedule: 07:00 Kigali (05 UTC) today's viewings, 20:00 Kigali (18 UTC) tomorrow's, Sunday 20:00 also the week's numbers, to MKAN_REP_WHATSAPP. today-note: 21:30 Kigali, after the last TikTok slot. The CRM drain has no tick of its own: it runs on events (kickCrm) and inside wa-outbox's backstop ticks, so Neon still sleeps at night."
 }
