@@ -43,7 +43,7 @@ export async function TodayStrip({ lang, d }: { lang: string; d: Dictionary }) {
           {latest?.isToday ? t?.seeToday ?? "See today's homes" : t?.seeLatest ?? "See the latest homes"}
         </Link>
       </div>
-      <ul className="-mx-4 mt-3 flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-4 pb-2 no-scrollbar sm:mx-0 sm:px-0">
+      <ul className="-mx-3 mt-3 flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-3 pb-2 no-scrollbar sm:mx-0 sm:px-0">
         {homes.map((h, i) => {
           const label = scrubTitle(h.title) || h.ref;
           return (
