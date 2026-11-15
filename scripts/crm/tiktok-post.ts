@@ -102,6 +102,11 @@ import {
   pickToday,
   POSTS_CEILING,
   POSTS_FLOOR,
+  CADENCE,
+  cadenceEvidence,
+  cadenceVerdict,
+  type CadenceEvidence,
+  type CadenceVerdict,
   diskFloorGiB,
   fillUnreadFrames,
   repostLine,
@@ -142,6 +147,7 @@ const cmd = positional[0] ?? 'help';
 
 const DATA = join(__dirname, '.data', 'tiktok-post');
 const LEDGER = join(DATA, 'posted.json');
+const CADENCE_FILE = join(__dirname, '.data', 'tiktok', 'cadence.json');
 const today = (): string => new Date().toISOString().slice(0, 10);
 /** `tt:buffer` works on tomorrow's folder through the same pick and render code: it sets this. */
 let dateOverride: string | null = null;
@@ -229,12 +235,76 @@ async function ledgerRow<T>(what: string, fn: (db: Db) => Promise<T>): Promise<T
 
 const videoIdOf = (r: PostRow): string | null => brokerVideoUrl(r)?.split('/').pop() ?? null;
 
+// ── cadence (the 24 h cap) ───────────────────────────────────────────────────
+type CadenceState = { cap: number; changedAt: number; history: { at: string; from: number; to: number; action: string; why: string }[] };
+
+/** The cap state. A missing or unreadable file is the default cap, treated as just set. */
+function readCadence(now = Date.now()): CadenceState {
+  try {
+    const j = readJsonFile<Partial<CadenceState>>(CADENCE_FILE, {});
+    if (Number.isInteger(j.cap) && Number.isFinite(j.changedAt)) return { cap: j.cap!, changedAt: j.changedAt!, history: j.history ?? [] };
+  } catch {
+    /* fall through to the default */
+  }
+  return { cap: CADENCE.defaultCap, changedAt: now, history: [] };
+}
+
+function writeCadence(st: CadenceState): void {
+  mkdirSync(dirname(CADENCE_FILE), { recursive: true });
+  writeFileSync(CADENCE_FILE, `${JSON.stringify(st, null, 2)}\n`);
+}
+
+/** The page's posted rows of the last lookback window, from the ledger table. */
+async function cadenceInputs(now: number): Promise<{ posts: { postedAt: number; views: number | null }[]; all: number[] }> {
+  const { db } = await import('../../src/lib/db');
+  const rows = await db.tikTokPost.findMany({
+    where: { status: 'POSTED', postedAt: { gte: new Date(now - (CADENCE.lookbackDays + 2) * 86_400_000) } },
+    select: { postedAt: true, views: true },
+  });
+  const posts = rows.map((r) => ({ postedAt: r.postedAt!.getTime(), views: r.views }));
+  return { posts, all: posts.map((p) => p.postedAt) };
+}
+
+/** Evidence + verdict at the current cap; with `apply`, a raise or lower is written to cadence.json. */
+async function cadenceStep(apply: boolean, now = Date.now()): Promise<{ st: CadenceState; ev: CadenceEvidence; v: CadenceVerdict }> {
+  const st = readCadence(now);
+  const { posts, all } = await cadenceInputs(now);
+  const ev = cadenceEvidence(posts, all, st.cap, now);
+  const v = cadenceVerdict(st, ev, now);
+  if (apply && v.action !== 'hold') {
+    writeCadence({ cap: v.next, changedAt: now, history: [...st.history, { at: new Date(now).toISOString(), from: st.cap, to: v.next, action: v.action, why: v.why }] });
+  }
+  return { st, ev, v };
+}
+
+/** The #mkan line for the verdict. */
+const cadenceLine = (cap: number, v: CadenceVerdict): string => (v.action === 'hold' ? `cadence: cap ${cap}, hold — ${v.why}` : `cadence: cap ${cap} → ${v.next} — ${v.why}`);
+
+/** `tt:cadence`: the per-position table, read-only; --apply writes the verdict. */
+async function cadence(): Promise<void> {
+  const { st, ev, v } = await cadenceStep(flag('apply'));
+  const n = (x: number | null) => (x === null ? '–' : x.toLocaleString('en-US'));
+  console.log(`posts of the last ${CADENCE.lookbackDays} days with views and at least ${CADENCE.judgeAgeH} h old, by position in the 24 h (1 = first in a day):`);
+  console.log('position |  n | median views | share >= 50 views');
+  for (const r of ev.rows) console.log(`${String(r.position).padStart(8)} | ${String(r.n).padStart(2)} | ${n(r.median).padStart(12)} | ${Math.round(r.shareOver50 * 100)}%`);
+  console.log(`baseline (positions 1–3): n=${ev.baseline.n}, median ${n(ev.baseline.median)}`);
+  console.log(`at the cap (position ${st.cap}): n=${ev.atCap.n}, median ${n(ev.atCap.median)}, ratio ${ev.ratio === null ? '–' : ev.ratio.toFixed(2)}`);
+  console.log(`cap ${st.cap}, set ${new Date(st.changedAt).toISOString().slice(0, 10)}; verdict: ${v.action}${v.action === 'hold' ? '' : ` → ${v.next}`} (${v.why})`);
+  console.log(flag('apply') ? (v.action === 'hold' ? 'applied: nothing to change' : `applied: cap is now ${v.next}`) : 'read-only (add --apply to write the verdict)');
+}
+
 // ── pick ─────────────────────────────────────────────────────────────────────
 /** A whole-number env setting, else its default. */
 const intEnv = (name: string, d: number): number => {
   const v = Number((process.env[name] ?? '').trim() || NaN);
   return Number.isInteger(v) && v >= 0 ? v : d;
 };
+
+/** The day's pick bounds: ceiling = TIKTOK_POSTS_MAX, else the cadence cap; floor never above the ceiling. */
+function pickBounds(): { floor: number; ceiling: number } {
+  const ceiling = intEnv('TIKTOK_POSTS_MAX', readCadence().cap);
+  return { floor: Math.min(intEnv('TIKTOK_POSTS_MIN', POSTS_FLOOR), ceiling), ceiling };
+}
 
 /** Cheap fetchability check of a broker lead's video: metadata only, nothing downloaded. Non-broker homes have no fetch to fail. */
 function probeVideo(r: PostRow): Probe {
@@ -277,7 +347,7 @@ async function pick(): Promise<PostRow[]> {
   const pickOnce = (): PostRow[] =>
     fixed !== null
       ? pickToday(open, ledger, consented, Math.max(0, fixed - queued.length))
-      : pickFresh(open, ledger, consented, { already: queued.length, floor: intEnv('TIKTOK_POSTS_MIN', POSTS_FLOOR), ceiling: intEnv('TIKTOK_POSTS_MAX', POSTS_CEILING) }).picked;
+      : pickFresh(open, ledger, consented, { already: queued.length, ...pickBounds() }).picked;
   const verified = (): PostRow[] => {
     for (let round = 0; round < 6; round += 1) {
       const cand = pickOnce();
@@ -298,8 +368,7 @@ async function pick(): Promise<PostRow[]> {
   let picked: PostRow[];
   if (fixed !== null) picked = verified();
   else {
-    const floor = intEnv('TIKTOK_POSTS_MIN', POSTS_FLOOR);
-    const ceiling = intEnv('TIKTOK_POSTS_MAX', POSTS_CEILING);
+    const { floor, ceiling } = pickBounds();
     const f = pickFresh(open, ledger, consented, { already: queued.length, floor, ceiling });
     picked = verified();
     console.log(
@@ -1578,7 +1647,14 @@ async function stats(): Promise<void> {
     `${JSON.stringify({ at: new Date().toISOString(), videos: vids.length, views, likes: vids.reduce((s, v) => s + v.likes, 0), comments, shares, ...(profile ?? {}), homeVideos: matched, rows })}\n`,
   );
   const reach = await repostNumbers();
-  const line = [pageStatsLine(PAGE, vids, { matched, views: homeViews }), reach].filter(Boolean).join(' · ');
+  let cad: string | null = null;
+  try {
+    const { st, v } = await cadenceStep(true);
+    cad = cadenceLine(st.cap, v);
+  } catch (e) {
+    console.warn(`  ! cadence not read: ${errorText(e).slice(0, 160)}`);
+  }
+  const line = [pageStatsLine(PAGE, vids, { matched, views: homeViews }), reach, cad].filter(Boolean).join(' · ');
   console.log(`${line}${rows ? ` · ${rows} TikTokPost rows updated` : ''}`);
   const bw = bestWorst(perPost);
   if (bw) {
@@ -2042,6 +2118,9 @@ async function main(): Promise<void> {
     case 'stats':
       await stats();
       break;
+    case 'cadence':
+      await cadence();
+      break;
     case 'ask':
       refuseUnattended('asking brokers on TikTok');
       await ask();
@@ -2060,7 +2139,7 @@ async function main(): Promise<void> {
 
 main()
   .then(async () => {
-    if (['pick', 'render', 'run', 'ask', 'consent', 'stats', 'buffer', 'reconcile', 'web'].includes(cmd)) await (await import('../../src/lib/db')).db.$disconnect();
+    if (['pick', 'render', 'run', 'ask', 'consent', 'stats', 'cadence', 'buffer', 'reconcile', 'web'].includes(cmd)) await (await import('../../src/lib/db')).db.$disconnect();
   })
   .catch((e) => {
     console.error(`\n❌ ${errorText(e)}\n`);

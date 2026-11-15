@@ -13,7 +13,7 @@
 # start. Logs: .data/tiktok-post/post.log.
 #
 # Every ad that went up today, posted when Kigali scrolls (2026-11-07, plan B). This tick picks
-# every postable home whose ad went up today or yesterday (3 to 15, pickFresh), renders the first,
+# every postable home whose ad went up today or yesterday (4 to 5, pickFresh; the 24 h cap, CADENCE in tiktok-post-pure), renders the first,
 # posts it, then renders ahead for the 08:30 slot. The later slots (tiktok-upload-retry.sh: 08:30,
 # 12:30, 13:30, then every 30 minutes from 17:00 to 21:30) each post their share and render ahead,
 # and the evening ones first add the 15:00 sweep's ads. TikTok spreads reach per account: three
@@ -27,7 +27,7 @@ LOCK="$LOGDIR/.post.lock"
 # text and logo stripped and nothing of ours burned on, their sound kept with spoken numbers
 # muted, the code + WhatsApp + credit in the caption only. A render whose strip leaves text is
 # REJECTED and never uploads. "fresh" (2026-11-07): every postable ad from today or yesterday,
-# 3 to 15 a day (TIKTOK_POSTS_MIN / TIKTOK_POSTS_MAX). A number fixes the day's count; 0 holds
+# at most the 24 h cap a day, 5 by default (TIKTOK_POSTS_MIN / TIKTOK_POSTS_MAX). A number fixes the day's count; 0 holds
 # the lane.
 PER_DAY="${TIKTOK_POSTS_PER_DAY:-fresh}"
 # How this slot uploads. "spread" renders and posts the slot's share of the day (slotQuota). A

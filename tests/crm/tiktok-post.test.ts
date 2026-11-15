@@ -52,6 +52,11 @@ import {
   aheadRenders,
   repostReach,
   repostLine,
+  CADENCE,
+  postsInWindow,
+  windowRoom,
+  cadenceEvidence,
+  cadenceVerdict,
   codePattern,
   POSTS_CEILING,
   refInText,
@@ -774,30 +779,34 @@ describe('slotQuota', () => {
     }
     return { out, posts };
   };
-  it('has the 16 pre-02ef707 slots: 07:00, then :30 past 08–22 (lever 6 rolled back)', () => {
-    expect(SLOT_TIMES.map(clock)).toEqual(['07:00', '08:30', '09:30', '10:30', '11:30', '12:30', '13:30', '14:30', '15:30', '16:30', '17:30', '18:30', '19:30', '20:30', '21:30', '22:30']);
-    expect(SLOT_TIMES.filter((t) => t >= EVENING_FROM)).toHaveLength(5);
+  it('has the 5 slots of the 24 h cap, all already cron times', () => {
+    expect(SLOT_TIMES.map(clock)).toEqual(['07:00', '11:30', '15:30', '18:30', '20:30']);
+    expect(SLOT_TIMES.filter((t) => t >= EVENING_FROM)).toHaveLength(2);
   });
-  it('spreads an 11-home day one at a time from 07:00', () => {
-    const { out, posts } = day(11);
-    expect(out).toBe(11);
+  it('spreads a 5-home day one at a time, from 07:00', () => {
+    const { out, posts } = day(5);
+    expect(out).toBe(5);
     expect(Math.max(...Object.values(posts))).toBe(1);
     expect(posts['07:00']).toBe(1);
   });
   it('spreads a 3-home day through the day, not all in the morning', () => {
     const { posts } = day(3);
-    expect(Object.entries(posts).filter(([, q]) => q).map(([t]) => t)).toEqual(['07:00', '12:30', '17:30']);
+    expect(Object.entries(posts).filter(([, q]) => q).map(([t]) => t)).toEqual(['07:00', '11:30', '18:30']);
   });
-  it('a full 15-home day posts every home by 22:30, one a slot but the first', () => {
+  it('a full ceiling day posts every home by the last slot, one a slot', () => {
     const { out, posts } = day(POSTS_CEILING);
     expect(out).toBe(POSTS_CEILING);
     expect(Math.max(...Object.values(posts))).toBe(1);
   });
   it('a missed day catches up two at a time and still finishes the evening', () => {
-    const { out, posts } = day(8, SLOT_TIMES.filter((t) => t >= EVENING_FROM));
-    expect(out).toBe(8);
+    const { out, posts } = day(4, SLOT_TIMES.filter((t) => t >= EVENING_FROM));
+    expect(out).toBe(4);
     expect(posts['18:30']).toBe(2);
     expect(Math.max(...Object.values(posts))).toBe(2);
+  });
+  it('the other cron firings (not a slot) get a quota of 0 once the slot is done', () => {
+    expect(slotQuota(5, 1, at('08:30'))).toBe(0);
+    expect(slotQuota(5, 3, at('17:30'))).toBe(0);
   });
   it('posts nothing before the first slot, or once the day is out', () => {
     expect(slotQuota(5, 0, at('06:00'))).toBe(0);
@@ -812,10 +821,10 @@ describe('slotQuota', () => {
 describe('nextSlotGap / aheadRenders', () => {
   const at = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3));
   it('measures the minutes to the next slot, none after the last', () => {
-    expect(nextSlotGap(at('07:00'))).toBe(90);
-    expect(nextSlotGap(at('13:30'))).toBe(60);
-    expect(nextSlotGap(at('22:00'))).toBe(30);
-    expect(nextSlotGap(at('22:30'))).toBeNull();
+    expect(nextSlotGap(at('07:00'))).toBe(270);
+    expect(nextSlotGap(at('14:30'))).toBe(60);
+    expect(nextSlotGap(at('20:00'))).toBe(30);
+    expect(nextSlotGap(at('20:30'))).toBeNull();
   });
   it('renders up to 3 ahead before an hour-long gap, 1 before a half-hour one', () => {
     expect(aheadRenders(90, 10)).toBe(3);
@@ -919,5 +928,128 @@ describe('a day ahead: why homes stall and the buffer that covers it', () => {
     expect(line).toContain('3 homes queued, stalled today: 2 video not fetched');
     expect(line).not.toContain('render error');
     expect(shortfallLine('mkan.rw', '2026-11-09', 0, 1, {})).toContain('1 home queued)');
+  });
+});
+
+describe('the 24 h cap (CADENCE)', () => {
+  const H = 3_600_000;
+  const D = 24 * H;
+  const now = Date.UTC(2026, 10, 15, 12, 0, 0);
+  const ago = (h: number) => now - h * H;
+
+  it('defaults to 5, never below 3', () => {
+    expect(CADENCE.defaultCap).toBe(5);
+    expect(CADENCE.min).toBe(3);
+    expect(POSTS_CEILING).toBe(CADENCE.defaultCap);
+  });
+
+  describe('windowRoom / postsInWindow', () => {
+    it('counts only the last 24 h', () => {
+      expect(postsInWindow([ago(1), ago(23), ago(25), ago(30)], now)).toBe(2);
+    });
+    it('is the cap less the posts in the window, never negative', () => {
+      expect(windowRoom(5, [], now)).toBe(5);
+      expect(windowRoom(5, [ago(1), ago(2), ago(3)], now)).toBe(2);
+      expect(windowRoom(5, [ago(1), ago(2), ago(3), ago(4), ago(5)], now)).toBe(0);
+      expect(windowRoom(5, Array.from({ length: 9 }, (_, i) => ago(i + 1)), now)).toBe(0);
+    });
+    it('frees room as old posts age out', () => {
+      const ats = [ago(23.5), ago(10), ago(9), ago(8), ago(7)];
+      expect(windowRoom(5, ats, now)).toBe(0);
+      expect(windowRoom(5, ats, now + H)).toBe(1);
+    });
+  });
+
+  /** Six days of 7 posts a day, ~3 h apart, from 8 days back: positions 1-5 at 140 views, 6-7 at 6. */
+  const cliff = () => {
+    const posts: { postedAt: number; views: number | null }[] = [];
+    for (let day = 0; day < 6; day++) {
+      const start = now - (day * 2 + 3) * D;
+      for (let k = 0; k < 7; k++) posts.push({ postedAt: start + k * 3 * H, views: k < 5 ? 140 : 6 });
+    }
+    return posts;
+  };
+
+  describe('cadenceEvidence', () => {
+    const posts = cliff();
+    const all = posts.map((p) => p.postedAt);
+    it('finds the cliff after position 5', () => {
+      const ev = cadenceEvidence(posts, all, 5, now);
+      expect(ev.rows.map((r) => r.position)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+      expect(ev.rows[0]).toMatchObject({ n: 6, median: 140, shareOver50: 1 });
+      expect(ev.rows[5]).toMatchObject({ n: 6, median: 6, shareOver50: 0 });
+      expect(ev.baseline).toEqual({ n: 18, median: 140 });
+      expect(ev.atCap).toEqual({ n: 6, median: 140 });
+      expect(ev.ratio).toBe(1);
+    });
+    it('a cap of 6 sits on the cliff: low ratio', () => {
+      const ev = cadenceEvidence(posts, all, 6, now);
+      expect(ev.atCap).toEqual({ n: 6, median: 6 });
+      expect(ev.ratio).toBeCloseTo(6 / 140);
+    });
+    it('leaves out posts with no views, under 48 h old, or older than 28 days', () => {
+      const extra = [
+        { postedAt: ago(10), views: 500 },
+        { postedAt: ago(47), views: 500 },
+        { postedAt: now - 29 * D, views: 500 },
+        { postedAt: ago(100), views: null },
+      ];
+      const ev = cadenceEvidence([...posts, ...extra], [...all, ...extra.map((p) => p.postedAt)], 5, now);
+      expect(ev.baseline.n).toBe(18);
+      expect(ev.baseline.median).toBe(140);
+    });
+    it('is empty with nothing to judge', () => {
+      expect(cadenceEvidence([], [], 5, now)).toEqual({ rows: [], baseline: { n: 0, median: null }, atCap: { n: 0, median: null }, ratio: null });
+    });
+  });
+
+  describe('cadenceVerdict', () => {
+    const old = { cap: 5, changedAt: now - 8 * D };
+    const ev = (ratio: number | null, n = 6) => ({
+      rows: [],
+      baseline: { n, median: 140 },
+      atCap: { n, median: ratio === null ? null : Math.round(140 * ratio) },
+      ratio,
+    });
+    it('raises by one when the cap position holds up', () => {
+      const v = cadenceVerdict(old, ev(0.8), now);
+      expect(v).toMatchObject({ action: 'raise', next: 6 });
+      expect(v.why).toContain('80%');
+      expect(v.why).toContain('140-view baseline');
+    });
+    it('lowers by one when it collapses', () => {
+      expect(cadenceVerdict(old, ev(0.05), now)).toMatchObject({ action: 'lower', next: 4 });
+    });
+    it('holds in between', () => {
+      expect(cadenceVerdict(old, ev(0.35), now)).toMatchObject({ action: 'hold', next: 5 });
+    });
+    it('raises at exactly 0.5, holds at exactly 0.25', () => {
+      expect(cadenceVerdict(old, ev(0.5), now).action).toBe('raise');
+      expect(cadenceVerdict(old, ev(0.25), now).action).toBe('hold');
+    });
+    it('never goes above the max or below the min', () => {
+      expect(cadenceVerdict({ cap: 8, changedAt: now - 8 * D }, ev(0.9), now)).toMatchObject({ action: 'hold', next: 8 });
+      const low = cadenceVerdict({ cap: 3, changedAt: now - 8 * D }, ev(0.01), now);
+      expect(low).toMatchObject({ action: 'hold', next: 3 });
+      expect(low.why).toContain('never stops');
+    });
+    it('holds with too few posts', () => {
+      const v = cadenceVerdict(old, ev(0.9, 4), now);
+      expect(v.action).toBe('hold');
+      expect(v.why).toContain('too few');
+      expect(cadenceVerdict(old, ev(null, 0), now).action).toBe('hold');
+    });
+    it('holds when the cap changed less than 7 days ago', () => {
+      const v = cadenceVerdict({ cap: 5, changedAt: now - 3 * D }, ev(0.9), now);
+      expect(v).toMatchObject({ action: 'hold', next: 5 });
+      expect(v.why).toContain('3 day');
+    });
+    it('reads the synthetic cliff: cap 5 raises, cap 6 lowers', () => {
+      const posts: { postedAt: number; views: number | null }[] = [];
+      for (let day = 0; day < 6; day++) for (let k = 0; k < 7; k++) posts.push({ postedAt: now - (day * 2 + 3) * D + k * 3 * H, views: k < 5 ? 140 : 6 });
+      const all = posts.map((p) => p.postedAt);
+      expect(cadenceVerdict(old, cadenceEvidence(posts, all, 5, now), now).action).toBe('raise');
+      expect(cadenceVerdict({ cap: 6, changedAt: old.changedAt }, cadenceEvidence(posts, all, 6, now), now).action).toBe('lower');
+    });
   });
 });

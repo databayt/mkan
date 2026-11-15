@@ -45,7 +45,7 @@ import { homedir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { chromium, type Page, type Response } from 'playwright';
 import { postToMkan, recordRun } from './notify';
-import { clock, dayPieces, errorText, kigaliMinute, slotQuota, type Ledger } from './tiktok-post-pure';
+import { CADENCE, clock, dayPieces, errorText, kigaliMinute, postsInWindow, slotQuota, windowRoom, type Ledger } from './tiktok-post-pure';
 import { ownTikTok } from './tiktok-pure';
 import { parseSoundRow, pickSound, type SoundUse } from './tiktok-v2-pure';
 
@@ -438,14 +438,67 @@ function slotCap(pieces: Piece[], done: Record<string, string>, pending: Record<
   return { out, room: Number.isFinite(upto) ? Math.max(0, upto - out) : Infinity, total: pieces.length };
 }
 
+/** The 24 h cap in force: cadence.json's cap, else the default (a missing file is "just set"). */
+function cadenceCap(): number {
+  try {
+    const j = JSON.parse(readFileSync(join(__dirname, '.data', 'tiktok', 'cadence.json'), 'utf8')) as { cap?: unknown };
+    if (typeof j.cap === 'number' && Number.isInteger(j.cap) && j.cap >= 1) return j.cap;
+  } catch {
+    /* default */
+  }
+  return CADENCE.defaultCap;
+}
+
+/**
+ * When every post in the last 24 h went up: yesterday's and today's uploads.json plus clicked-and-
+ * waiting pending.json (both by day folder), and the ledger table's POSTED rows when the DB answers,
+ * whichever counts more (a post made by hand sits only in the table).
+ */
+async function postedAts24h(now = Date.now()): Promise<number[]> {
+  const local: number[] = [];
+  for (const d of [date, new Date(Date.parse(`${date}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10)]) {
+    for (const f of ['uploads.json', 'pending.json']) {
+      for (const v of Object.values(readJson<Record<string, string>>(join(DATA, d, f), {}))) {
+        const t = Date.parse(v);
+        if (Number.isFinite(t)) local.push(t);
+      }
+    }
+  }
+  let table: number[] = [];
+  try {
+    const { db } = await import('../../src/lib/db');
+    const rows = await db.tikTokPost.findMany({ where: { status: 'POSTED', postedAt: { gt: new Date(now - CADENCE.windowH * 3_600_000) } }, select: { postedAt: true } });
+    table = rows.map((r) => r.postedAt!.getTime());
+    await db.$disconnect().catch(() => {}); // reconnects lazily if markRow needs it
+  } catch (e) {
+    console.warn(`  ! 24 h cap: ledger table not read (${errorText(e).slice(0, 100)}); counting the day folders only`);
+  }
+  return postsInWindow(table, now) > postsInWindow(local, now) ? table : local;
+}
+
+/** The slot's room under the 24 h cap, with the line that says so when it bites. */
+async function capRoom(room: number, now = Date.now()): Promise<{ room: number; note: string | null }> {
+  if (flag('force')) return { room, note: null };
+  const cap = cadenceCap();
+  const ats = await postedAts24h(now);
+  const wr = windowRoom(cap, ats, now);
+  if (wr >= room) return { room, note: null };
+  const out = postsInWindow(ats, now);
+  return { room: wr, note: `24 h cap ${cap}: ${out} out in the last 24 h, this slot ${wr ? `posts ${wr}` : 'waits'}` };
+}
+
 /** --plan: the slot's dry run — which pieces it would post, read from the day's files only. --at=HH:MM plays another slot's time. */
-function plan(): void {
+async function plan(): Promise<void> {
   const pieces = todaysPieces();
   const done = readJson<Record<string, string>>(UPLOADS, {});
   const pending = readJson<Record<string, string>>(PENDING, {});
   const at = /^(\d{1,2}):(\d{2})$/.exec(argv('at'));
   const minute = at ? Number(at[1]) * 60 + Number(at[2]) : kigaliMinute();
-  const { out, room, total } = slotCap(pieces, done, pending, minute);
+  const sc = slotCap(pieces, done, pending, minute);
+  const { out, total } = sc;
+  const capped = await capRoom(sc.room);
+  const room = capped.room;
+  if (capped.note) console.log(capped.note);
   const due = pieces.filter((x) => !done[x.key] && !pending[x.key]);
   const now = due.slice(0, room === Infinity ? due.length : room);
   const mode = flag('spread') ? `spread, the ${clock(minute)} slot's share is ${room}` : `upto=${argv('upto') || 'all'}`;
@@ -453,7 +506,7 @@ function plan(): void {
 }
 
 async function main(): Promise<void> {
-  if (flag('plan')) return plan();
+  if (flag('plan')) return await plan();
   refuseUnattended('uploading to the public TikTok page');
   const pieces = todaysPieces();
   const done = readJson<Record<string, string>>(UPLOADS, {});
@@ -466,7 +519,11 @@ async function main(): Promise<void> {
   }
   const unsure = pieces.filter((x) => !done[x.key] && pending[x.key] && !flag('force'));
   const ready = pieces.filter((x) => flag('force') || (!done[x.key] && !pending[x.key]));
-  const { out, room, total } = slotCap(pieces, done, pending);
+  const sc = slotCap(pieces, done, pending);
+  const { out, total } = sc;
+  const capped = await capRoom(sc.room);
+  const room = capped.room;
+  if (capped.note) console.log(capped.note);
   const due = room === Infinity || flag('force') ? ready : ready.slice(0, room);
   // --spread counts the homes that still have to render, too.
   const later = flag('spread') ? Math.max(0, total - out - due.length) : ready.length - due.length;

@@ -151,6 +151,7 @@
     "tt:reconcile": "tsx scripts/crm/tiktok-post.ts reconcile",
     "tt:posted": "tsx scripts/crm/tiktok-post.ts posted",
     "tt:stats": "tsx scripts/crm/tiktok-post.ts stats",
+    "tt:cadence": "tsx scripts/crm/tiktok-post.ts cadence",
     "tt:ask": "tsx scripts/crm/tiktok-post.ts ask",
     "tt:consent": "tsx scripts/crm/tiktok-post.ts consent",
     "tt:upload": "tsx scripts/crm/tiktok-upload.ts",

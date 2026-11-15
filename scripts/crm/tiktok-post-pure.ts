@@ -170,14 +170,17 @@ export function pickToday(rows: PostRow[], ledger: Ledger, consented: ReadonlySe
  * ad posted after the 18:00 sweep only reaches mkan in the 06:00 one. The pick runs at 07:00 and
  * again in each evening slot, after the 18:00 sweep has fetched the day's ads. A day is capped at
  * POSTS_CEILING, because TikTok's own Content Sharing Guidelines cap automated posting at about
- * 15 a day per account; whatever the cap holds back is still yesterday's ad tomorrow. A thin day
+ * 15 a day per account (and since 11-15 by the page's own 24 h cap, CADENCE); whatever the cap holds back is still yesterday's ad tomorrow. A thin day
  * tops up to POSTS_FLOOR from the older pool.
  */
 export const AD_DAYS = 2;
 // 11-09: 3 → 10. "Ready" counts ads up to FRESH_DAYS old, but the fresh window is AD_DAYS (2), so
 // a floor of 3 left ~80% of ready homes unposted (21 posted of 91 ready in 7 days).
-export const POSTS_FLOOR = 10;
-export const POSTS_CEILING = 15;
+// 11-15: 10 → 4 and 15 → 5. The page's own numbers (see CADENCE and docs/tiktok-playbook.md): a post
+// with 6+ posts in the 24 h before it got a median ~6 views, one with 0–5 got ~140. The pick is cut
+// to the 24 h cap; the cap itself (cadence.json) moves one step a week on the evidence.
+export const POSTS_FLOOR = 4;
+export const POSTS_CEILING = 5;
 const KIGALI_UTC_OFFSET = 7_200_000; // CAT, UTC+2, no daylight saving
 
 /** The midnight (in Kigali) that starts the day `now` falls in, in ms. */
@@ -219,13 +222,12 @@ const minuteOf = (hhmm: string): number => {
 export const clock = (minute: number): string => `${String(Math.floor(minute / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`;
 
 /**
- * The upload slots, in minutes of the Kigali day. Lever 6 (the 11-07 evening spread) lost its test
- * on 11-09 (69 views a post against the 139 baseline), so these are the pre-02ef707 slots again:
- * 07:00 is tiktok-post.sh (the morning pick and the first post), then :30 past every hour from
- * 08 to 22. 08:30–17:30 is tiktok-upload-retry.sh; 18:30–22:30 is its evening copy, which first
- * adds the 15:00 sweep's ads. install-tiktok-post.sh schedules these same times.
+ * The upload slots, in minutes of the Kigali day: 5 a day, matching the 24 h cap (CADENCE). All five
+ * are times the installed Hermes crons already fire (07:00 is tiktok-post.sh, the others are the
+ * upload retry slots), so no cron changes: the other firings just get a quota of 0. 18:30 and 20:30
+ * are the evening copy, which first adds the 15:00 sweep's ads.
  */
-export const SLOT_TIMES: readonly number[] = ['07:00', ...Array.from({ length: 15 }, (_, i) => `${String(8 + i).padStart(2, '0')}:30`)].map(minuteOf);
+export const SLOT_TIMES: readonly number[] = ['07:00', '11:30', '15:30', '18:30', '20:30'].map(minuteOf);
 /** Where the evening copy starts, for the day/evening split of the page's numbers. */
 export const EVENING_FROM = minuteOf('18:30');
 /**
@@ -254,6 +256,100 @@ export function slotQuota(total: number, out: number, minute: number, slots: rea
   const target = Math.ceil((total * k) / slots.length);
   const pace = Math.ceil(left / (slots.length - k + 1));
   return Math.max(0, Math.min(target - out, pace, maxPerSlot));
+}
+
+/**
+ * The cadence cap (2026-11-15). On the page's own posts (n=59, at least a day old), a post with 0–5
+ * posts in the 24 h before it got a median ~140 views (14 of 14 reached 50); one with 6+ got ~6
+ * (0 of 45 reached 50), and the over-posting also suppressed the next day's first posts. So at most
+ * `defaultCap` posts in any rolling 24 h. The weekly loop (cadenceVerdict) moves the cap one step
+ * at a time inside [min, max]. House posting is never switched off: `min` is 3.
+ */
+export const CADENCE = {
+  defaultCap: 5,
+  min: 3,
+  max: 8,
+  windowH: 24,
+  judgeAgeH: 48,
+  lookbackDays: 28,
+  minN: 5,
+  raiseAt: 0.5,
+  lowerBelow: 0.25,
+  everyDays: 7,
+} as const;
+
+const HOUR = 3_600_000;
+
+/** How many of `postedAts` fall in the `hours` before `now`. */
+export function postsInWindow(postedAts: readonly number[], now: number, hours: number = CADENCE.windowH): number {
+  return postedAts.filter((t) => t > now - hours * HOUR && t <= now).length;
+}
+
+/** How many more posts the rolling 24 h cap allows right now. */
+export function windowRoom(cap: number, postedAts: readonly number[], now: number): number {
+  return Math.max(0, cap - postsInWindow(postedAts, now));
+}
+
+export type CadenceRow = { position: number; n: number; median: number | null; shareOver50: number };
+export type CadenceEvidence = {
+  rows: CadenceRow[];
+  baseline: { n: number; median: number | null };
+  atCap: { n: number; median: number | null };
+  ratio: number | null;
+};
+
+/**
+ * The cliff, measured. Each post with views, at least judgeAgeH old and inside lookbackDays, is put
+ * at position = (posts in the 24 h before it) + 1. `baseline` = median views at positions 1–3,
+ * `atCap` = at position == cap, `ratio` = atCap / baseline.
+ */
+export function cadenceEvidence(
+  posts: readonly { postedAt: number; views: number | null }[],
+  allPostedAts: readonly number[],
+  cap: number,
+  now: number,
+): CadenceEvidence {
+  const judged = posts
+    .filter((p): p is { postedAt: number; views: number } => p.views !== null)
+    .filter((p) => p.postedAt <= now - CADENCE.judgeAgeH * HOUR && p.postedAt > now - CADENCE.lookbackDays * DAY)
+    .map((p) => ({ views: p.views, position: allPostedAts.filter((t) => t < p.postedAt && t >= p.postedAt - CADENCE.windowH * HOUR).length + 1 }));
+  const byPos = new Map<number, number[]>();
+  for (const j of judged) byPos.set(j.position, [...(byPos.get(j.position) ?? []), j.views]);
+  const rows = [...byPos.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([position, v]) => ({ position, n: v.length, median: median(v), shareOver50: v.filter((x) => x >= 50).length / v.length }));
+  const base = judged.filter((j) => j.position <= 3).map((j) => j.views);
+  const at = judged.filter((j) => j.position === cap).map((j) => j.views);
+  const bm = median(base);
+  const am = median(at);
+  return {
+    rows,
+    baseline: { n: base.length, median: bm },
+    atCap: { n: at.length, median: am },
+    ratio: bm && am !== null ? am / bm : null,
+  };
+}
+
+export type CadenceVerdict = { next: number; action: 'raise' | 'lower' | 'hold'; why: string };
+
+/** One step a week: raise when the cap's own position holds up against the baseline, lower when it does not. */
+export function cadenceVerdict(state: { cap: number; changedAt: number }, ev: CadenceEvidence, now: number): CadenceVerdict {
+  const { cap } = state;
+  const hold = (why: string): CadenceVerdict => ({ next: cap, action: 'hold', why });
+  const days = (now - state.changedAt) / DAY;
+  if (days < CADENCE.everyDays) return hold(`the cap changed ${Math.floor(days)} day(s) ago; it moves once every ${CADENCE.everyDays} days`);
+  if (ev.baseline.n < CADENCE.minN || ev.atCap.n < CADENCE.minN || ev.ratio === null) {
+    return hold(`too few posts to judge: ${ev.baseline.n} at positions 1–3, ${ev.atCap.n} at position ${cap} (need ${CADENCE.minN} each)`);
+  }
+  const pct = Math.round(ev.ratio * 100);
+  const facts = `posts at position ${cap} held ${pct}% of the ${ev.baseline.median}-view baseline (n=${ev.atCap.n})`;
+  if (ev.ratio >= CADENCE.raiseAt) {
+    return cap >= CADENCE.max ? hold(`${facts}, but ${CADENCE.max} is the ceiling`) : { next: cap + 1, action: 'raise', why: facts };
+  }
+  if (ev.ratio < CADENCE.lowerBelow) {
+    return cap <= CADENCE.min ? hold(`${facts}, but ${CADENCE.min} is the floor: house posting never stops`) : { next: cap - 1, action: 'lower', why: facts };
+  }
+  return hold(`${facts}: between ${CADENCE.lowerBelow * 100}% and ${CADENCE.raiseAt * 100}%, so the cap stays`);
 }
 
 /** Minutes from `minute` to the day's next slot, or null after the last one. */
@@ -317,7 +413,7 @@ export function repostLine(r: ReturnType<typeof repostReach>, chats: number | nu
   return [
     `broker reposts a day or more old, last 7 days: ${r.week}, median ${n(r.median)} views (day ${n(r.dayMedian)}, evening ${n(r.eveningMedian)}; the week before ${n(r.prevMedian)})`,
     chats === null ? null : `chats from the posts (a posted code quoted, or a TikTok link): ${chats}`,
-    r.halved ? '⚠️ repost views halved in a week: TikTok may be holding reposts back, so lower TIKTOK_POSTS_MAX' : null,
+    r.halved ? '⚠️ repost views halved in a week: TikTok may be holding reposts back, see the cadence line for the 24 h cap' : null,
   ]
     .filter(Boolean)
     .join(' · ');
