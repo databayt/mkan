@@ -13,6 +13,7 @@ import { db } from "@/lib/db";
 import { REAL_PERSON } from "@/lib/monetize/team";
 import type { DealEventCtx, DealStep } from "@/components/agent/deal-event-pure";
 import { enqueueCrm } from "./crm-ops";
+import { isOurPhone } from "./ours";
 import { buildDealFields, buildTenantFields, kCode, parseDealKey, tenantKeyOf, tenantStageFor, viewingTask, type DealFacts } from "./deal-sync-pure";
 
 /** The tenant's profile, from the chat the deal grew from or their number. */
@@ -36,6 +37,8 @@ async function factsOf(dealId: string | null | undefined): Promise<DealFacts> {
 export async function crmStep(step: DealStep, ctx: DealEventCtx, key: string): Promise<void> {
   const profile = await profileOf(ctx);
   if (profile && !profile.real) return;
+  // A team, test or personal number typed into a web chat is still ours (REAL_PERSON reads only waPhone).
+  if (await isOurPhone(ctx.tenantPhone)) return;
   const tenantKey = tenantKeyOf(profile?.id, ctx.tenantPhone);
   const at = ctx.at ?? new Date();
 
@@ -67,6 +70,8 @@ async function dealIsReal(key: string): Promise<boolean> {
     let taskId: string | null = parsed?.kind === "task" ? parsed.taskId : null;
     if (!taskId && parsed?.kind === "deal") taskId = (await db.deal.findUnique({ where: { id: parsed.dealId }, select: { taskId: true } }))?.taskId ?? null;
     if (!taskId) return true;
+    const latest = await db.deal.findFirst({ where: { taskId }, orderBy: { createdAt: "desc" }, select: { tenantPhone: true } });
+    if (await isOurPhone(latest?.tenantPhone)) return false;
     const profileId = (await db.agentTask.findUnique({ where: { id: taskId }, select: { profileId: true } }))?.profileId;
     if (!profileId) return true;
     const rows = await db.$queryRaw<{ ok: number }[]>(Prisma.sql`SELECT 1 AS ok FROM "AgentProfile" p WHERE p.id = ${profileId} AND ${REAL_PERSON}`);

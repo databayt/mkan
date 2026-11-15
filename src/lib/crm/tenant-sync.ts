@@ -7,6 +7,8 @@ import "server-only";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { REAL_PERSON } from "@/lib/monetize/team";
+import { testPhones } from "@/components/agent/broker-sends";
+import { isOurPhone } from "./ours";
 import { readState, writeState } from "@/components/agent/wa-state";
 import { chatSig } from "@/components/agent/chat-link";
 import { publicAppUrl } from "../../../scripts/crm/public-links";
@@ -88,8 +90,11 @@ export async function sweepTenants(opts: { limit?: number; dry?: boolean; since?
   const { rows, last } = await changedTenants(since, opts.limit ?? 100);
   if (rows.length === 0) return { queued: 0, cursor: cursor.at ?? null };
   const stopped = new Set(await readState<string[]>("tenant-stop", []));
+  const team = await testPhones().catch(() => new Set<string>());
   let queued = 0;
   for (const row of rows) {
+    // A team / test / personal number left on the web is ours, whatever the profile says (ours.ts).
+    if (await isOurPhone(row.waPhone ?? row.webPhone, team)) continue;
     const fields = await sweepFieldsFor(row, stopped);
     if (!fields.$phone) continue;
     queued += 1;
