@@ -180,6 +180,35 @@ the ad; public search, listing pages and the sitemap never show them.
 
 Plan of record: the Kigali rental agent plan (2026-10-17), from the "Kigali Rental Chatbot Plan" discussion.
 
+## Abdout in the loop — the first 10 deals (2026-11-15)
+
+Abdout's call: everything stays automatic, **no approvals**. He watches every deal and goes to every viewing
+with the tenant until 10 deals are PAID; then the feed folds into the 20:00 day line.
+
+```
+any deal step ─► deal-event.ts dealEvent(step, ctx)          (one call per step, never throws)
+                 ├─ loop-feed.ts  one line to MKAN_REP_WHATSAPP (live while paid < 10; MKAN_LOOP_FEED=live|digest|off)
+                 └─ src/lib/crm   a CrmOp for Twenty, the CRM of record (see src/lib/crm/README.md)
+steps: PICKED · BROKER_ASKED (availability.ts) · BROKER_YES / LOST taken (broker.ts applyAnswer) · TIME_PROPOSED
+       (viewing-loop.ts) · VIEWING_BOOKED (deal.ts bookViewing — the one booking path) · VIEWED / SIGNED / PAID /
+       LOST (deal.ts setDealStatus — rep words, deal:status, /monetize, the Twenty webhook) · STALLED (quiet-nudge,
+       failed-handoff). Key: "<taskId>:<listingId>" from the pick to the payment (deal-event-pure.ts dealKey).
+07:00 / 20:00 Kigali ─► api/cron/loop-schedule: today's / tomorrow's viewings, each with the time, home, meeting
+       point, tenant, broker, terms to confirm, Mkan's 10% share, a Google Calendar link, three questions to ask
+       the tenant and the close words; an empty day still gets a line; Sunday 20:00 adds the week's numbers.
+       2 h before: a reminder; 3 h after: "How did K5811 go?" (deal.ts viewingReminders).
+his words (rep-word*.ts, from MKAN_REP_WHATSAPP, en + ar): signed / paid / viewed / lost K… · deals ·
+       take K… / back K… (pause / resume the bot on that tenant's chat, the 12 h human hold) · note K… ·
+       cost K… 3000 (Deal.tripCost) · off 2026-11-20 | tomorrow · numbers (loop-numbers*.ts: each figure with
+       what it means and when to act; the pivot gate is 20 real WhatsApp tenants and 1 viewing by 2026-11-29)
+```
+
+- Viewing times keep a gap for him between viewings (`MKAN_VIEWING_GAP_MIN`, 90) and skip his `off` days
+  (WaState `rep-off:<day>`), inside `MKAN_VIEWING_HOURS` / `MKAN_VIEWING_DAYS`.
+- Messages to him skip the daily cap and may go 06:00–22:00 (`scripts/wa/outbox-pure.ts` `isRepLabel`); labels
+  `loop:*` / `rep-*` are never sent twice.
+- Nothing here runs until `MKAN_REP_WHATSAPP` is set.
+
 ## Unmet demand (2026-10-21)
 
 A search with nothing that fits — or only widened homes — opens a `TenantRequest` (14 days) in

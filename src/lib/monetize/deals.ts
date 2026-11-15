@@ -3,7 +3,7 @@ import "server-only";
 import { db } from "@/lib/db";
 import { scrubTitle } from "@/lib/redact";
 
-import { sortDeals, type DealRow, type DealStatusKey } from "./deal-pipeline";
+import { firstTenOf, sortDeals, type DealRow, type DealStatusKey, type FirstTen } from "./deal-pipeline";
 
 /** The deals an admin acts on: every open one, and the ones closed in the last 30 days. Admin only (page.tsx). */
 export async function loadDeals(now = new Date()): Promise<DealRow[]> {
@@ -85,4 +85,10 @@ export async function loadHeldIntros(): Promise<HeldIntro[]> {
       since: v.heldAt,
     };
   });
+}
+
+/** The first-10 tally over every deal ever (a small table: one row per booked viewing). Admin only. */
+export async function loadFirstTen(): Promise<FirstTen> {
+  const rows = await db.deal.findMany({ select: { status: true, mkanShare: true, tripCost: true } });
+  return firstTenOf(rows.map((r) => ({ status: r.status as DealStatusKey, mkanShare: r.mkanShare, tripCost: r.tripCost })));
 }

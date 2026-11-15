@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { markDealPaid, sendMomoShareRequest, sendShareRequest } from "@/lib/actions/monetize-actions";
 import { formatNumber } from "@/lib/i18n/formatters";
-import { nextStepOf, type DealRow } from "@/lib/monetize/deal-pipeline";
+import { nextStepOf, type DealRow, type FirstTen } from "@/lib/monetize/deal-pipeline";
 import type { HeldIntro } from "@/lib/monetize/deals";
 import { cn } from "@/lib/utils";
 
@@ -18,7 +18,7 @@ import { GRADIENT, INK, LINE, MUTED } from "./listing-ui";
 const RWF = (n: number, locale: Locale) => `${formatNumber(Math.round(n), locale)} RWF`;
 const SUBMIT = "h-10 rounded-[10px] border-0 px-4 text-sm font-semibold text-white hover:opacity-95";
 
-export function DealsSection({ deals, labels, locale, payoutSet, held = [], momoMode = null }: { deals: DealRow[]; labels: MonetizeLabels; locale: Locale; payoutSet: boolean; held?: HeldIntro[]; momoMode?: "sandbox" | "production" | null }) {
+export function DealsSection({ deals, labels, locale, payoutSet, held = [], momoMode = null, firstTen = null }: { deals: DealRow[]; labels: MonetizeLabels; locale: Locale; payoutSet: boolean; held?: HeldIntro[]; momoMode?: "sandbox" | "production" | null; firstTen?: FirstTen | null }) {
   const L = labels.deals;
   const now = new Date();
   return (
@@ -27,6 +27,25 @@ export function DealsSection({ deals, labels, locale, payoutSet, held = [], momo
         {L.title}
       </h2>
       <p className={cn("mt-1 text-sm", MUTED)}>{L.subtitle}</p>
+      {firstTen && (
+        // The first 10 (2026-11-15): Abdout goes to every viewing until 10 deals are paid — how far, and what each left.
+        <div className={cn("mt-4 rounded-xl border p-4", LINE)}>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <p className={cn("text-base font-semibold", INK)}>{L.firstTen.title}</p>
+            <p className={cn("text-base font-semibold tabular-nums", INK)}>{fill(L.firstTen.paid, { paid: formatNumber(firstTen.paid, locale), target: formatNumber(firstTen.target, locale) })}</p>
+          </div>
+          <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted" aria-hidden>
+            <div className="h-full rounded-full bg-foreground" style={{ width: `${Math.min(100, (firstTen.paid / firstTen.target) * 100)}%` }} />
+          </div>
+          <dl className={cn("mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-sm md:grid-cols-4", MUTED)}>
+            <div><dt>{L.firstTen.open}</dt><dd className={cn("font-medium tabular-nums", INK)}>{formatNumber(firstTen.open, locale)}</dd></div>
+            <div><dt>{L.firstTen.revenue}</dt><dd className={cn("font-medium tabular-nums", INK)}>{RWF(firstTen.revenue, locale)}</dd></div>
+            <div><dt>{L.firstTen.trips}</dt><dd className={cn("font-medium tabular-nums", INK)}>{RWF(firstTen.tripCosts, locale)}</dd></div>
+            <div><dt>{L.firstTen.net}</dt><dd className={cn("font-medium tabular-nums", INK)}>{firstTen.netPerDeal == null ? L.firstTen.netNone : RWF(firstTen.netPerDeal, locale)}</dd></div>
+          </dl>
+          <p className={cn("mt-2 text-xs", MUTED)}>{L.firstTen.note}</p>
+        </div>
+      )}
       {held.length > 0 && (
         <div className="mt-4 rounded-xl border border-[#C13515] p-4">
           <p className={cn("text-base font-semibold", INK)}>{L.held.title}</p>

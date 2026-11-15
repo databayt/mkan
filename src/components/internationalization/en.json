@@ -7029,6 +7029,16 @@
         "off": "Broker sends are off, so the terms ask is held. Tap Yes on the \"broker asks on\" step below, or run pnpm wa:brokers gated: the sweep then sends it.",
         "tries": "The outbox dropped it three times. Send it by hand.",
         "send": "Open the chat"
+      },
+      "firstTen": {
+        "title": "First 10 deals",
+        "paid": "{paid} of {target} paid",
+        "open": "Open deals",
+        "revenue": "Mkan's share in",
+        "trips": "Trips to viewings",
+        "net": "Net per paid deal",
+        "netNone": "After the first paid deal",
+        "note": "Mkan's person goes to every viewing until 10 deals are paid; then the loop runs on its own. Log a trip from WhatsApp: cost K5811 3000."
       }
     },
     "setup": {

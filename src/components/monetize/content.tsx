@@ -1,6 +1,6 @@
 import type { Locale } from "@/components/internationalization/config";
 import { formatDate } from "@/lib/i18n/formatters";
-import type { DealRow } from "@/lib/monetize/deal-pipeline";
+import type { DealRow, FirstTen } from "@/lib/monetize/deal-pipeline";
 import type { LiveView } from "@/lib/monetize/live-shape";
 import type { MonetizeOverview } from "@/lib/monetize/load";
 import { cn } from "@/lib/utils";
@@ -32,6 +32,7 @@ export function MonetizeContent({
   canEdit = false,
   deals = null,
   heldIntros = [],
+  firstTen = null,
   payoutSet = false,
   momoMode = null,
 }: {
@@ -45,6 +46,8 @@ export function MonetizeContent({
   deals?: DealRow[] | null;
   /** Admin only: intros the line holds (deals.ts loadHeldIntros). */
   heldIntros?: HeldIntro[];
+  /** Admin only: how far the first 10 paid deals are (deals.ts loadFirstTen). */
+  firstTen?: FirstTen | null;
   payoutSet?: boolean;
   momoMode?: "sandbox" | "production" | null;
 }) {
@@ -63,7 +66,7 @@ export function MonetizeContent({
       </header>
 
       {data.score && <Scorecard score={data.score} reach={data.reach} intro={data.intro} path={data.path} labels={labels} locale={locale} />}
-      {canEdit && deals && <DealsSection deals={deals} labels={labels} locale={locale} payoutSet={payoutSet} held={heldIntros} momoMode={momoMode} />}
+      {canEdit && deals && <DealsSection deals={deals} labels={labels} locale={locale} payoutSet={payoutSet} held={heldIntros} momoMode={momoMode} firstTen={firstTen} />}
       {canEdit && <SetupSection state={data.setup ?? {}} labels={labels} locale={locale} />}
 
       <LiveCard initial={live} labels={labels.live} blocks={blocks} canEdit={canEdit} locale={locale} />

@@ -66,3 +66,35 @@ export function sortDeals(rows: DealRow[], now = new Date()): DealRow[] {
   const rank: Record<DealNext, number> = { sendShare: 0, askCommission: 1, awaitPayment: 2, followUp7d: 3, tenant24h: 4, booked: 5, paid: 6, lost: 7 };
   return [...rows].sort((a, b) => rank[nextStepOf(a, now).key] - rank[nextStepOf(b, now).key] || Date.parse(b.createdAt) - Date.parse(a.createdAt));
 }
+
+/**
+ * The first 10 deals (Abdout, 2026-11-15): he goes to every viewing until 10 deals are PAID — the same count
+ * that moves the loop from a live feed to a day line (loop-feed-pure.ts) — so the page shows how far that is
+ * and what each paid deal really left: Mkan's share in, minus what going to the viewings cost (Deal.tripCost,
+ * "cost K5811 3000" from his phone).
+ */
+export interface FirstTen {
+  paid: number;
+  target: number;
+  open: number;
+  /** Mkan's share on PAID deals, RWF. */
+  revenue: number;
+  /** Every trip logged, on any deal (a lost deal's visit cost money too), RWF. */
+  tripCosts: number;
+  /** (revenue − trip costs) / paid deals; null before the first paid deal. */
+  netPerDeal: number | null;
+}
+
+export function firstTenOf(rows: { status: DealStatusKey; mkanShare: number | null; tripCost: number | null }[], target = 10): FirstTen {
+  const paidRows = rows.filter((r) => r.status === "PAID");
+  const revenue = paidRows.reduce((s, r) => s + (r.mkanShare ?? 0), 0);
+  const tripCosts = rows.reduce((s, r) => s + (r.tripCost ?? 0), 0);
+  return {
+    paid: paidRows.length,
+    target,
+    open: rows.filter((r) => r.status === "VIEWING_BOOKED" || r.status === "VIEWED" || r.status === "SIGNED").length,
+    revenue,
+    tripCosts,
+    netPerDeal: paidRows.length ? Math.round((revenue - tripCosts) / paidRows.length) : null,
+  };
+}

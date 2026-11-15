@@ -7029,6 +7029,16 @@
         "off": "Kohereza ku bakomisiyoneri byarahagaritswe, bityo ubusabe bufashwe. Kanda Yego ku ntambwe yo gufungura cyangwa ukoreshe pnpm wa:brokers gated, hanyuma buzoherezwa.",
         "tries": "Byaguye incuro eshatu.Ohereza ubwawe.",
         "send": "Fungura ikiganiro"
+      },
+      "firstTen": {
+        "title": "Amasezerano 10 ya mbere",
+        "paid": "{paid} kuri {target} yishyuwe",
+        "open": "Amasezerano afunguye",
+        "revenue": "Umugabane wa Mkan wakiriwe",
+        "trips": "Ingendo zo gusura",
+        "net": "Inyungu kuri buri masezerano yishyuwe",
+        "netNone": "Nyuma y'amasezerano ya mbere yishyuwe",
+        "note": "Umuntu wa Mkan ajya mu isura ryose kugeza amasezerano 10 yishyuwe, hanyuma uruhererekane rukora rwonyine. Andika ikiguzi cy'urugendo kuri WhatsApp: cost K5811 3000."
       }
     },
     "setup": {
