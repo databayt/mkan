@@ -502,3 +502,25 @@ export function hostSinceFromTitle(title: string | undefined, baseIso?: string):
   base.setMonth(base.getMonth() - months);
   return base.toISOString().slice(0, 10);
 }
+
+/** Overall rating + count from a PDP's deferred state (listingRatingStats). */
+export function parsePdpRating(json: any): { rating: number | null; reviews: number | null } {
+  const o = findByKey(json, (x) => x.overallRatingStats && typeof x.overallRatingStats === 'object')?.overallRatingStats;
+  const rating = typeof o?.ratingAverage === 'number' ? o.ratingAverage : null;
+  const n = parseInt(String(o?.ratingCount ?? ''), 10);
+  return { rating, reviews: Number.isFinite(n) ? n : null };
+}
+
+/** The `data-deferred-state` script of a rendered Airbnb page, parsed — null when absent. */
+export async function readDeferredState(page: { evaluate: <T>(fn: () => T) => Promise<T> }): Promise<any> {
+  const text = await page.evaluate(() => {
+    const s = [...document.querySelectorAll('script')].find((x) => (x.id || '').startsWith('data-deferred-state'));
+    return s ? s.textContent : null;
+  });
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
