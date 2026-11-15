@@ -5924,6 +5924,19 @@
       "continue": "Continue your search",
       "newSince": "New since {date}"
     },
+    "today": {
+      "posted": "Posted today on Mkan's TikTok: {count} homes",
+      "postedOne": "Posted today on Mkan's TikTok: 1 home",
+      "postedEarlier": "Nothing posted yet today. The latest on Mkan's TikTok: {count} homes",
+      "postedEarlierOne": "Nothing posted yet today. The latest on Mkan's TikTok: 1 home",
+      "none": "Nothing has been posted in the last few days. New homes go up every day: tell me the area, the size and your budget, and I'll search.",
+      "starterTitle": "Today's homes",
+      "starterRest": "Posted on TikTok today",
+      "starterText": "Today's homes",
+      "welcomeLine": "{count} homes posted today",
+      "welcomeOne": "1 home posted today",
+      "welcomeSee": "See them"
+    },
     "clarify": {
       "reply": "A few quick questions, so I search the right homes.",
       "label": "Questions",
@@ -7069,6 +7082,28 @@
     "general": "Chat with Mkan on WhatsApp",
     "generalMessage": "Hi Mkan, I'm looking for a home in Kigali.",
     "empty": "New homes are posted every day. Tap the button above and tell us what you need."
+  },
+  "today": {
+    "metaTitle": "Today on Mkan",
+    "metaDescription": "The homes Mkan posted on TikTok today in Kigali: video, rent and bedrooms. Check any of them on WhatsApp.",
+    "title": "Today on Mkan",
+    "lead": "The homes we posted today. Tap one to see it, or check it's free on WhatsApp. It's free for you.",
+    "leadDay": "The homes we posted on {date}.",
+    "earlier": "Nothing posted yet today. Here are the latest homes, from {date}.",
+    "empty": "No homes were posted in the last few days. New homes go up every day: tell Mkan what you need on WhatsApp.",
+    "check": "Check availability on WhatsApp",
+    "code": "Code {ref}",
+    "video": "Video of the home",
+    "follow": "Follow @mkan.rw for new homes every day",
+    "general": "Chat with Mkan on WhatsApp",
+    "generalMessage": "Hi Mkan, I'm looking for a home in Kigali.",
+    "archive": "Earlier this week",
+    "stripTitle": "Today on Mkan",
+    "stripLatest": "Latest homes on Mkan",
+    "seeToday": "See today's homes",
+    "seeLatest": "See the latest homes",
+    "ctaFind": "Tell Mkan what you need",
+    "ctaWhatsApp": "Chat on WhatsApp"
   },
   "docs": {
     "copyPage": "Copy Page",

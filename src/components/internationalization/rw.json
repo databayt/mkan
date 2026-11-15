@@ -5924,6 +5924,19 @@
       "continue": "Komeza gushakisha",
       "newSince": "Bishya kuva {date}"
     },
+    "today": {
+      "posted": "Hashyizwe uyu munsi kuri TikTok ya Mkan: amazu {count}",
+      "postedOne": "Hashyizwe uyu munsi kuri TikTok ya Mkan: inzu 1",
+      "postedEarlier": "Nta nzu irashyirwaho uyu munsi. Izo duheruka kuri TikTok ya Mkan: amazu {count}",
+      "postedEarlierOne": "Nta nzu irashyirwaho uyu munsi. Iyo duheruka kuri TikTok ya Mkan: inzu 1",
+      "none": "Nta nzu yashyizweho mu minsi ishize. Amazu mashya ashyirwaho buri munsi: mbwira agace, ingano n'amafaranga ufite, nkushakire.",
+      "starterTitle": "Amazu y'uyu munsi",
+      "starterRest": "Yashyizwe kuri TikTok uyu munsi",
+      "starterText": "Amazu y'uyu munsi",
+      "welcomeLine": "Amazu {count} yashyizweho uyu munsi",
+      "welcomeOne": "Inzu 1 yashyizweho uyu munsi",
+      "welcomeSee": "Yirebe"
+    },
     "clarify": {
       "reply": "Ibibazo bike byihuse, kugira ngo nshake inzu zikwiye.",
       "label": "Ibibazo",
@@ -7069,6 +7082,28 @@
     "general": "Ganira na Mkan kuri WhatsApp",
     "generalMessage": "Muraho Mkan, ndashaka inzu i Kigali.",
     "empty": "Amazu mashyaashyirwaho buri munsi. Kanda buto iri hejuru utubwire icyo ushaka."
+  },
+  "today": {
+    "metaTitle": "Uyu munsi kuri Mkan",
+    "metaDescription": "Amazu Mkan yashyize kuri TikTok uyu munsi i Kigali: videwo, ubukode n'ibyumba. Reba niba imwe igihari kuri WhatsApp.",
+    "title": "Uyu munsi kuri Mkan",
+    "lead": "Amazu twashyizeho uyu munsi. Kanda imwe uyirebe, cyangwa urebe niba igihari kuri WhatsApp. Ni ubuntu kuri wowe.",
+    "leadDay": "Amazu twashyizeho ku wa {date}.",
+    "earlier": "Nta nzu irashyirwaho uyu munsi. Dore amazu aheruka, yo ku wa {date}.",
+    "empty": "Nta nzu yashyizweho mu minsi ishize. Amazu mashya ashyirwaho buri munsi: bwira Mkan icyo ukeneye kuri WhatsApp.",
+    "check": "Reba niba igihari kuri WhatsApp",
+    "code": "Kode {ref}",
+    "video": "Videwo y'inzu",
+    "follow": "Kurikira @mkan.rw ubone amazu mashya buri munsi",
+    "general": "Vugana na Mkan kuri WhatsApp",
+    "generalMessage": "Muraho Mkan, ndashaka inzu i Kigali.",
+    "archive": "Mu cyumweru gishize",
+    "stripTitle": "Uyu munsi kuri Mkan",
+    "stripLatest": "Amazu aheruka kuri Mkan",
+    "seeToday": "Reba amazu y'uyu munsi",
+    "seeLatest": "Reba amazu aheruka",
+    "ctaFind": "Bwira Mkan icyo ukeneye",
+    "ctaWhatsApp": "Vugana kuri WhatsApp"
   },
   "docs": {
     "copyPage": "Copy Page",

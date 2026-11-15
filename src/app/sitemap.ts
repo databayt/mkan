@@ -23,6 +23,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // surfaces are intentionally excluded — they're noindexed/disallowed.
   const staticPages = [
     "",
+    "/today",
     "/listings",
     "/search",
     "/travel",

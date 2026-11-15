@@ -39,6 +39,10 @@ import { canSpend } from "./claude";
 import { checkTarget, followUpKind, underHomes } from "./follow-up";
 import { asksToCheck } from "./whatsapp-format";
 import { handOffFailedChat } from "./failed-handoff";
+import { asksForToday } from "./today-pure";
+import { todayCards } from "./today";
+import { fill } from "./format";
+import { getDictionary } from "@/components/internationalization/dictionaries";
 import type { AgentMessage, EventKind, ShortlistItem, StepStatus } from "./types";
 
 const json = (v: unknown) => v as Prisma.InputJsonValue;
@@ -316,6 +320,35 @@ async function turn(taskId: string, gate: Gate, onShown: () => void): Promise<vo
     const tapped = Object.keys(picked).length > 0 || (lastUser?.clear?.length ?? 0) > 0;
     const memory = coerceMemory(task.profile?.memory);
     const shown = (task.shortlist as unknown as ShortlistItem[] | null) ?? [];
+
+    // "Today on Mkan" (2026-11-15): the homes @mkan.rw posted today, as the usual cards. Read before any model
+    // call, first message or under the homes alike — the ask is the whole message, so it is a rules read, and
+    // WhatsApp's digit picks work on these cards like on any shortlist.
+    if (!tapped && !lastUser?.pin && asksForToday(latest)) {
+      const [cards, dict] = await Promise.all([todayCards(lang).catch(() => null), getDictionary(lang).catch(() => null)]);
+      const t = dict?.agent?.today as Record<string, string> | undefined;
+      await trace.recordMany([
+        ["requirements_extracted", "done", { requirements: base, reader: "rules", intent: "today" }],
+        ...(cards ? [["ranked", "done", { top: cards.items.length }] as [EventKind, StepStatus, Record<string, unknown>]] : []),
+      ]);
+      if (!cards) {
+        await firstReply(
+          { role: "agent", kind: "answer", topic: "other", text: t?.none ?? "Nothing has been posted in the last few days. New homes go up every day: tell me the area, the size and your budget, and I'll search.", at: now() },
+          { status: restingStatus(shown) },
+        );
+        return;
+      }
+      const n = cards.items.length;
+      const line = cards.isToday
+        ? n === 1 ? t?.postedOne ?? "Posted today on Mkan's TikTok: 1 home" : fill(t?.posted ?? "Posted today on Mkan's TikTok: {count} homes", { count: n })
+        : n === 1 ? t?.postedEarlierOne ?? "Nothing posted yet today. The latest on Mkan's TikTok: 1 home" : fill(t?.postedEarlier ?? "Nothing posted yet today. The latest on Mkan's TikTok: {count} homes", { count: n });
+      await firstReply(
+        { role: "agent", kind: "shortlist", count: n, text: line, today: { day: cards.day, ...(cards.isToday ? {} : { earlier: true }) }, at: now() },
+        { shortlist: json(cards.items), status: "DONE" },
+      );
+      await trace.record("shortlist_ready", "done", { count: n, ms }).catch(() => {});
+      return;
+    }
 
     // Under the homes on /find, a message that moves nothing about the search gets one line, not the
     // same homes again (2026-11-03; WhatsApp answers these before a turn starts, whatsapp-chat.ts). The

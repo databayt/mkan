@@ -54,7 +54,23 @@ export function Welcome({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locale]);
 
-  if (!view?.search) return null;
+  const todayN = view?.today ?? 0;
+  // "N homes posted today" (2026-11-15): one tap sends "Today's homes". A first visit has no search to
+  // welcome back to, so it gets this line alone and the greeting stays.
+  const todayLine =
+    todayN > 0 && w ? (
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => onContinue(a?.today?.starterText ?? "Today's homes", {})}
+        className="flex w-full items-center gap-3 rounded-2xl bg-muted/70 p-3.5 text-start transition-colors hover:bg-muted disabled:opacity-50"
+      >
+        <span className="min-w-0 flex-1 text-sm font-semibold">{todayN === 1 ? a?.today?.welcomeOne ?? "1 home posted today" : fill(a?.today?.welcomeLine ?? "{count} homes posted today", { count: todayN })}</span>
+        <span className="shrink-0 text-sm text-muted-foreground">{a?.today?.welcomeSee ?? "See them"}</span>
+        <ArrowUpRight className="size-4 shrink-0 rtl:-scale-x-100" aria-hidden />
+      </button>
+    ) : null;
+  if (!view?.search) return todayLine ? <div className={cn("w-full", compact ? "max-w-sm" : "max-w-xl")}>{todayLine}</div> : null;
   const money = (n: number) => formatCurrency(n, locale, "RWF");
   const chips = requirementChips(view.search, a, locale, money);
   const label = chips.join(" · ");
@@ -65,6 +81,7 @@ export function Welcome({
       <h1 className={cn("text-balance text-center font-semibold leading-tight tracking-tight", compact ? "text-[22px]" : "text-[26px] sm:text-3xl")}>
         {w?.title ?? "Welcome back"}
       </h1>
+      {todayLine}
       <button
         type="button"
         disabled={disabled}

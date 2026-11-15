@@ -33,6 +33,14 @@ export function Suggestions({ onPick, onGuided, disabled, compact = false }: { o
           <span className={rest}>{c?.guidedHint ?? "Pick area, home and budget"}</span>
         </button>
       </li>
+      {a?.today?.starterText && (
+        <li className="contents">
+          <button type="button" onClick={() => onPick(a.today.starterText)} disabled={disabled} className={card}>
+            <span className={title}>{a.today.starterTitle}</span>
+            <span className={rest}>{a.today.starterRest}</span>
+          </button>
+        </li>
+      )}
       {KEYS.map((k) => {
         const text = a?.examples?.[k];
         const s = c?.suggest?.[k];

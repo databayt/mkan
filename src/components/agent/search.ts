@@ -156,6 +156,63 @@ function placeWhere(r: Requirements): Prisma.ListingWhereInput[] {
   return out;
 }
 
+type CandidateRow = Prisma.ListingGetPayload<{ select: typeof CANDIDATE_SELECT }>;
+
+/** Rows → what ranking reads: homes a broker said are taken drop out, a broker's yes becomes a confirmation. */
+async function toCandidates(rows: CandidateRow[]): Promise<Candidate[]> {
+  const answers = await brokerAnswers(rows.map((row) => row.id));
+  return rows
+    .filter((row) => answers.get(row.id)?.status !== "RENTED")
+    .map((row) => ({
+    id: row.id,
+    hostId: row.hostId,
+    rentPeriod: row.rentPeriod,
+    pricePerNight: row.pricePerNight,
+    priceMonth: row.priceMonth,
+    monthlyDiscount: row.monthlyDiscount,
+    cleaningFee: row.cleaningFee,
+    bedrooms: row.bedrooms,
+    guestCount: row.guestCount,
+    district: row.location?.state ?? null,
+    bathrooms: row.bathrooms,
+    propertyType: row.propertyType,
+    latitude: row.location?.latitude ?? null,
+    longitude: row.location?.longitude ?? null,
+    approxLocation: isLead(row),
+    address: row.location?.address ?? null,
+    amenities: row.amenities,
+    highlights: row.highlights,
+    isPetsAllowed: row.isPetsAllowed,
+    isParkingIncluded: row.isParkingIncluded,
+    furnished: row.furnished,
+    zone: row.location?.neighbourhood ?? row.location?.sector ?? null,
+    terms: {
+      depositMonths: row.depositMonths,
+      commissionPct: row.commissionPct,
+      noCommission: row.noCommission,
+      viewingFee: row.viewingFee,
+      waterIncluded: row.waterIncluded,
+      electricityIncluded: row.electricityIncluded,
+      owner: row.brokers.length > 0,
+    },
+    averageRating: row.averageRating,
+    numberOfReviews: row.numberOfReviews,
+    // Imports stamp lastAvailabilityConfirmedAt at scrape time, so it is not
+    // a confirmation. Only a broker's answer sets this.
+    confirmedAt: answers.get(row.id)?.status === "AVAILABLE" ? answers.get(row.id)!.at : null,
+  }));
+}
+
+/**
+ * The candidates for named homes (2026-11-15) — "Today on Mkan" shows the homes the TikTok account posted,
+ * not a search result. Homes a broker said are taken (`lostAt`) are left out.
+ */
+export async function candidatesByIds(ids: number[]): Promise<Candidate[]> {
+  if (ids.length === 0) return [];
+  const rows = await db.listing.findMany({ where: { id: { in: ids }, lostAt: null }, select: CANDIDATE_SELECT });
+  return toCandidates(rows);
+}
+
 /**
  * `take` widens the load for a pool the caller ranks several ways (the zero-match
  * widening); `truncated` says a pool hit its cap, so it may be missing rows.
@@ -199,47 +256,7 @@ export async function searchKigali(
   ]);
   const seen = new Set(rated.map((row) => row.id));
   const rows = [...rated, ...monthly.filter((row) => !seen.has(row.id))];
-  const answers = await brokerAnswers(rows.map((row) => row.id));
-  const candidates: Candidate[] = rows
-    .filter((row) => answers.get(row.id)?.status !== "RENTED")
-    .map((row) => ({
-    id: row.id,
-    hostId: row.hostId,
-    rentPeriod: row.rentPeriod,
-    pricePerNight: row.pricePerNight,
-    priceMonth: row.priceMonth,
-    monthlyDiscount: row.monthlyDiscount,
-    cleaningFee: row.cleaningFee,
-    bedrooms: row.bedrooms,
-    guestCount: row.guestCount,
-    district: row.location?.state ?? null,
-    bathrooms: row.bathrooms,
-    propertyType: row.propertyType,
-    latitude: row.location?.latitude ?? null,
-    longitude: row.location?.longitude ?? null,
-    approxLocation: isLead(row),
-    address: row.location?.address ?? null,
-    amenities: row.amenities,
-    highlights: row.highlights,
-    isPetsAllowed: row.isPetsAllowed,
-    isParkingIncluded: row.isParkingIncluded,
-    furnished: row.furnished,
-    zone: row.location?.neighbourhood ?? row.location?.sector ?? null,
-    terms: {
-      depositMonths: row.depositMonths,
-      commissionPct: row.commissionPct,
-      noCommission: row.noCommission,
-      viewingFee: row.viewingFee,
-      waterIncluded: row.waterIncluded,
-      electricityIncluded: row.electricityIncluded,
-      owner: row.brokers.length > 0,
-    },
-    averageRating: row.averageRating,
-    numberOfReviews: row.numberOfReviews,
-    // Imports stamp lastAvailabilityConfirmedAt at scrape time, so it is not
-    // a confirmation. Only a broker's answer sets this.
-    confirmedAt: answers.get(row.id)?.status === "AVAILABLE" ? answers.get(row.id)!.at : null,
-  }));
+  const candidates = await toCandidates(rows);
   // Either pool at its cap may be missing rows — the monthly one too (it fed the typical-price median).
   return { candidates, truncated: rated.length >= take || monthly.length >= MAX_MONTHLY };
 }

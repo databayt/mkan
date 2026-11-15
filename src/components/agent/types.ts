@@ -95,8 +95,9 @@ export type AgentMessage =
    */
   /** `pin`: the home the tenant's ref named — `found` false when it is gone (rented, or its ad was taken down). */
   /** `checked`: the message asked for the pinned home's check itself ("Check K1234 for me" from /find's card) and it ran (availability.ts askBroker). */
+  /** `today`: the homes @mkan.rw posted on the Kigali `day` (today-pure.ts, today.ts) — WhatsApp ends the list on the /today link; `earlier` when today had none yet (2026-11-15). */
   /** `same`: exactly the homes the last shortlist showed, in the same order — the message moved nothing ("How are you", "?"); WhatsApp says so instead of sending them again (2026-11-02). */
-  | { role: "agent"; kind: "shortlist"; count: number; relaxed?: Relaxed[]; refine?: HardField; text?: string; pendingText?: boolean; demand?: boolean; asked?: number; pin?: { id: number; found: boolean }; same?: boolean; checked?: "asked" | "slow" | "handed" | "none" | "unreachable"; at: string }
+  | { role: "agent"; kind: "shortlist"; count: number; relaxed?: Relaxed[]; refine?: HardField; text?: string; pendingText?: boolean; demand?: boolean; asked?: number; pin?: { id: number; found: boolean }; same?: boolean; checked?: "asked" | "slow" | "handed" | "none" | "unreachable"; today?: { day: string; earlier?: boolean }; at: string }
   /** A question about renting, answered from knowledge.ts, or a greeting; no search ran. */
   | { role: "agent"; kind: "answer"; topic: "question" | "other"; text?: string; at: string }
   /**
@@ -204,4 +205,6 @@ export interface AgentWelcomeView {
   /** Homes listed since the last search that fit it, best first. */
   homes: ShortlistItem[];
   since: string | null;
+  /** How many homes @mkan.rw posted today (Kigali day) — the welcome's "N homes posted today"; 0 or missing for none. */
+  today?: number;
 }

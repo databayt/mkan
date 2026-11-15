@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { useDictionary } from "@/components/internationalization/dictionary-context";
 import HeroSection from "@/components/site/HeroSection";
@@ -62,9 +62,11 @@ const getPopularPortsudanListings = (listings: Listing[], limit: number) =>
 interface HomeContentProps {
   listings: Listing[];
   locale: string;
+  /** "Today on Mkan" (components/today/today-strip.tsx), server-rendered by the page; null when nothing was posted in 3 days. */
+  strip?: ReactNode;
 }
 
-export default function HomeContent({ listings, locale }: HomeContentProps) {
+export default function HomeContent({ listings, locale, strip }: HomeContentProps) {
   const dict = useDictionary();
   const sections = dict?.home?.sections;
   const [filteredListings, setFilteredListings] = useState<Listing[]>(listings);
@@ -160,6 +162,8 @@ export default function HomeContent({ listings, locale }: HomeContentProps) {
       {PHASE1.showPriceTransparencyDialog && <PriceTransparencyDialog />}
 
       <HeroSection />
+
+      {strip}
 
       <div className="sticky top-0 z-40 bg-white border-b">
         <div className="layout-container">

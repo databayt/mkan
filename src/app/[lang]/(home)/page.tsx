@@ -7,6 +7,7 @@ import { Listing } from "@/types/listing";
 import HomeContent from "./home-content";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 import { localize, localizeNested } from "@/components/translation/localize";
+import { TodayStrip } from "@/components/today/today-strip";
 
 // ISR: prerender /en + /ar (params from the layout's generateStaticParams) and
 // regenerate at most every 5 minutes — the same window as getHomeListings'
@@ -60,13 +61,14 @@ export default async function HomePage({
   params: Promise<{ lang: Locale }>;
 }) {
   const { lang } = await params;
-  const listings = await getPublishedListings(lang);
+  const [listings, d] = await Promise.all([getPublishedListings(lang), getDictionary(lang)]);
 
   return (
     <>
       <JsonLd data={organizationJsonLd()} />
       <JsonLd data={webSiteJsonLd(lang)} />
-      <HomeContent listings={listings} locale={lang} />
+      {/* "Today on Mkan" (2026-11-15): rendered here, on the server, and handed to the client page as a node. */}
+      <HomeContent listings={listings} locale={lang} strip={<TodayStrip lang={lang} d={d} />} />
     </>
   );
 }

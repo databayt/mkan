@@ -8,6 +8,7 @@ import { coerceRequirements, EMPTY_REQUIREMENTS, type Requirements } from "@/com
 import { searchKigali, toShortlist } from "@/components/agent/search";
 import type { AgentWelcomeView } from "@/components/agent/types";
 import { forTenant } from "@/components/agent/home-path";
+import { todayCount } from "@/components/agent/today";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +39,9 @@ function remember(key: string, view: AgentWelcomeView) {
 export async function GET(req: NextRequest) {
   const langParam = req.nextUrl.searchParams.get("lang") ?? "";
   const lang: Locale = (i18n.locales as readonly string[]).includes(langParam) ? (langParam as Locale) : i18n.defaultLocale;
-  const none: AgentWelcomeView = { search: null, homes: [], since: null };
+  // Homes @mkan.rw posted today: the welcome's "N homes posted today" (cached 5 min in today.ts).
+  const today = await todayCount().catch(() => 0);
+  const none: AgentWelcomeView = { search: null, homes: [], since: null, today };
   const viewer = await resolveViewer({ write: false });
   if (!viewer.profile) return NextResponse.json(none, { headers: { "Cache-Control": "no-store" } });
 
@@ -57,7 +60,7 @@ export async function GET(req: NextRequest) {
     createHash("sha1").update(JSON.stringify(viewer.profile.memory ?? null)).digest("base64url").slice(0, 16),
   ].join(":");
   const hit = cache.get(key);
-  if (hit && Date.now() - hit.at < CACHE_MS) return NextResponse.json(hit.view, { headers: { "Cache-Control": "no-store" } });
+  if (hit && Date.now() - hit.at < CACHE_MS) return NextResponse.json({ ...hit.view, today }, { headers: { "Cache-Control": "no-store" } });
 
   const since = viewer.profile.lastSearchAt;
   let homes: AgentWelcomeView["homes"] = [];
@@ -67,7 +70,7 @@ export async function GET(req: NextRequest) {
     const { ranked } = rankCandidates(candidates, query, 6);
     homes = (await toShortlist(ranked, lang, query.near?.name).catch(() => [])).map((h) => forTenant(h, lang));
   }
-  const view: AgentWelcomeView = { search, homes, since: since?.toISOString() ?? null };
+  const view: AgentWelcomeView = { search, homes, since: since?.toISOString() ?? null, today };
   remember(key, view);
   return NextResponse.json(view, { headers: { "Cache-Control": "no-store" } });
 }

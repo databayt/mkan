@@ -12,6 +12,7 @@ import { districtName } from "@/lib/geo/rwanda-places";
 import { KIGALI_ZONE_BY_SLUG, zoneLabel, zoneNamed } from "@/lib/geo/kigali-zones";
 import { forTenant } from "./home-path";
 import { EMPTY_REQUIREMENTS, editDistance, parseAdjustments, parseRequirements } from "./requirements";
+import { asksForToday } from "./today-pure";
 import type { AgentMessage, AgentTaskView, ShortlistItem } from "./types";
 
 export type WaLang = "en" | "ar" | "rw";
@@ -52,6 +53,9 @@ const COPY: Record<
     book: string;
     /** Nothing fits: may we ask brokers who cover the area? */
     askAround: string;
+    /** Under today's homes: the /today link, and with it how many more than the 3 listed ("{n}"). */
+    todayAll: string;
+    todayMore: string;
   }
 > = {
   en: {
@@ -71,6 +75,8 @@ const COPY: Record<
     bookPinned: "The broker says it's available. Reply *1* and I'll set up the viewing — it's free for you.",
     book: "A home marked available can be viewed: reply with its number and I'll set it up. It's free for you.",
     askAround: "Want me to ask a few brokers who work in that area? Reply *yes* and I'll message you when one has something.",
+    todayAll: "All of today's homes, with videos:",
+    todayMore: "{n} more posted today. All of today's homes, with videos:",
   },
   ar: {
     month: "/شهر",
@@ -89,6 +95,8 @@ const COPY: Record<
     bookPinned: "يقول الوسيط إنه متاح. أرسل *1* وسأرتب لك المعاينة، وهي مجانية لك.",
     book: "يمكنك معاينة المنزل المتاح: أرسل رقمه وسأرتب ذلك، والمعاينة مجانية لك.",
     askAround: "هل أسأل بعض الوسطاء الذين يعملون في تلك المنطقة؟ أرسل *نعم* وسأراسلك حين يجد أحدهم شيئاً.",
+    todayAll: "كل منازل اليوم مع الفيديوهات:",
+    todayMore: "هناك {n} أخرى نُشرت اليوم. كل منازل اليوم مع الفيديوهات:",
   },
   rw: {
     month: "/ukwezi",
@@ -107,6 +115,8 @@ const COPY: Record<
     bookPinned: "Komisiyoneri avuga ko iracyahari. Ohereza *1* ngupangire gusura — ni ubuntu kuri wowe.",
     book: "Inzu yanditseho ko iracyahari ushobora kuyisura: ohereza nimero yayo nkagupangira. Ni ubuntu kuri wowe.",
     askAround: "Mbaze abakomisiyoneri bake bakorera muri ako gace? Ohereza *yego* nzakwandikira nibagira icyo babona.",
+    todayAll: "Amazu yose y'uyu munsi, hamwe na videwo:",
+    todayMore: "Hari andi {n} yashyizweho uyu munsi. Amazu yose y'uyu munsi, hamwe na videwo:",
   },
 };
 
@@ -133,13 +143,16 @@ const CHECK_WORD_RE =
 export const asksToCheck = (text: string): boolean => readHomeRef(text) != null && CHECK_WORD_RE.test(text);
 
 /** Where a chat's home code came from — the first-share funnel's attribution (2026-11-05). */
-export type RefSource = "tiktok" | "tiktok_bio" | "k_page" | "web" | "organic";
+export type RefSource = "tiktok" | "tiktok_bio" | "today" | "k_page" | "web" | "organic";
 
 /** The words the /k/<code> page prefills after the code, so its chats count apart from TikTok's. */
 export const K_PAGE_MARK = "mkan.sd";
 
 /** The marker the /tt page (the TikTok profile's link) puts in its WhatsApp messages — with a code or without one. */
 export const TIKTOK_BIO_MARK = "tiktok_bio";
+
+/** The marker the /today page puts in its WhatsApp messages: those chats count apart from /tt's and the captions' (2026-11-15). */
+export const TODAY_MARK = "mkan_today";
 
 /**
  * A first message that says it came from TikTok without the code: "saw your video", "on TikTok",
@@ -155,6 +168,7 @@ const TIKTOK_WORDS_RE =
  */
 export function refSourceOf(text: string, webRef: string | null): RefSource {
   if (/\btiktok_bio\b/i.test(text)) return "tiktok_bio";
+  if (/\bmkan_today\b/i.test(text)) return "today";
   // A pasted TikTok link is TikTok's too (tiktok-link.ts reads which home it shows).
   if (readHomeRef(text) == null) return webRef ? "web" : TIKTOK_WORDS_RE.test(text) || /\btiktok\.com\//i.test(text) ? "tiktok" : "organic";
   if (/\bmkan\.sd\b/i.test(text)) return "k_page";
@@ -203,7 +217,7 @@ export function isLanguageNeutral(text: string): boolean {
 export function waLang(text: string, prev?: string | null): WaLang {
   if (prev && (prev === "en" || prev === "ar" || prev === "rw") && isLanguageNeutral(text)) return prev;
   if (/[؀-ۿ]/.test(text)) return "ar";
-  if (/\b(muraho|mwaramutse|mwiriwe|ndashaka|ndashaka|inzu|icyumba|ibyumba|amafaranga|ukwezi|ibihumbi|murakoze|ese)\b/i.test(text)) return "rw";
+  if (/\b(muraho|mwaramutse|mwiriwe|ndashaka|inzu|icyumba|ibyumba|amafaranga|ukwezi|ibihumbi|murakoze|ese|ibishya|munsi)\b/i.test(text)) return "rw";
   return "en";
 }
 
@@ -345,7 +359,11 @@ export function formatWhatsApp(view: AgentTaskView, d: WaDict, lang: WaLang, cha
       parts.push(d.reply.error ?? "");
       break;
   }
-  if (m.kind === "shortlist" || m.kind === "none") parts.push(`${c.seeAll}\n${chatUrl}`);
+  // Today's homes end on the /today page, where every video is (2026-11-15); any other list on the chat's cards.
+  if (m.kind === "shortlist" && m.today) {
+    const more = view.shortlist.length - MAX_HOMES;
+    parts.push(`${more > 0 ? fill(c.todayMore, { n: more }) : c.todayAll}\n${appUrl}/${lang}/today`);
+  } else if (m.kind === "shortlist" || m.kind === "none") parts.push(`${c.seeAll}\n${chatUrl}`);
   return parts.filter((p) => p.trim()).join("\n\n");
 }
 
@@ -683,6 +701,8 @@ export function firstMessageKind(text: string): "rental" | "greeting" | "other" 
   const t = text.trim().toLowerCase();
   if (!t) return "other";
   if (HOME_REF_RE.test(t) || /^#?\d{4,6}$/.test(t)) return "rental";
+  // "today", "what's new", "uyu munsi": the day's posted homes (today-pure.ts) — a new chat that asks for them is a tenant's.
+  if (asksForToday(t)) return "rental";
   if (
     /\b(?:house|home|homes|apartment|appartment|apartement|flat|room|rooms|studio|rent|rental|renting|bed ?rooms?|bdr|furnished|unfurnished|compound|kigali|kicukiro|gasabo|nyarugenge|kimironko|remera|kacyiru|kibagabaga|kimihurura|nyarutarama|gisozi|kanombe|nyamirambo|kagarama|rebero|gikondo|niboye|kabeza|budget|price|monthly|per month|tenant|landlord|broker|viewing|available|inzu|icyumba|ibyumba|gukodesha|ubukode|ndashaka inzu|maison|appartement|chambre|louer|loyer)\b/.test(t) ||
     /\d+\s*k\b|\d{3},\d{3}|ibihumbi/.test(t) ||
@@ -751,6 +771,8 @@ export function afterHomesKind(text: string): AfterHomes {
   const t = text.trim();
   // A phone number on its own: they want a call, not a search for a RWF 786-million home.
   if (/^\+?\d[\d\s-]{7,14}\d$/.test(t) && !/^\d{1,3}(?:[,.\s]\d{3})+$/.test(t)) return "person";
+  // The day's posted homes run as a turn (run.ts), under the homes too (2026-11-15).
+  if (asksForToday(t)) return "search";
   if (AVAILABLE_RE.test(t)) return "check";
   if (VISIT_RE.test(t)) return "visit";
   if (ABOUT_RE.test(t)) return "about";
