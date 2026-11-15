@@ -137,6 +137,11 @@ export function kigaliDay(now: number): string {
   return new Date(now + KIGALI_MS).toISOString().slice(0, 10);
 }
 
+/** Whether a YYYY-MM-DD is today in Kigali (read at request time, like inArchive). */
+export function isKigaliToday(day: string, now = Date.now()): boolean {
+  return kigaliDay(now) === day;
+}
+
 /** A well-formed YYYY-MM-DD that is a real calendar day. */
 export function isDay(day: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return false;

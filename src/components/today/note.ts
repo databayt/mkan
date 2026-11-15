@@ -17,7 +17,7 @@ import { db } from "@/lib/db";
 import { AGENT_MODEL, claudeClient, noteFailure, recordSpend } from "@/components/agent/claude";
 import { allowedNumbers, canWrite, guardText, noteRwSamples } from "@/components/agent/writer";
 import { todayPosts } from "@/lib/tt/homes";
-import { noteFacts, noteNumbers, sameHomes, templateNote, type NoteFacts, type NoteLang } from "./note-pure";
+import { noteFacts, noteNumbers, sameHomes, templateNote, type NoteFacts } from "./note-pure";
 
 const NOTE_TIMEOUT_MS = 6_000;
 const MAX_NOTE = 260;

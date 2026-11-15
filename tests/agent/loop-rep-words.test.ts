@@ -68,9 +68,9 @@ describe("reading the new words", () => {
 const store = new Map<string, unknown>();
 const deal = { id: "d1", taskId: "t1", notes: "first note", tenantPhone: "+250788123456" };
 let dealRow: typeof deal | null = deal;
-const dealUpdate = vi.fn(async (_q: unknown) => ({}));
-const crmNote = vi.fn(async (_k: string, _t: string) => {});
-const crmDealPatch = vi.fn(async (_k: string, _f: unknown) => {});
+const dealUpdate = vi.fn<(q: unknown) => Promise<object>>(async () => ({}));
+const crmNote = vi.fn<(k: string, t: string) => Promise<void>>(async () => {});
+const crmDealPatch = vi.fn<(k: string, f: unknown) => Promise<void>>(async () => {});
 vi.mock("@/lib/db", () => ({
   db: {
     deal: { findFirst: vi.fn(async () => dealRow), update: (q: unknown) => dealUpdate(q), findMany: vi.fn(async () => []) },

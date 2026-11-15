@@ -37,11 +37,18 @@ export function warnUnconfiguredOnce(): void {
   console.warn("[crm] TWENTY_API_URL / TWENTY_API_KEY not set — CRM ops stay QUEUED");
 }
 
+/**
+ * A Twenty REST record. Twenty answers untyped JSON whose fields depend on the workspace's data model, so the
+ * readers check each field they use (String(rec.id), typeof …) instead of trusting a declared shape.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type TwentyRecord = Record<string, any>;
+
 /** Calls made by this process since start (the drain reads the delta to keep to its per-minute budget). */
 let calls = 0;
 export const twentyCalls = () => calls;
 
-export async function twentyRest<T = Record<string, any>>(method: "GET" | "POST" | "PATCH" | "DELETE", path: string, body?: unknown): Promise<T> {
+export async function twentyRest<T = TwentyRecord>(method: "GET" | "POST" | "PATCH" | "DELETE", path: string, body?: unknown): Promise<T> {
   if (!twentyConfigured()) throw new TwentyError(null, "Twenty is not configured", true);
   const base = clean(process.env.TWENTY_API_URL).replace(/\/+$/, "");
   calls += 1;
@@ -69,21 +76,21 @@ export async function twentyRest<T = Record<string, any>>(method: "GET" | "POST"
 }
 
 /** The records in a list answer ({ data: { deals: [...] } }). */
-export function recordsOf(res: unknown, plural: string): Record<string, any>[] {
+export function recordsOf(res: unknown, plural: string): TwentyRecord[] {
   const data = (res as { data?: Record<string, unknown> })?.data ?? (res as Record<string, unknown>);
   const v = data?.[plural];
-  return Array.isArray(v) ? (v as Record<string, any>[]) : [];
+  return Array.isArray(v) ? (v as TwentyRecord[]) : [];
 }
 
 /** The record a create/update answers with ({ data: { createDeal: { id… } } }). */
-export function createdOf(res: unknown): Record<string, any> | null {
+export function createdOf(res: unknown): TwentyRecord | null {
   const data = (res as { data?: Record<string, unknown> })?.data ?? (res as Record<string, unknown>);
   const first = data && typeof data === "object" ? Object.values(data)[0] : null;
-  return first && typeof first === "object" && !Array.isArray(first) ? (first as Record<string, any>) : null;
+  return first && typeof first === "object" && !Array.isArray(first) ? (first as TwentyRecord) : null;
 }
 
 /** Find one record by a TEXT field, e.g. findOne("deals", "mkanKey", key). The value is quoted: keys carry ":" (Twenty's own docs quote timestamps the same way). */
-export async function findOne(plural: string, field: string, value: string): Promise<Record<string, any> | null> {
+export async function findOne(plural: string, field: string, value: string): Promise<TwentyRecord | null> {
   const res = await twentyRest("GET", `${plural}?filter=${field}[eq]:${encodeURIComponent(`"${value.replace(/"/g, "")}"`)}&limit=1&depth=0`);
   return recordsOf(res, plural)[0] ?? null;
 }

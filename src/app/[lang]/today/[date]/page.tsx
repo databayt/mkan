@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { createMetadata } from "@/lib/metadata";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 import type { Locale } from "@/components/internationalization/config";
-import { inArchive, kigaliDay } from "@/lib/tt/homes";
+import { inArchive, isKigaliToday } from "@/lib/tt/homes";
 import { loadDay, loadDays, loadNote } from "@/components/today/load";
 import { dayLabel, TodayView } from "@/components/today/today-view";
 
@@ -34,5 +34,5 @@ export default async function TodayDatePage({ params }: { params: Promise<{ lang
   const l = langOf(lang);
   const [d, homes, days] = await Promise.all([getDictionary(lang), loadDay(date), loadDays()]);
   const note = await loadNote(date, homes, l);
-  return <TodayView lang={lang} l={l} d={d} showing={date} mode={date === kigaliDay(Date.now()) ? "today" : "day"} homes={homes} note={note} days={days} />;
+  return <TodayView lang={lang} l={l} d={d} showing={date} mode={isKigaliToday(date) ? "today" : "day"} homes={homes} note={note} days={days} />;
 }

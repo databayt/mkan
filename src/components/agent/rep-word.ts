@@ -10,7 +10,7 @@ import { db } from "@/lib/db";
 import { crmDealPatch, crmNote } from "@/lib/crm/deal-sync";
 import { scrubTitle } from "@/lib/redact";
 import { HUMAN_HOLD_MS } from "../../../scripts/wa/tenant-pure";
-import { phoneKey, startOfKigaliDay } from "../../../scripts/wa/outbox-pure";
+import { phoneKey } from "../../../scripts/wa/outbox-pure";
 import { setDealStatus } from "./deal";
 import { dealKey } from "./deal-event-pure";
 import { rwf, viewingLabel } from "./deal-pure";

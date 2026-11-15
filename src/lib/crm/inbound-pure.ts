@@ -5,6 +5,7 @@
  * tenant's opt-out, a broker's relationship and share. mkan keeps reporting what it observes (messages,
  * timestamps, counts) and never writes those fields back over an edit (see deal-sync-pure.ts, tenant-sync-pure.ts).
  */
+import type { TwentyRecord } from "./twenty";
 import { normStage } from "./crm-ops-pure";
 
 export type DealStatusWord = "VIEWED" | "SIGNED" | "PAID" | "LOST";
@@ -37,7 +38,7 @@ const num = (v: unknown): number | null => {
 };
 
 /** The Deal fields a person edited (only those listed in `updatedFields`). */
-export function dealEdits(record: Record<string, any>, updatedFields: string[]): DealEdits {
+export function dealEdits(record: TwentyRecord, updatedFields: string[]): DealEdits {
   const has = (f: string) => updatedFields.includes(f);
   const out: DealEdits = {};
   if (has("viewingAt") && record.viewingAt) {
@@ -65,18 +66,18 @@ export function digitsOf(numbers: (string | null | undefined)[]): string[] {
 }
 
 /** Only `optOut` turned ON acts, and only when the event says that field changed. */
-export function isOptOutOn(record: Record<string, any>, updatedFields: string[]): boolean {
+export function isOptOutOn(record: TwentyRecord, updatedFields: string[]): boolean {
   return updatedFields.includes("optOut") && record.optOut === true;
 }
 
 /** The mkan key a Twenty deal record stands for: our link's key, else its own mkanKey field. */
-export function dealKeyOf(linkKey: string | null | undefined, record: Record<string, any>): string | null {
+export function dealKeyOf(linkKey: string | null | undefined, record: TwentyRecord): string | null {
   if (linkKey?.startsWith("deal:")) return linkKey.slice(5);
   return typeof record.mkanKey === "string" && record.mkanKey ? record.mkanKey : null;
 }
 
 /** Whether an event came from a script (API / SYSTEM) rather than a person's click. */
-export function bySystem(record: Record<string, any>): boolean {
+export function bySystem(record: TwentyRecord): boolean {
   const s = String(record?.updatedBy?.source ?? "").toUpperCase();
   return s === "API" || s === "SYSTEM";
 }
@@ -96,7 +97,7 @@ export const termsOf = (notes: string | null | undefined): string | null => /^te
  * Which person-edited fields of a Twenty deal differ from the Neon Deal — what the nightly reconcile
  * applies. A field EMPTY in Twenty is never copied (a blank is as likely "not filled in yet" as "cleared").
  */
-export function dealDiff(record: Record<string, any>, row: DealRowState): string[] {
+export function dealDiff(record: TwentyRecord, row: DealRowState): string[] {
   const out: string[] = [];
   if (dealStatusAction(record.stage, row.status)) out.push("stage");
   const share = num(record.mkanShareRwf);
