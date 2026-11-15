@@ -26,6 +26,8 @@ import type { Locale } from "@/components/internationalization/config";
 import { localize, localizeNested, getText } from "@/components/translation/localize";
 import TrackView from "@/components/analytics/track-view";
 import { listingSegment } from "@/lib/listing-code";
+import { homePath } from "@/components/agent/home-path";
+import { LEAD_SOURCES } from "@/components/agent/search";
 import { coverBlurOf } from "@/lib/image-variants";
 import ListingDetailSkeleton, {
   MapSectionSkeleton,
@@ -154,7 +156,13 @@ export default async function ListingPage({ params, searchParams }: ListingPageP
     notFound();
   }
 
-  if (!listing || !listing.isPublished) {
+  if (!listing) notFound();
+  // A broker's monthly home has its own page (video first, move-in cost, the broker asked on WhatsApp);
+  // this page is built for nightly stays (2026-11-15).
+  if (listing.rentPeriod === "MONTHLY" && (LEAD_SOURCES as readonly string[]).includes(listing.source ?? "")) {
+    permanentRedirect(homePath(lang, listing.id));
+  }
+  if (!listing.isPublished) {
     notFound();
   }
 
@@ -219,6 +227,8 @@ export default async function ListingPage({ params, searchParams }: ListingPageP
       .findMany({
         where: {
           isPublished: true,
+          // Nightly stays only: the carousel prices by the night.
+          rentPeriod: "NIGHTLY",
           id: { not: listingId },
           ...(listing.location?.city ? { location: { city: listing.location.city } } : {}),
         },

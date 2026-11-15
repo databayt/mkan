@@ -10,14 +10,14 @@ import { trackEvent } from "@/lib/analytics/beacon";
  * view and a chat, so it is recorded (CONTACT_MESSAGE, through /api/track's bot filter) — 2026-11-07,
  * the step was not measured at all.
  */
-export function WhatsAppCta({ href, listingId, children }: { href: string; listingId: number; children: ReactNode }) {
+export function WhatsAppCta({ href, listingId, children, className }: { href: string; listingId: number; children: ReactNode; className?: string }) {
   return (
     <a
       href={href}
       target="_blank"
       rel="noopener noreferrer"
       onClick={() => trackEvent(listingId, "CONTACT_MESSAGE")}
-      className="flex w-full items-center justify-center gap-2 rounded-full bg-foreground py-3 text-[15px] font-medium text-background"
+      className={className ?? "flex w-full items-center justify-center gap-2 rounded-full bg-foreground py-3 text-[15px] font-medium text-background"}
     >
       <MessageCircle className="size-4" aria-hidden />
       {children}

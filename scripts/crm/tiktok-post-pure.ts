@@ -87,7 +87,7 @@ export const brokerHandle = (hostSourceId: string | null): string | null =>
  * knows when mkan read it. Anything else: the listing's postedAt.
  */
 export function sourcePostedAt(r: Pick<PostRow, 'photoUrls' | 'postedAt'>): number | null {
-  const id = r.photoUrls.map((u) => u.match(/\/uploads\/tiktok\/(\d{15,20})\//)?.[1]).find(Boolean);
+  const id = r.photoUrls.map((u) => u.match(/\/uploads\/(?:tiktok|listing-photo)\/(\d{15,20})\//)?.[1]).find(Boolean);
   const s = id ? Number(BigInt(id) >> BigInt(32)) : 0;
   if (s > 1_472_000_000) return s * 1000; // after TikTok's launch (2016-09), else not a TikTok id
   const t = r.postedAt ? Date.parse(r.postedAt) : NaN;
@@ -537,10 +537,10 @@ export function waLink(phone: string, text = ''): string {
 /** The 9:16 frame every post is delivered in. */
 export const W = 1080;
 export const H = 1920;
-/** The TikTok video a broker lead came from: its frames live at …/uploads/tiktok/<videoId>/<n>.jpg. */
+/** The TikTok video a broker lead came from: its frames live at …/uploads/tiktok/<videoId>/<n>.jpg, or …/uploads/listing-photo/<videoId>/… once `tt:web` re-made them clean. */
 export function brokerVideoUrl(r: Pick<PostRow, 'photoUrls' | 'hostSourceId'>): string | null {
   const handle = brokerHandle(r.hostSourceId);
-  const id = r.photoUrls.map((u) => u.match(/\/uploads\/tiktok\/(\d{8,})\//)?.[1]).find(Boolean);
+  const id = r.photoUrls.map((u) => u.match(/\/uploads\/(?:tiktok|listing-photo)\/(\d{8,})\//)?.[1]).find(Boolean);
   return handle && id ? `https://www.tiktok.com/@${handle}/video/${id}` : null;
 }
 

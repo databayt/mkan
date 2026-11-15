@@ -262,7 +262,12 @@ model Listing {
   coverBlur                   String?
   /// The photo coverBlur was made from; once the cover changes it is stale and unused.
   coverBlurUrl                String?
-  amenities                   Amenity[]           @default([])
+  /// A broker home's own video for the web: the broker's TikTok cleaned of their text, number and spoken
+  /// contact (`pnpm tt:web`), 720×1280 H.264. The /k page plays it first (Abdout, 2026-11-15).
+  videoUrl                    String?
+  /// The still shown before videoUrl plays — a frame with no broker number on it.
+  videoPosterUrl              String?
+  amenities                  Amenity[]           @default([])
   highlights                  Highlight[]         @default([])
   isPetsAllowed               Boolean             @default(false)
   isParkingIncluded           Boolean             @default(false)

@@ -23,13 +23,15 @@ import { K_PAGE_MARK } from "@/components/agent/whatsapp-format";
 import { scrubTitle } from "@/lib/redact";
 import TrackView from "@/components/analytics/track-view";
 import { WhatsAppCta } from "./whatsapp-cta";
+import { VideoHero } from "@/components/listings/video-hero";
 
 /**
  * Mkan's own page for a broker home — /en/k/K5808 (Abdout, 2026-11-01). Every link a tenant
  * can follow to a broker's home comes here instead of the broker's ad, whose caption carries the
  * broker's phone: the home's photos, facts and move-in cost, and "check it's free" on Mkan's
  * WhatsApp line, which opens that home by its code. Never the broker's handle, ad or number.
- * Kept out of search engines, like every lead. A published home has its own listing page.
+ * Out of search engines until the trust gate publishes it (listing-gate-pure.ts, 2026-11-15); a published
+ * broker home stays here too — /listings/<code> sends it back, since that page is built for nightly stays.
  */
 
 interface HomePageProps {
@@ -37,9 +39,9 @@ interface HomePageProps {
 }
 
 const COPY = {
-  en: { code: "Code {ref}", taken: "This home was just taken.", more: "More homes like this", approx: "Approximate area" },
-  ar: { code: "الرمز {ref}", taken: "تم تأجير هذا المنزل للتو.", more: "منازل أخرى مثل هذا", approx: "منطقة تقريبية" },
-  rw: { code: "Kode {ref}", taken: "Iyi nzu imaze gukodeshwa.", more: "Andi mazu nk'iyi", approx: "Agace kegereye" },
+  en: { code: "Code {ref}", taken: "This home was just taken.", more: "More homes like this", approx: "Approximate area", mute: "Mute", unmute: "Turn sound on", ask: "Ask about this home", video: "Video of the home" },
+  ar: { code: "الرمز {ref}", taken: "تم تأجير هذا المنزل للتو.", more: "منازل أخرى مثل هذا", approx: "منطقة تقريبية", mute: "كتم الصوت", unmute: "تشغيل الصوت", ask: "اسأل عن هذا المنزل", video: "فيديو المنزل" },
+  rw: { code: "Kode {ref}", taken: "Iyi nzu imaze gukodeshwa.", more: "Andi mazu nk'iyi", approx: "Agace kegereye", mute: "Funga ijwi", unmute: "Fungura ijwi", ask: "Baza kuri iyi nzu", video: "Videwo y'inzu" },
 } as const;
 
 const fetchHome = cache(async (id: number) =>
@@ -52,6 +54,8 @@ const fetchHome = cache(async (id: number) =>
         sourceListingId: true,
         title: true,
         photoUrls: true,
+        videoUrl: true,
+        videoPosterUrl: true,
         currency: true,
         rentPeriod: true,
         priceMonth: true,
@@ -75,7 +79,8 @@ const fetchHome = cache(async (id: number) =>
 
 type Home = NonNullable<Awaited<ReturnType<typeof fetchHome>>>;
 
-const isBrokerHome = (h: Home) => !h.isPublished && (LEAD_SOURCES as readonly string[]).includes(h.source ?? "") && h.rentPeriod === "MONTHLY";
+// Published or not: a broker home always lives here, never on the nightly listing page (2026-11-15).
+const isBrokerHome = (h: Home) => (LEAD_SOURCES as readonly string[]).includes(h.source ?? "") && h.rentPeriod === "MONTHLY";
 
 const langOf = (lang: string): "en" | "ar" | "rw" => (lang === "ar" || lang === "rw" ? lang : "en");
 
@@ -102,8 +107,9 @@ export async function generateMetadata({ params }: HomePageProps): Promise<Metad
     description: [price, placeOf(home, l), home.bedrooms != null ? fill((c?.beds as string) ?? "{n} bd", { n: home.bedrooms }) : null].filter(Boolean).join(" · "),
     locale: lang,
     path,
-    image: home.photoUrls?.[0],
-    noIndex: true,
+    image: home.videoPosterUrl ?? home.photoUrls?.[0],
+    // Indexed once it passes the trust gate (published); a draft lead stays out of search engines.
+    noIndex: !home.isPublished,
   });
 }
 
@@ -113,9 +119,11 @@ export default async function BrokerHomePage({ params }: HomePageProps) {
   if (!id) notFound();
   const home = await fetchHome(id);
   if (!home) notFound();
-  // A published home has its listing page; only a broker's home lives here.
-  if (home.isPublished) permanentRedirect(listingPath(lang, home));
-  if (!isBrokerHome(home)) notFound();
+  // A host's published stay has its listing page; a broker's home lives here, published or not.
+  if (!isBrokerHome(home)) {
+    if (home.isPublished) permanentRedirect(listingPath(lang, home));
+    notFound();
+  }
 
   const l = langOf(lang);
   const t = COPY[l];
@@ -181,10 +189,37 @@ export default async function BrokerHomePage({ params }: HomePageProps) {
     {/* One VIEW per visit (the TikTok funnel's first step on Mkan's side; leads count since 2026-11-07). */}
     <TrackView listingId={home.id} />
     <main className="w-full px-4 pb-16 pt-4">
+      {home.videoUrl && (
+        <VideoHero src={home.videoUrl} poster={home.videoPosterUrl} alt={`${t.video} ${ref_}`} labels={{ mute: t.mute, unmute: t.unmute }}>
+          <div className="rounded-2xl bg-background/90 p-3 text-foreground shadow-lg backdrop-blur-md">
+            {cost && (
+              <p>
+                <span className="text-xl font-semibold">{money(cost.headline)}</span>{" "}
+                <span className="text-sm text-muted-foreground">{say("perMonth", "/ month")}</span>
+              </p>
+            )}
+            <p className="mt-0.5 truncate text-sm text-muted-foreground">
+              {[place, home.bedrooms != null ? fill(say("beds", "{n} bd"), { n: home.bedrooms }) : null, ref_].filter(Boolean).join(" · ")}
+            </p>
+            {lost ? (
+              <p className="mt-2 text-sm font-medium">{t.taken}</p>
+            ) : (
+              <WhatsAppCta
+                href={continueOnWhatsApp(null, `${fill(say("checkWords", "Check {ref} for me"), { ref: ref_ })} ${K_PAGE_MARK}`)}
+                listingId={home.id}
+                className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-full bg-foreground py-2.5 text-[15px] font-medium text-background"
+              >
+                {t.ask}
+              </WhatsAppCta>
+            )}
+          </div>
+        </VideoHero>
+      )}
+
       {photos.length > 0 && (
-        <div className="-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1 no-scrollbar">
+        <div className={`${home.videoUrl ? "mt-3 " : ""}-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1 no-scrollbar`}>
           {photos.map((src, i) => (
-            <div key={src} className="relative aspect-[4/5] w-[85%] shrink-0 snap-center overflow-hidden rounded-2xl bg-muted">
+            <div key={src} className={`relative aspect-[4/5] ${home.videoUrl ? "w-[42%]" : "w-[85%]"} shrink-0 snap-center overflow-hidden rounded-2xl bg-muted`}>
               <BlurImage
                 src={src}
                 alt={i === 0 ? scrubTitle(home.title) || ref_ : ""}

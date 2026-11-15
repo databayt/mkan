@@ -91,7 +91,7 @@ export async function getSavedHomes(ids: number[], lang: Locale): Promise<SavedH
   return wanted.flatMap((id) => {
     const r = byId.get(id);
     if (!r) return [];
-    const lead = !r.isPublished && (LEAD_SOURCES as readonly string[]).includes(r.source ?? "");
+    const lead = (LEAD_SOURCES as readonly string[]).includes(r.source ?? ""); // published or not (2026-11-15)
     const monthly = r.rentPeriod === "MONTHLY";
     return [
       {

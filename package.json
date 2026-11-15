@@ -70,6 +70,7 @@
     "crm:backfill-terms": "tsx scripts/crm/backfill-terms.ts",
     "crm:agencies": "tsx scripts/crm/agencies-discover.ts",
     "crm:hygiene": "tsx scripts/crm/hygiene.ts",
+    "listings:refresh": "tsx scripts/crm/listings-refresh.ts",
     "crm:demand-match": "tsx --require ./scripts/agent/no-server-only.js scripts/crm/demand-match.ts",
     "agent:funnel": "tsx scripts/crm/agent-funnel.ts",
     "monetize:snapshot": "tsx scripts/monetize/snapshot.ts",
@@ -176,7 +177,9 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "analyze": "ANALYZE=true next build --webpack",
-    "backfill:zones": "tsx scripts/backfill-zone-keys.ts"
+    "backfill:zones": "tsx scripts/backfill-zone-keys.ts",
+    "listings:gate": "tsx scripts/crm/listings-gate.ts",
+    "tt:web": "tsx scripts/crm/tiktok-post.ts web"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.137.0",

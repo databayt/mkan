@@ -55,7 +55,7 @@ import { dirname, join } from 'node:path';
 import sharp from 'sharp';
 import { postToMkan, recordRun, uploadToMkan } from './notify';
 import { twentyClient, phoneOf, type Phones } from './twenty-rest';
-import { ownTikTok } from './tiktok-pure';
+import { frameTimes, ownTikTok } from './tiktok-pure';
 import {
   brokerAsk,
   brokerPreviewAsk,
@@ -416,7 +416,7 @@ const UPSCALE_CHUNK = 50;
  * missing or `--fast` — the caller keeps today's ffmpeg-only enhance.
  */
 function upscale(src: string, dur: number, work: string, info: { w: number; h: number }): string | null {
-  if (flag('fast') || !existsSync(REALESRGAN)) return null;
+  if (flag('fast') || cmd === 'web' || !existsSync(REALESRGAN)) return null;
   const raw = join(work, 'raw');
   const ai = join(work, 'ai');
   mkdirSync(raw, { recursive: true });
@@ -1838,6 +1838,137 @@ async function askWithPreview(rows: { handle: string; name: string; phone: strin
 }
 
 
+// ── web: a broker home's video for its own page ──────────────────────────────
+const TIKTOK_LEDGER = join(__dirname, '.data', 'tiktok', 'videos.json');
+
+/** The intake's frame picks for a video: the frames its photos were chosen from, and the clip's length. */
+function intakePicks(videoId: string): { picks: number[]; duration: number } | null {
+  if (!existsSync(TIKTOK_LEDGER)) return null;
+  const raw = JSON.parse(readFileSync(TIKTOK_LEDGER, 'utf8')) as unknown;
+  const rows = (Array.isArray(raw) ? raw : Object.values(raw as Record<string, unknown>)) as { videoId?: string; meta?: { duration?: number }; read?: { propertyFrames?: number[] } }[];
+  const r = rows.find((x) => x.videoId === videoId);
+  return r ? { picks: r.read?.propertyFrames ?? [], duration: r.meta?.duration ?? 0 } : null;
+}
+
+async function putPublic(path: string, key: string, contentType: string): Promise<string> {
+  const s3 = await import('@/lib/s3');
+  if (!s3.isS3Configured()) throw new Error('S3 is not configured (AWS_* in .env)');
+  const ns = process.env.NEXT_PUBLIC_CDN_NAMESPACE?.trim() || 'mkan';
+  const url = await s3.putObject({ key: `${ns}/uploads/${key}`, body: readFileSync(path), contentType, cacheControl: 'public, max-age=31536000, immutable' });
+  if (!url) throw new Error(`upload of ${key} returned no URL`);
+  return url;
+}
+
+/**
+ * pnpm tt:web [--id=K5808] [--limit=20] [--apply] — every TikTok home gets its own video on its Mkan
+ * page (Abdout, 2026-11-15: TikTok homes "displayed as a video"; the cleaned video for all of them).
+ * The same clean as a repost, without the slow AI upscale: the broker's video framed 9:16, every
+ * added text, number and logo wiped and the gate re-read (stripText), a number or handle said out
+ * loud muted (audioGuard). Then a 720×1280 web encode, and the home's photos re-made as stills of
+ * the CLEAN video at the frames the intake picked — no broker number on any photo (the 411 + 104 of
+ * 11-14). A video that says the home is let marks it taken, like a render.
+ *
+ * Dry by default: files land in .data/tiktok-post/web/<ref>/ for a look, nothing uploaded or saved.
+ * --apply uploads (uploads/listing-video/, uploads/listing-photo/<video id>/ — new keys, the old
+ * photos stay where they are) and sets Listing.videoUrl, videoPosterUrl and photoUrls.
+ * `--remove=K5808` takes a home's video off its page (a broker who asked).
+ */
+async function web(): Promise<void> {
+  const { db } = await import('../../src/lib/db');
+  const remove = argv('remove', '').replace(/^K/i, '');
+  if (remove) {
+    if (!flag('apply')) return console.log(`would remove the video of K${remove} (add --apply)`);
+    await db.listing.update({ where: { id: Number(remove) }, data: { videoUrl: null, videoPosterUrl: null }, select: { id: true } });
+    return console.log(`K${remove}: video off its page`);
+  }
+  const apply = flag('apply');
+  const id = Number(argv('id', '0').replace(/^K/i, ''));
+  const limit = Number(argv('limit', '20')) || 20;
+  const rows = (await loadRows(id ? { id } : { source: 'TIKTOK', lostAt: null, videoUrl: null })).sort((a, z) => z.id - a.id).slice(0, id ? 1 : limit);
+  console.log(`web video — ${rows.length} home(s)${apply ? '' : ' · dry run (files only)'}`);
+  const outRoot = join(DATA, 'web');
+  let done = 0;
+  let failed = 0;
+  for (const r of rows) {
+    const ref = refOf(r);
+    const vid = videoIdOf(r);
+    if (!vid) {
+      console.log(`  - ${ref}: no TikTok video id on its photos — skipped`);
+      continue;
+    }
+    ensureDisk();
+    const work = join(outRoot, `.work-${ref}`);
+    const out = join(outRoot, ref);
+    rmSync(out, { recursive: true, force: true });
+    mkdirSync(work, { recursive: true });
+    mkdirSync(out, { recursive: true });
+    working.add(work);
+    try {
+      const body = await videoBody(r, work);
+      if (!body) throw new Rejected('the broker video could not be fetched (gone, private, or a photo post)');
+      let clean: Awaited<ReturnType<typeof stripText>>;
+      try {
+        clean = await stripText(ref, body, work);
+      } catch (e) {
+        if (e instanceof TakenOnVideo && apply) await markTaken(r);
+        throw e;
+      }
+      const voiced = audioGuard(ref, clean, work);
+      const video = join(out, `${vid}.mp4`);
+      ffmpeg(['-i', voiced.path, '-t', String(MAX_BODY), '-map', '0:v:0', '-map', '0:a:0?', '-vf', 'scale=720:1280:flags=lanczos', '-c:v', 'libx264', '-preset', 'medium', '-crf', '27', '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-af', 'loudnorm=I=-16:TP=-1.5:LRA=11', '-c:a', 'aac', '-b:a', '96k', '-ar', '44100', '-movflags', '+faststart', video]);
+      // The stills: the intake's photo frames, at their times in the same clip, now clean.
+      const intake = intakePicks(vid);
+      const dur = voiced.dur;
+      const times = (() => {
+        const all = intake?.duration ? frameTimes(intake.duration) : [];
+        const picked = (intake?.picks ?? []).map((p) => all[p - 1]).filter((t): t is number => t != null && t < dur - 0.2);
+        const even = frameTimes(dur, 6).filter((t) => !picked.some((p) => Math.abs(p - t) < 1));
+        return [...picked, ...even].slice(0, 6);
+      })();
+      // Hand-held clips blur between steps: of three frames around each time, the sharpest (edge energy).
+      const sharpness = async (f: string) => (await sharp(f).greyscale().convolve({ width: 3, height: 3, kernel: [0, 1, 0, 1, -4, 1, 0, 1, 0] }).stats()).channels[0]!.stdev;
+      const stills: string[] = [];
+      for (const [i, t] of times.entries()) {
+        let best: { f: string; s: number } | null = null;
+        for (const [k, dt] of [-0.4, 0, 0.4].entries()) {
+          const at = Math.min(Math.max(0, t + dt), dur - 0.1);
+          const f = join(work, `still-${i}-${k}.jpg`);
+          ffmpeg(['-ss', String(at), '-i', voiced.path, '-frames:v', '1', '-vf', 'scale=1080:-2', '-q:v', '3', f]);
+          if (!existsSync(f)) continue;
+          const sc = await sharpness(f).catch(() => 0);
+          if (!best || sc > best.s) best = { f, s: sc };
+        }
+        if (!best) continue;
+        const jpg = join(out, `${i + 1}.jpg`);
+        renameSync(best.f, jpg);
+        stills.push(jpg);
+      }
+      if (stills.length < 3) throw new Rejected(`only ${stills.length} stills from the clean video`);
+      if (!apply) {
+        console.log(`  ✓ ${ref}: ${clean.note}; ${voiced.note} → ${out}`);
+        done++;
+        continue;
+      }
+      const stamp = Date.now().toString(36);
+      const videoUrl = await putPublic(video, `listing-video/${vid}-${stamp}.mp4`, 'video/mp4');
+      const photoUrls: string[] = [];
+      for (const [i, jpg] of stills.entries()) photoUrls.push(await putPublic(jpg, `listing-photo/${vid}/${i + 1}-${stamp}.jpg`, 'image/jpeg'));
+      await db.listing.update({ where: { id: r.id }, data: { videoUrl, videoPosterUrl: photoUrls[0], photoUrls, coverBlur: null, coverBlurUrl: null }, select: { id: true } });
+      rmSync(out, { recursive: true, force: true });
+      console.log(`  ✓ ${ref}: video + ${photoUrls.length} clean photos on its page (${clean.note})`);
+      done++;
+    } catch (e) {
+      failed++;
+      console.log(`  ✗ ${ref}: ${firstLine(e)}`);
+    } finally {
+      rmSync(work, { recursive: true, force: true });
+      working.delete(work);
+    }
+  }
+  console.log(`web video done — ${done} made, ${failed} failed`);
+  if (apply) await recordRun('tiktok-web', failed <= done, `${done} made, ${failed} failed`);
+}
+
 // ── main ─────────────────────────────────────────────────────────────────────
 async function main(): Promise<void> {
   switch (cmd) {
@@ -1894,6 +2025,9 @@ async function main(): Promise<void> {
       refuseUnattended('asking brokers for consent');
       await consent();
       break;
+    case 'web':
+      await web();
+      break;
     default:
       console.log(readFileSync(__filename, 'utf8').split('*/')[0]);
   }
@@ -1901,7 +2035,7 @@ async function main(): Promise<void> {
 
 main()
   .then(async () => {
-    if (['pick', 'render', 'run', 'ask', 'consent', 'stats', 'buffer', 'reconcile'].includes(cmd)) await (await import('../../src/lib/db')).db.$disconnect();
+    if (['pick', 'render', 'run', 'ask', 'consent', 'stats', 'buffer', 'reconcile', 'web'].includes(cmd)) await (await import('../../src/lib/db')).db.$disconnect();
   })
   .catch((e) => {
     console.error(`\n❌ ${errorText(e)}\n`);

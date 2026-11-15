@@ -88,7 +88,9 @@ const DISPLAY_SELECT = {
 /** An unpublished TikTok home the agent may offer as a broker lead (never in public search). */
 /** Broker ads mirrored as unpublished leads: TikTok, Facebook groups, web classifieds and homes brokers sent us. */
 export const LEAD_SOURCES = ["TIKTOK", "FACEBOOK", "WEB"] as const;
-const isLead = (row: { isPublished: boolean; source: string | null }) => !row.isPublished && (LEAD_SOURCES as readonly string[]).includes(row.source ?? "");
+// A broker's home stays a lead once it is published (the trust gate, 2026-11-15): the broker is still
+// the one who answers, so the pick goes to askBroker and the card to Mkan's /k page, never the ad.
+const isLead = (row: { source: string | null }) => (LEAD_SOURCES as readonly string[]).includes(row.source ?? "");
 
 
 function priceWhere(r: Requirements): Prisma.ListingWhereInput {
