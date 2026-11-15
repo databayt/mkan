@@ -179,7 +179,8 @@
     "analyze": "ANALYZE=true next build --webpack",
     "backfill:zones": "tsx scripts/backfill-zone-keys.ts",
     "listings:gate": "tsx scripts/crm/listings-gate.ts",
-    "tt:web": "tsx scripts/crm/tiktok-post.ts web"
+    "tt:web": "tsx scripts/crm/tiktok-post.ts web",
+    "crm:airbnb-match": "tsx scripts/crm/airbnb-match.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.137.0",
