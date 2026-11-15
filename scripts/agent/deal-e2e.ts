@@ -20,6 +20,9 @@
  *   8. a direct intro on a second home (deal-intro.ts, until 10 deals are paid): the broker's yes →
  *      Mkan's terms → their YES → a Deal with introducedAt and both numbers; the 24 h and 7-day
  *      follow-ups (marked sent by hand: nothing is sent) → VIEWED, SIGNED, and both 1–5 ratings
+ *   9. Abdout in the loop (2026-11-15): MKAN_REP_WHATSAPP set to a made-up number, a second deal on the home
+ *      driven by his words (numbers, note, cost, take/back, off, viewed, signed, paid): one `loop:` feed line
+ *      per step SKIPPED, the schedule message with the calendar link, nothing in Twenty's queue for a team chat
  *
  * Nothing reaches a person: MKAN_WA_OUTBOX is forced off for this process, so
  * every send is written SKIPPED (the Mac's outbox only sends QUEUED rows), and
@@ -39,6 +42,9 @@ delete process.env.SLACK_BOT_TOKEN;
 // Steps 1–7 walk the relay path (Mkan in the middle); step 8 turns direct intros on (deal-intro.ts).
 process.env.MKAN_INTRO_CAP = "0";
 process.env.PRISMA_QUIET ??= "1";
+// Step 9's rep: a made-up number that is no person. It is put in the environment only for step 9 (rep-word-pure.ts reads it per call), so steps 1–8 write no feed lines.
+const REP_PHONE = "+250700000099";
+const REP_DIGITS = "250700000099";
 const slackCards: string[] = [];
 const realWarn = console.warn.bind(console);
 console.warn = (...a: unknown[]) => {
@@ -141,18 +147,21 @@ async function main() {
   const scopeCounts = async (profileId: string | null) => {
     const tasks = profileId ? await db.agentTask.findMany({ where: { profileId }, select: { id: true } }) : [];
     const taskIds = tasks.map((t) => t.id);
-    const [events, deals, visits, requests, posts, outbound, waState, tenantReqs, revenue] = await Promise.all([
+    const crmKeys = [...taskIds, ...(profileId ? [profileId] : []), TEST_DIGITS];
+    const [events, deals, visits, requests, posts, outbound, waState, tenantReqs, revenue, crmOps, crmLinks] = await Promise.all([
       db.agentEvent.count({ where: { taskId: { in: taskIds } } }),
       db.deal.count({ where: { listingId: home.id } }),
       db.listingVisit.count({ where: { listingId: home.id } }),
       db.brokerRequest.count({ where: { listingId: home.id } }),
       db.tikTokPost.count({ where: { listingId: home.id } }),
-      db.outboundMessage.count({ where: { to: { in: [...variants, ...brokerVariants] } } }),
-      db.waState.count({ where: { OR: [{ key: { contains: TEST_DIGITS } }, { key: { contains: RUN } }] } }),
+      db.outboundMessage.count({ where: { to: { in: [...variants, ...brokerVariants, REP_PHONE, REP_DIGITS] } } }),
+      db.waState.count({ where: { OR: [{ key: { contains: TEST_DIGITS } }, { key: { contains: RUN } }, { key: { startsWith: "rep-off:" }, updatedAt: { gte: t0 } }] } }),
       db.tenantRequest.count({ where: { taskId: { in: taskIds } } }),
       db.revenueEntry.count({ where: { line: "COMMISSION" } }),
+      db.crmOp.count({ where: { OR: crmKeys.map((k) => ({ key: { contains: k } })) } }),
+      db.crmLink.count({ where: { OR: crmKeys.map((k) => ({ key: { contains: k } })) } }),
     ]);
-    return { agentTask: taskIds.length, agentEvent: events, deal: deals, listingVisit: visits, brokerRequest: requests, tikTokPost: posts, outboundMessage: outbound, waState, tenantRequest: tenantReqs, revenueCommission: revenue };
+    return { agentTask: taskIds.length, agentEvent: events, deal: deals, listingVisit: visits, brokerRequest: requests, tikTokPost: posts, outboundMessage: outbound, waState, tenantRequest: tenantReqs, revenueCommission: revenue, crmOp: crmOps, crmLink: crmLinks };
   };
   const before = await scopeCounts(profileBefore?.id ?? null);
 
@@ -176,6 +185,21 @@ async function main() {
       visitFee: number | null;
     } | null,
     broker2Variants: [] as string[],
+    // Step 9: the second visit and deal, and the day marked off.
+    visit9: null as number | null,
+    deal9: null as string | null,
+    offDay: null as string | null,
+  };
+  // Step 9's take/back write the shared tenant-human map: only this number's entry is ever touched, and it is taken out again.
+  let humanBefore: { existed: boolean; value: Record<string, string> } | null = null;
+  const restoreHuman = async () => {
+    if (!humanBefore) return;
+    const row = await db.waState.findUnique({ where: { key: "tenant-human" }, select: { value: true } });
+    if (!row) return;
+    const { [TEST_DIGITS]: _mine, ...rest } = row.value as Record<string, string>;
+    void _mine;
+    if (!humanBefore.existed && Object.keys(rest).length === 0) await db.waState.deleteMany({ where: { key: "tenant-human" } });
+    else await db.waState.update({ where: { key: "tenant-human" }, data: { value: rest } });
   };
   let profileId = profileBefore?.id ?? null;
 
@@ -438,7 +462,110 @@ async function main() {
     }
     process.env.MKAN_INTRO_CAP = "0";
 
-    const leaked = await db.outboundMessage.count({ where: { to: { in: [...variants, ...brokerVariants] }, createdAt: { gte: t0 }, status: { in: ["QUEUED", "SENT"] } } });
+    // ── 9. Abdout in the loop ───────────────────────────────────────────────
+    console.log(`\n9. Abdout in the loop: his words, the feed, the schedule`);
+    process.env.MKAN_REP_WHATSAPP = REP_PHONE;
+    process.env.MKAN_LOOP_FEED = "live";
+    const { applyRepWord } = await import("../../src/components/agent/rep-word");
+    const { readRepWord } = await import("../../src/components/agent/rep-word-pure");
+    const { dealKey } = await import("../../src/components/agent/deal-event-pure");
+    const { repOffKey } = await import("../../src/components/agent/viewing-loop-pure");
+    const { scheduleMessage } = await import("../../src/components/agent/loop-schedule-pure");
+    const { kigaliDay } = await import("../wa/outbox-pure");
+    const ref9 = `K${home.id}`;
+    const repVariants = [REP_PHONE, REP_DIGITS];
+    // A second, open deal on the home for the words to move (the first one is PAID by now).
+    const at9 = new Date(`${new Date(Date.now() + 3 * DAY + 2 * 3_600_000).toISOString().slice(0, 10)}T10:00:00+02:00`);
+    const visit9 = await db.listingVisit.create({
+      data: { listingId: home.id, contactPhone: TEST_PHONE, scheduledFor: at9, recordedById: "mkan:e2e", taskId, meetingPoint: "deal:e2e — not a real place", reminders: ["24h", "2h", "after"] },
+      select: { id: true },
+    });
+    made.visit9 = visit9.id;
+    const deal9 = await db.deal.create({
+      data: { listingId: home.id, visitId: visit9.id, taskId, tenantPhone: TEST_PHONE, brokerId: link?.brokerId ?? null, rentMonthly: deal?.rentMonthly ?? null, brokerCommission: priced?.brokerCommission ?? null },
+      select: { id: true },
+    });
+    made.deal9 = deal9.id;
+    const key9 = dealKey({ taskId, dealId: deal9.id, listingId: home.id });
+    const say9 = async (text: string) => {
+      const word = readRepWord(text);
+      if (!word) {
+        check(false, `"${text}" is read as one of his words`);
+        return "";
+      }
+      return applyRepWord(word);
+    };
+    const notRefused = (reply: string) => reply.length > 0 && !/did not go through|^No open deal|^There is no deal|^No tenant found/.test(reply);
+
+    const numbers = await say9("numbers");
+    check(notRefused(numbers), '"numbers" answers the week', numbers.split("\n")[0]?.slice(0, 80));
+
+    const noted = await say9(`note ${ref9} e2e note`);
+    const notesNow = (await db.deal.findUnique({ where: { id: deal9.id }, select: { notes: true } }))?.notes ?? "";
+    check(/Noted/.test(noted) && notesNow.includes("e2e note"), '"note" lands on the deal', noted);
+
+    const costed = await say9(`cost ${ref9} 3000`);
+    const tripCost = (await db.deal.findUnique({ where: { id: deal9.id }, select: { tripCost: true } }))?.tripCost;
+    check(/3,?000/.test(costed) && tripCost === 3000, '"cost" records Deal.tripCost = 3000', `${costed} · tripCost ${tripCost}`);
+
+    // take / back: the tenant-human map, put back exactly as it was.
+    const humanRow = await db.waState.findUnique({ where: { key: "tenant-human" }, select: { value: true } });
+    humanBefore = { existed: !!humanRow, value: (humanRow?.value ?? {}) as Record<string, string> };
+    const humanNow = async () => ((await db.waState.findUnique({ where: { key: "tenant-human" }, select: { value: true } }))?.value ?? {}) as Record<string, string>;
+    const taken = await say9(`take ${ref9}`);
+    check(/Taken/.test(taken) && TEST_DIGITS in (await humanNow()), '"take" pauses the line in the tenant\'s chat (tenant-human)', taken.slice(0, 80));
+    const back = await say9(`back ${ref9}`);
+    check(/Back/.test(back) && !(TEST_DIGITS in (await humanNow())), '"back" hands it back (the entry goes)', back.slice(0, 80));
+    await restoreHuman();
+    const humanAfter = await humanNow();
+    const strip = (m: Record<string, string>) => JSON.stringify(Object.entries(m).filter(([k]) => k !== TEST_DIGITS).sort());
+    check(strip(humanAfter) === strip(humanBefore.value), "tenant-human is as it was", `${Object.keys(humanAfter).length} entr(ies), was ${Object.keys(humanBefore.value).length}`);
+
+    const offDay = kigaliDay(new Date(Date.now() + 40 * DAY));
+    const off = await say9(`off ${offDay}`);
+    made.offDay = offDay;
+    check(/Marked off/.test(off) && !!(await db.waState.findUnique({ where: { key: repOffKey(offDay) }, select: { key: true } })), '"off <day>" writes rep-off:<day>', off.slice(0, 80));
+    await db.waState.deleteMany({ where: { key: repOffKey(offDay) } });
+
+    // the schedule builder renders this viewing, with its calendar link.
+    const v9 = await db.listingVisit.findUnique({ where: { id: visit9.id }, select: { scheduledFor: true, meetingPoint: true, contactPhone: true } });
+    const msg9 = scheduleMessage(
+      { part: "am", forDay: kigaliDay(v9!.scheduledFor) },
+      [{ at: v9!.scheduledFor, listingId: home.id, title: home.title ?? `Home ${home.id}`, area: null, rent: deal?.rentMonthly ?? null, meetingPoint: v9!.meetingPoint, tenantName: null, tenantPhone: v9!.contactPhone, tenantLang: "en", brokerName: null, brokerPhone, terms: [], commission: priced?.brokerCommission ?? null }],
+    );
+    const cal = msg9.match(/https:\/\/calendar\.google\.com\/calendar\/render\?\S+/)?.[0] ?? "";
+    check(!!cal && decodeURIComponent(cal.replace(/\+/g, " ")).includes(`Viewing ${ref9}`) && cal.includes("20") && msg9.includes(TEST_PHONE), "the schedule message renders this viewing with its calendar link", cal.replace(/^.*?text=/, "").slice(0, 60));
+    check(msg9.includes(`viewed ${ref9}`) && msg9.includes(`note ${ref9}`) && msg9.includes("1 viewing"), "…and the words that close the deal");
+
+    const viewed = await say9(`viewed ${ref9}`);
+    check(/viewed/.test(viewed) && (await db.deal.findUnique({ where: { id: deal9.id }, select: { status: true } }))?.status === "VIEWED", '"viewed" → VIEWED', viewed.slice(0, 80));
+    const signed9 = await say9(`signed ${ref9} share 9000`);
+    const s9 = await db.deal.findUnique({ where: { id: deal9.id }, select: { status: true, mkanShare: true } });
+    check(s9?.status === "SIGNED" && s9.mkanShare === 9000, '"signed … share 9000" → SIGNED with Mkan\'s share', `${s9?.status} · ${s9?.mkanShare} · ${signed9.slice(0, 60)}`);
+    const paid9 = await say9(`paid ${ref9}`);
+    const p9 = await db.deal.findUnique({ where: { id: deal9.id }, select: { status: true, paidAt: true } });
+    check(p9?.status === "PAID" && !!p9.paidAt, '"paid" → PAID', paid9.slice(0, 80));
+    await say9(`paid ${ref9}`);
+
+    // the feed: one `loop:` line per step, to the rep's number, never sent, never twice.
+    // dealEvent is fire-and-forget (deal.ts `void dealEvent`): wait for the lines to land, then a beat more for a duplicate.
+    const readLoops = () => db.outboundMessage.findMany({ where: { to: { in: repVariants }, label: { startsWith: "loop:" }, createdAt: { gte: t0 } }, select: { label: true, status: true, body: true } });
+    for (let i = 0; i < 20 && (await readLoops()).length < 3; i++) await sleep(1_000);
+    await sleep(3_000);
+    const loops = await readLoops();
+    for (const step of ["VIEWED", "SIGNED", "PAID"])
+      check(loops.filter((m) => m.label === `loop:${key9}:${step}`).length === 1, `the feed wrote ${step} once`, loops.find((m) => m.label?.endsWith(`:${step}`))?.body.split("\n")[0]?.slice(0, 80));
+    check(loops.length === 3 && new Set(loops.map((m) => m.label)).size === loops.length, "…and no other `loop:` line, none twice", `${loops.length} row(s): ${loops.map((m) => m.label?.split(":").pop()).join(", ")}`);
+    check(loops.every((m) => m.status !== "QUEUED" && m.status !== "SENT"), "…all held back (SKIPPED)", [...new Set(loops.map((m) => m.status))].join(", "));
+
+    // Twenty: the team test profile stays out of the queue.
+    const ops = await db.crmOp.findMany({
+      where: { createdAt: { gte: t0 }, OR: [{ key: { contains: key9 } }, { key: { contains: taskId } }, { key: { contains: TEST_DIGITS } }, ...(profileId ? [{ key: { contains: profileId } }] : [])] },
+      select: { object: true, key: true },
+    });
+    check(ops.length === 0, "no CrmOp for the team test profile (REAL_PERSON keeps tests out of Twenty)", ops.map((o) => `${o.object}:${o.key}`).join(", ") || "none");
+
+    const leaked = await db.outboundMessage.count({ where: { to: { in: [...variants, ...brokerVariants, ...repVariants] }, createdAt: { gte: t0 }, status: { in: ["QUEUED", "SENT"] } } });
     check(leaked === 0 && blocked.length === 0, "nothing was sent to anyone", `${leaked} queued/sent row(s), ${blocked.length} blocked fetch(es), ${slackCards.length} Slack card(s) intercepted`);
   } catch (err) {
     check(false, "the run threw", (err as Error).stack ?? String(err));
@@ -460,13 +587,16 @@ async function main() {
           check(false, `cleanup ${name}`, (err as Error).message);
         }
       };
+      await restoreHuman().catch((err) => check(false, "cleanup tenant-human", (err as Error).message));
+      await run("CrmOp", db.crmOp.deleteMany({ where: { createdAt: { gte: t0 }, OR: [...taskIds, ...dealIds, TEST_DIGITS, ...(profileId ? [profileId] : [])].map((k) => ({ key: { contains: k } })) } }));
+      await run("CrmLink", db.crmLink.deleteMany({ where: { createdAt: { gte: t0 }, OR: [...taskIds, ...dealIds, TEST_DIGITS, ...(profileId ? [profileId] : [])].map((k) => ({ key: { contains: k } })) } }));
       await run("RevenueEntry", db.revenueEntry.deleteMany({ where: { dealId: { in: dealIds } } }));
       await run("Deal", db.deal.deleteMany({ where: { id: { in: dealIds } } }));
       await run("ListingVisit", db.listingVisit.deleteMany({ where: { OR: [{ taskId: { in: taskIds } }, ...(made.visitId ? [{ id: made.visitId }] : [])] } }));
       await run("BrokerRequest", db.brokerRequest.deleteMany({ where: { OR: [{ id: { in: made.requestIds } }, { taskId: { in: taskIds } }] } }));
       await run(
         "OutboundMessage",
-        db.outboundMessage.deleteMany({ where: { createdAt: { gte: t0 }, OR: [{ to: { in: variants } }, { brokerRequestIds: { hasSome: made.requestIds } }] } }),
+        db.outboundMessage.deleteMany({ where: { createdAt: { gte: t0 }, OR: [{ to: { in: [...variants, REP_PHONE, REP_DIGITS] } }, { brokerRequestIds: { hasSome: made.requestIds } }] } }),
       );
       await run("TenantRequest", db.tenantRequest.deleteMany({ where: { taskId: { in: taskIds } } }));
       await run("AgentEvent", db.agentEvent.deleteMany({ where: { taskId: { in: taskIds } } }));
@@ -474,7 +604,7 @@ async function main() {
       if (made.postId) await run("TikTokPost", db.tikTokPost.deleteMany({ where: { id: made.postId } }));
       await run(
         "WaState",
-        db.waState.deleteMany({ where: { key: { in: [`viewing-ask:${TEST_DIGITS}`, ...msgIds.map((m) => `handoff:${m}`)] } } }),
+        db.waState.deleteMany({ where: { key: { in: [`viewing-ask:${TEST_DIGITS}`, ...msgIds.map((m) => `handoff:${m}`), ...(made.offDay ? [`rep-off:${made.offDay}`] : []), ...dealIds.map((d) => `share-asked:${d}`)] } } }),
       );
       await db.listing.update({ where: { id: home.id }, data: { lostAt: home.lostAt, lostReason: home.lostReason, lastAvailabilityConfirmedAt: home.lastAvailabilityConfirmedAt } });
       if (made.home2) {

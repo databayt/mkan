@@ -57,16 +57,37 @@ export async function crmStep(step: DealStep, ctx: DealEventCtx, key: string): P
   }
 }
 
+/**
+ * False when the deal's chat is one of ours (a test phone, the team, Abdout's contacts): his words on a
+ * rehearsal ("cost", "note") stay out of Twenty like its steps do (profileOf). True when unsure.
+ */
+async function dealIsReal(key: string): Promise<boolean> {
+  try {
+    const parsed = parseDealKey(key);
+    let taskId: string | null = parsed?.kind === "task" ? parsed.taskId : null;
+    if (!taskId && parsed?.kind === "deal") taskId = (await db.deal.findUnique({ where: { id: parsed.dealId }, select: { taskId: true } }))?.taskId ?? null;
+    if (!taskId) return true;
+    const profileId = (await db.agentTask.findUnique({ where: { id: taskId }, select: { profileId: true } }))?.profileId;
+    if (!profileId) return true;
+    const rows = await db.$queryRaw<{ ok: number }[]>(Prisma.sql`SELECT 1 AS ok FROM "AgentProfile" p WHERE p.id = ${profileId} AND ${REAL_PERSON}`);
+    return rows.length > 0;
+  } catch {
+    return true;
+  }
+}
+
 /** Mkan's person wrote a note on a deal ("note K5811 …"): a Twenty note on that deal. */
 export async function crmNote(key: string, text: string): Promise<void> {
   const body = text.trim();
   if (!body) return;
+  if (!(await dealIsReal(key))) return;
   await enqueueCrm("note", key, { $deal: key, body, title: body.slice(0, 60) });
 }
 
 /** Fields on the deal that are not a step ("cost K5811 3000" → tripCostRwf). */
 export async function crmDealPatch(key: string, fields: { tripCostRwf?: number | null; notes?: string | null }): Promise<void> {
   try {
+    if (!(await dealIsReal(key))) return;
     const payload: Record<string, unknown> = { mkanKey: key };
     if (fields.tripCostRwf != null) payload.tripCostRwf = fields.tripCostRwf;
     // A deal Twenty has never seen needs a name; one it knows keeps the name a person may have edited.

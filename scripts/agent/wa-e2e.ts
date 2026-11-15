@@ -12,6 +12,10 @@
  *   4. a WEB tenant gives the team's number beside "Ask the broker" (optInDemand), the gate sees it
  *      (a #mkan TEST card, no broker reached), the broker answers "available" (applyAnswer) and the
  *      deal sheet is written to that number for WhatsApp — SKIPPED, the lock below never sends it
+ *   5. the doors (2026-11-15): a TikTok code pins its home first, a pasted TikTok post link resolves to its
+ *      home (a skip when no POSTED post has a link), "today" / "uyu munsi" answers the day's homes ending on
+ *      the /today link (or the nothing-posted line), "new" alone still starts a new chat, a /tt bio message
+ *      ("Check K<id> for me tiktok_bio") is answered with that home
  *
  * It drives the shipped functions with a made-up number on the team's list (`pnpm wa:brokers test`), whose
  * picks never reach a broker (broker-sends.ts), in a chat of its own that it deletes after. Nothing reaches
@@ -35,6 +39,7 @@ const TEST_PHONE = `+${TEST_DIGITS}`;
 const RUN = `wae2e-${Date.now().toString(36)}`;
 let n = 0;
 const nextMsg = () => `${RUN}-${++n}`;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 let failures = 0;
 function check(ok: boolean, label: string, detail = ""): boolean {
@@ -51,12 +56,37 @@ async function main() {
   const state = await import("../../src/components/agent/wa-state");
 
   const t0 = new Date();
+  // Row counts in this run's scope (the made-up number's own rows), before and after — the cleanup must leave them equal.
+  const profileKey = hashKey(`wa:${TEST_DIGITS}`);
+  const scopeCounts = async () => {
+    const profile = await db.agentProfile.findUnique({ where: { keyHash: profileKey }, select: { id: true } });
+    const tasks = profile ? await db.agentTask.findMany({ where: { profileId: profile.id }, select: { id: true } }) : [];
+    const taskIds = tasks.map((t) => t.id);
+    const [events, outbound, waState, requests, brokerReq, deals, visits, crmOps, crmLinks, notes] = await Promise.all([
+      db.agentEvent.count({ where: { taskId: { in: taskIds } } }),
+      db.outboundMessage.count({ where: { to: { in: [TEST_PHONE, TEST_DIGITS] } } }),
+      db.waState.count({ where: { OR: [{ key: { contains: TEST_DIGITS } }, { key: { contains: "wae2e-" } }] } }),
+      db.tenantRequest.count({ where: { taskId: { in: taskIds } } }),
+      db.brokerRequest.count({ where: { taskId: { in: taskIds } } }),
+      db.deal.count({ where: { OR: [{ tenantPhone: TEST_PHONE }, { taskId: { in: taskIds } }] } }),
+      db.listingVisit.count({ where: { contactPhone: TEST_PHONE } }),
+      // The queue itself is shared with real traffic: only ops that name this run's chats, profile or number.
+      db.crmOp.count({ where: { OR: [...taskIds.map((id) => ({ key: { contains: id } })), ...(profile ? [{ key: { contains: profile.id } }] : []), { key: { contains: TEST_DIGITS } }] } }),
+      db.crmLink.count({ where: { OR: [...taskIds.map((id) => ({ key: { contains: id } })), ...(profile ? [{ key: { contains: profile.id } }] : []), { key: { contains: TEST_DIGITS } }] } }),
+      db.dailyNote.count({ where: { day: { startsWith: "wae2e" } } }),
+    ]);
+    return { agentTask: taskIds.length, agentEvent: events, outboundMessage: outbound, waState, tenantRequest: requests, brokerRequest: brokerReq, deal: deals, listingVisit: visits, crmOp: crmOps, crmLink: crmLinks, dailyNote: notes };
+  };
+  let countsBefore: Awaited<ReturnType<typeof scopeCounts>> | null = null;
   const made = { visits: [] as number[], deals: [] as string[], webTasks: [] as string[], webProfiles: [] as string[], requests: [] as string[] };
   let listingBefore: { id: number; lostAt: Date | null; lostReason: string | null; lastAvailabilityConfirmedAt: Date | null } | null = null;
   try {
     if (!check((await testPhones()).has(TEST_DIGITS), "the test number is on the team list")) return;
     // A chat of its own: whatever an earlier run of this made-up number left is deleted first.
     await deleteTestChats(db, hashKey(`wa:${TEST_DIGITS}`));
+    // State an earlier run of this fake number left (its "hello" gate, an open viewing ask): residue, not a person's.
+    await db.waState.deleteMany({ where: { key: { in: [`hello:${TEST_DIGITS}`, `viewing-ask:${TEST_DIGITS}`] } } });
+    countsBefore = await scopeCounts();
 
     // ── 1. the claim ──────────────────────────────────────────────────────────
     const id = nextMsg();
@@ -167,8 +197,95 @@ async function main() {
         check(again === before, "without a number the same answer reaches nobody");
       } else check(false, "the home has a broker to answer");
     }
+
+    // ── 5. the doors: a code, a pasted link, "today", "new", the bio ───────────
+    // The step-3 deal would read any next message as its after-viewing answer: it goes first (cleanup finds nothing more).
+    await db.deal.deleteMany({ where: { id: { in: made.deals } } });
+    await db.listingVisit.deleteMany({ where: { id: { in: made.visits } } });
+    made.deals.length = 0;
+    made.visits.length = 0;
+    await db.waState.deleteMany({ where: { key: `viewing-ask:${TEST_DIGITS}` } });
+    const door = async (text: string) => {
+      const r = await handleTenantWhatsApp({ phone: TEST_DIGITS, text, msgId: nextMsg() });
+      if ("done" in r && r.done) await r.done;
+      const taskId = "taskId" in r ? r.taskId : null;
+      if (taskId) {
+        // The turn may outlive the reply; the next message needs it settled.
+        for (let i = 0; i < 30; i++) {
+          const s = await db.agentTask.findUnique({ where: { id: taskId }, select: { status: true } });
+          if (s?.status !== "RUNNING") break;
+          await sleep(2_000);
+        }
+      }
+      return { reply: "reply" in r ? r.reply : null, taskId, why: "why" in r ? r.why : undefined };
+    };
+    const firstShown = async (taskId: string | null) => {
+      const t = taskId ? await db.agentTask.findUnique({ where: { id: taskId }, select: { shortlist: true, refListingId: true, refSource: true } }) : null;
+      return { ids: ((t?.shortlist as { id: number }[] | null) ?? []).map((s) => s.id), ref: t?.refListingId ?? null, source: t?.refSource ?? null };
+    };
+
+    // The homes: a live home with a POSTED TikTok post (a published broker home first), else step 4's broker home.
+    const posted = await db.tikTokPost.findMany({ where: { status: "POSTED", postedAt: { lte: new Date() } }, orderBy: { postedAt: "desc" }, take: 60, select: { listingId: true, tiktokId: true, tiktokUrl: true, postedAt: true } });
+    const liveIds = new Set(
+      (await db.listing.findMany({ where: { id: { in: posted.map((p) => p.listingId) }, lostAt: null, rentPeriod: "MONTHLY", priceMonth: { gt: 0 } }, select: { id: true } })).map((l) => l.id),
+    );
+    const post = posted.find((p) => liveIds.has(p.listingId)) ?? null;
+    const codeId = post?.listingId ?? listingBefore?.id ?? null;
+
+    // 5a. a TikTok code pins its home first.
+    if (check(codeId != null, "a live home for the code step", codeId ? `K${codeId}` : "none")) {
+      const r = await door(`K${codeId}`);
+      const shown = await firstShown(r.taskId);
+      check(!!r.reply && shown.ids[0] === codeId, `"K${codeId}" pins that home first`, `first = ${shown.ids[0] ?? "none"}, ${shown.ids.length} shown`);
+      check(shown.ref === codeId && shown.source === "tiktok", "...and stamps the chat (refListingId, tiktok)", `${shown.ref} / ${shown.source}`);
+
+      // 5e. the /tt bio's message: the code and the marker.
+      const bio = await door(`Check K${codeId} for me tiktok_bio`);
+      const bioShown = await firstShown(bio.taskId);
+      check(!!bio.reply && bioShown.ids[0] === codeId, `"Check K${codeId} for me tiktok_bio" is answered with that home`, `first = ${bioShown.ids[0] ?? "none"}, ${bio.reply?.split("\n")[0]?.slice(0, 70) ?? bio.why ?? ""}`);
+      check(bioShown.source === "tiktok_bio", "...counted as the bio's", bioShown.source ?? "null");
+    }
+
+    // 5b. a pasted TikTok post link resolves to its home.
+    const linked = posted.filter((p) => liveIds.has(p.listingId)).find((p) => p.tiktokId && /^\d{8,25}$/.test(p.tiktokId));
+    if (!linked) console.log("– skipped: the pasted TikTok link — no POSTED post with a numeric video id on a live home");
+    else {
+      const { homeForTikTokLink } = await import("../../src/components/agent/tiktok-link");
+      const url = `https://www.tiktok.com/@mkan.rw/video/${linked.tiktokId}`;
+      check((await homeForTikTokLink(`You posted this ${url}`)) === linked.listingId, "a TikTok post link resolves to its home (tiktok-link.ts)", `K${linked.listingId}`);
+      const r = await door(`${url}`);
+      const shown = await firstShown(r.taskId);
+      check(!!r.reply && shown.ids[0] === linked.listingId && shown.source === "tiktok", `the pasted link answers K${linked.listingId} first, counted as TikTok's`, `first = ${shown.ids[0] ?? "none"}, ${shown.source ?? "null"}`);
+    }
+
+    // 5c. "today" / "uyu munsi": the day's homes as a numbered list ending on /today — or the nothing-posted line.
+    for (const word of ["today", "uyu munsi"]) {
+      const r = await door(word);
+      const reply = r.reply ?? "";
+      const nothing = /nothing (?:has been )?posted|nta zamu|لم يُنشر|no (?:new )?(?:homes|posts)/i.test(reply);
+      const list = /(?:^|\n)\s*\*?1\./.test(reply) && /\/(?:en|ar|rw)\/today\b/.test(reply);
+      check(!!reply && (list || nothing), `"${word}" lists the day's homes ending on /today, or says nothing is posted`, [reply.split("\n")[0], ...reply.split("\n").slice(-1)].join(" … ").slice(0, 140) || (r.why ?? ""));
+      if (!nothing) {
+        const shown = await firstShown(r.taskId);
+        check(shown.ids.length > 0 && shown.ids.length <= 6, `"${word}" put the day's homes on the chat`, `${shown.ids.length} home(s)`);
+      }
+    }
+
+    // 5d. "new" alone starts a new chat — not the today list.
+    const before5 = (await db.agentProfile.findUnique({ where: { keyHash: profileKey }, select: { id: true } }))?.id;
+    const tasksBefore = before5 ? await db.agentTask.count({ where: { profileId: before5 } }) : 0;
+    const fresh = await door("new");
+    const tasksAfter = before5 ? await db.agentTask.count({ where: { profileId: before5 } }) : 0;
+    const looksLikeToday = /\/(?:en|ar|rw)\/today\b/.test(fresh.reply ?? "") || /posted today|nothing posted/i.test(fresh.reply ?? "");
+    check(!looksLikeToday, '"new" alone is not the today list', (fresh.reply ?? fresh.why ?? "no reply").split("\n")[0]!.slice(0, 90));
+    check(tasksAfter >= tasksBefore, '"new" alone starts a new chat (or the hello), never continues the today chat', `${tasksBefore} → ${tasksAfter} chat(s)`);
+
     check(blockedSends.length === 0 || blockedSends.every((u) => /slack|whatsapp|evolution|__wa/i.test(u)), "nothing reached a person", `${blockedSends.length} send(s) refused by the guard`);
   } finally {
+    // The ids that name this number's rows in the CRM queue, taken before the chats go.
+    const crmProfile = await db.agentProfile.findUnique({ where: { keyHash: hashKey(`wa:${TEST_DIGITS}`) }, select: { id: true } }).catch(() => null);
+    const crmTasks = crmProfile ? (await db.agentTask.findMany({ where: { profileId: crmProfile.id }, select: { id: true } }).catch(() => [])).map((t) => t.id) : [];
+    const crmKeys = [TEST_DIGITS, ...(crmProfile ? [crmProfile.id] : []), ...crmTasks, ...made.webTasks, ...made.deals];
     // ── cleanup: every row this run made ──────────────────────────────────────
     // Step 4's web chat: its answers, request, events and profile, and the home back as it was.
     await db.brokerRequest.deleteMany({ where: { taskId: { in: made.webTasks } } }).catch(() => {});
@@ -187,6 +304,16 @@ async function main() {
     await deleteTestChats(db, hashKey(`wa:${TEST_DIGITS}`), { profileToo: true });
     await db.outboundMessage.deleteMany({ where: { to: { in: [TEST_PHONE, TEST_DIGITS] }, createdAt: { gte: t0 } } }).catch(() => {});
     await db.waState.deleteMany({ where: { OR: [{ key: { startsWith: `tmsg:${RUN}` } }, { key: `viewing-ask:${TEST_DIGITS}`, updatedAt: { gte: t0 } }, { key: { startsWith: `handoff:${RUN}` } }] } }).catch(() => {});
+    // The doors' rows: the "hello" gate, an open ask, any CRM op or link a chat of this number caused, a note.
+    await db.waState.deleteMany({ where: { OR: [{ key: { in: [`hello:${TEST_DIGITS}`, `viewing-ask:${TEST_DIGITS}`] } }, { key: { contains: TEST_DIGITS }, updatedAt: { gte: t0 } }] } }).catch(() => {});
+    await db.crmOp.deleteMany({ where: { createdAt: { gte: t0 }, OR: crmKeys.map((k) => ({ key: { contains: k } })) } }).catch(() => {});
+    await db.crmLink.deleteMany({ where: { createdAt: { gte: t0 }, OR: crmKeys.map((k) => ({ key: { contains: k } })) } }).catch(() => {});
+    await db.dailyNote.deleteMany({ where: { day: { startsWith: "wae2e" } } }).catch(() => {});
+    // Before = after: the made-up number's own rows are all gone.
+    if (countsBefore) {
+      const after = await scopeCounts();
+      for (const k of Object.keys(countsBefore) as (keyof typeof countsBefore)[]) check(countsBefore[k] === after[k], `count ${k}`, `before ${countsBefore[k]}, after ${after[k]}`);
+    }
     console.log(`\ncleanup done (${RUN})`);
     await db.$disconnect();
   }
