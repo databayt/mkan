@@ -7,6 +7,7 @@
  * Pure: the reading is loop-numbers.ts.
  */
 import { funnelTable, median, type ChatFacts, type ChatStage } from "@/lib/monetize/chat-funnel-pure";
+import { INBOUND_TARGET_PER_WEEK, type ChannelInbound, type InboundOverview } from "@/lib/monetize/inbound-pure";
 
 const HOUR = 3_600_000;
 const DAY = 86_400_000;
@@ -150,10 +151,82 @@ export function numbersLines(input: NumbersInput): NumberLine[] {
   return lines;
 }
 
-/** The full report for his phone: every line with its meaning, and the action where one fired. */
-export function numbersMessage(lines: NumberLine[], title = "Numbers — the last 7 days"): string {
+// ── Inbound: the number that decides everything now (Abdout, 2026-11-16) ──────────────────────────
+// New people reaching Mkan, web alone and WhatsApp alone, 7 a week. It goes FIRST in the Sunday message and
+// again on Monday's #mkan card — weekly warnings only, no daily alerts.
+
+/** A step that fell by at least this share against last week is "the one that moved". */
+export const INBOUND_FALL = 0.3;
+
+/** The first day SiteSignal counted: before it the upstream numbers are zero because nothing counted, not because nobody came. */
+export const INBOUND_COUNTING_SINCE = "16 Nov";
+
+/** A fall of `last` → `now` by at least 30%, as the rounded percent; null when it held or there was no baseline. */
+function fell(now: number | null | undefined, last: number | null | undefined): number | null {
+  if (!last || last <= 0 || now == null) return null;
+  const drop = (last - now) / last;
+  return drop >= INBOUND_FALL ? Math.round(drop * 100) : null;
+}
+
+const upstreamZero = (c: ChannelInbound) => {
+  const u = [c.upstream.week, c.upstream.lastWeek];
+  return u.every((x) => !x.reach && !x.intent && !x.tiktokViews);
+};
+
+/**
+ * What moved upstream, in words: the first step down the road that fell 30% or more against last week.
+ * Web walks visitors → opened the chat → people who wrote; WhatsApp walks TikTok views → taps → people who wrote.
+ */
+export function inboundMoved(o: InboundOverview): string[] {
+  if (upstreamZero(o.web) && upstreamZero(o.wa)) return [`Upstream counting started ${INBOUND_COUNTING_SINCE}: nothing to compare yet.`];
+  const reach = "fewer people saw us: the problem is reach, not the chat";
+  const lines: string[] = [];
+  const w = o.web;
+  const web =
+    ((p) => (p != null ? `Web visitors fell ${p}% → ${reach}.` : null))(fell(w.upstream.week.reach, w.upstream.lastWeek.reach)) ??
+    ((p) => (p != null ? `Web chat opens fell ${p}% while visitors held → people came but didn't open the chat: the pages' call to action.` : null))(fell(w.upstream.week.intent, w.upstream.lastWeek.intent)) ??
+    ((p) => (p != null ? `Web people fell ${p}% while chat opens held → they opened the chat but didn't write: the first screen.` : null))(fell(w.week, w.lastWeek));
+  lines.push(web ?? "Web: nothing fell by 30% or more.");
+  const a = o.wa;
+  const wa =
+    ((p) => (p != null ? `TikTok views fell ${p}% → ${reach}.` : null))(fell(a.upstream.week.tiktokViews, a.upstream.lastWeek.tiktokViews)) ??
+    ((p) => (p != null ? `WhatsApp taps fell ${p}% → ${reach}.` : null))(fell(a.upstream.week.reach, a.upstream.lastWeek.reach)) ??
+    ((p) => (p != null ? `WhatsApp people fell ${p}% while taps held → people tapped but didn't write: the WhatsApp door.` : null))(fell(a.week, a.lastWeek));
+  lines.push(wa ?? "WhatsApp: nothing fell by 30% or more.");
+  return lines;
+}
+
+const sourcesText = (c: ChannelInbound) => (c.sources.length ? c.sources.slice(0, 3).map((s) => `${s.source} ${s.n}`).join(", ") : "none");
+
+/** `rate` is a share (0.32) from the funnel; a value above 1 is already a percent. */
+const ratePct = (r: number) => `${Math.round(r <= 1 ? r * 100 : r)}%`;
+
+/** The inbound block, as lines. Null = the loader could not read it: say so, never print zeros that look real. */
+export function inboundBlock(o: InboundOverview | null): string[] {
+  if (!o) return ["Inbound: inbound numbers not ready."];
+  const target = o.total.target || INBOUND_TARGET_PER_WEEK;
+  const bn = o.bottleneck;
+  const label = (k: string) => k.replace(/[_-]+/g, " ");
+  return [
+    `People reaching us this week: ${o.total.week} of ${target} (last week ${o.total.lastWeek})`,
+    `Web: ${o.web.week} (last week ${o.web.lastWeek}) · → WhatsApp ${o.web.movedToWa}`,
+    `WhatsApp: ${o.wa.week} (last week ${o.wa.lastWeek})`,
+    ...inboundMoved(o).map((l) => `Moved: ${l}`),
+    `Bottleneck: ${label(bn.now)}${bn.next ? ` · next: ${label(bn.next)}${bn.nextRate != null ? ` ${ratePct(bn.nextRate)}` : ""}` : ""}`,
+    "Sources this week:",
+    `• Web: ${sourcesText(o.web)}`,
+    `• WhatsApp: ${sourcesText(o.wa)}`,
+  ];
+}
+
+/**
+ * The full report for his phone: the inbound block first (when `inbound` is passed, null included), then every
+ * line with its meaning, and the action where one fired.
+ */
+export function numbersMessage(lines: NumberLine[], title = "Numbers — the last 7 days", inbound?: InboundOverview | null): string {
   const body = lines.map((l) => `• ${l.text}\n  ${l.meaning}${l.action ? `\n  → ${l.action}` : ""}`);
-  return [title, ...body].join("\n");
+  const head = inbound === undefined ? [] : [...inboundBlock(inbound), ""];
+  return [...head, title, ...body].join("\n");
 }
 
 /** One line for an empty day: the number that matters most, and the first thing to act on. */

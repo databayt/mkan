@@ -30,6 +30,7 @@ import { evalCondition, verdictOf, type Metrics } from '../src/lib/monetize/metr
 import type { MonetizeOverview } from '../src/lib/monetize/load';
 import {
   fallbackPlan,
+  inboundContext,
   monthWindow,
   parseRetro,
   monthTitle,
@@ -256,6 +257,9 @@ async function plannerContext(db: Db, model: MonetizeOverview, metrics: Metrics,
   const score = (model as { score?: { tiles: { key: string; score: number | null; weakest: string | null }[]; weakest: { tile: string; part: string } | null } | null }).score;
   const playbook = (JSON.parse(readFileSync(join(process.cwd(), 'src/components/internationalization/en.json'), 'utf8')) as { monetize?: { score?: { parts?: Record<string, { t: string; means: string; fix: string }> } } }).monetize?.score?.parts ?? {};
   const intro = (model as { intro?: unknown }).intro ?? null;
+  // Inbound — new people reaching Mkan, 7 a week — is THE number (Abdout, 2026-11-16). src modules are loaded
+  // after liveMetrics has installed the server-only shim, so this import is dynamic.
+  const inbound = inboundContext(await (await import('../src/lib/monetize/inbound')).loadInbound(now).catch(() => null));
   return {
     // The road to money: this week's entry is the plan's backbone; the next ones are pulled forward.
     roadmap: { thisWeek: roadmapWeek(now), next: roadmapNext(now, 2), month: roadmapMonth(now), ahead: roadmapAhead(now), standing: STANDING_TASKS },
@@ -265,6 +269,8 @@ async function plannerContext(db: Db, model: MonetizeOverview, metrics: Metrics,
           weakest: score.weakest ? { ...score.weakest, ...(playbook[score.weakest.part] ?? {}) } : null,
         }
       : null,
+    // Inbound: this week vs last vs the target, both channels' upstream and the bottleneck; null = unreadable.
+    inbound,
     // Direct intros until 10 deals are paid, then Mkan in the middle (deal-intro.ts).
     intro,
     // The business setup (setup.ts): the cycle files its prompts itself — plan none of your own for it.
@@ -299,6 +305,10 @@ viewing → signed → paid. Aim the sprint at the funnel's weakest step first (
 and use the lessons: do not repeat what was flat or worse; build on what moved. context.scorecard is the page's own
 verdict — four percentages (doing = the road from a post to Mkan's share, brokers, tenants, chatbot) and the weakest
 part with what it means and how to fix it: one prompt works that part, measured on its "part.<key>" metric.
+Inbound is THE number (Abdout, 2026-11-16): new people reaching Mkan, web and WhatsApp, 7 a week (context.inbound;
+null means not readable yet). EVERY WEEK sprint keeps roadmap.standing's inbound task: one experiment aimed at the
+bottleneck, its links carrying an ?s= marker, read the next Sunday from the sources; a flat or falling inbound
+number outranks every other lever except a paid deal.
 TikTok is Mkan's main entity (Abdout, 2026-11-07): EVERY WEEK sprint keeps roadmap.standing's TikTok task and at
 least one prompt from docs/tiktok-playbook.md, aimed at the weakest part of the TikTok tile (followers, views,
 likes, interactions, follow rate, posts a day), as one change at a time written into the playbook's Experiments.

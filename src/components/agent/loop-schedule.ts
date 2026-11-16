@@ -9,12 +9,13 @@ import { scrubTitle } from "@/lib/redact";
 import { startOfKigaliDay } from "../../../scripts/wa/outbox-pure";
 import { termsToAsk } from "./deal-pure";
 import { feedMode } from "./loop-feed-pure";
+import { loadInbound } from "@/lib/monetize/inbound";
 import { numbersReport, loadNumbers } from "./loop-numbers";
-import { numbersShort } from "./loop-numbers-pure";
-import { dayLine, numbersLabel, scheduleLabel, scheduleMessage, scheduleSlot, type DayCounts, type ScheduleViewing } from "./loop-schedule-pure";
+import { inboundBlock, numbersShort } from "./loop-numbers-pure";
+import { dayLine, inboundCardKey, isMondayMorning, numbersLabel, scheduleLabel, scheduleMessage, scheduleSlot, type DayCounts, type ScheduleViewing } from "./loop-schedule-pure";
 import { repDigits } from "./rep-word-pure";
 import type { ShortlistItem } from "./types";
-import { sendMessages } from "./whatsapp";
+import { postSlackCard, sendMessages } from "./whatsapp";
 
 /** The coming viewings of one day, joined to their deal, home, broker and chat. */
 async function viewingsBetween(from: Date, to: Date): Promise<ScheduleViewing[]> {
@@ -72,14 +73,31 @@ async function dayCounts(now: Date): Promise<DayCounts> {
   return { picked, yes, booked, viewed, signed, paid, lost };
 }
 
+/**
+ * Monday 07:00: the same inbound block as Sunday's numbers goes to #mkan, so the team sees the one number that
+ * matters (Abdout, 2026-11-16: weekly warnings only). The WaState row is claimed BEFORE posting — the key is the
+ * primary key, so a re-run or a second cron hit loses the race and posts nothing. Returns whether it posted.
+ */
+export async function postInboundCard(now = new Date()): Promise<boolean> {
+  const slot = scheduleSlot(now);
+  if (!isMondayMorning(slot)) return false;
+  const key = inboundCardKey(slot);
+  const claimed = await db.waState.create({ data: { key, value: { at: now.toISOString() } } }).then(() => true, () => false);
+  if (!claimed) return false;
+  const inbound = await loadInbound(now).catch(() => null);
+  await postSlackCard([":bar_chart: *Inbound — people reaching Mkan*", ...inboundBlock(inbound)].join("\n"));
+  return true;
+}
+
 /** Send this slot's schedule (and, Sunday evening, the numbers). Returns what went into the outbox. */
 export async function sendSchedule(now = new Date()): Promise<{ sent: string[]; viewings: number }> {
-  const rep = repDigits();
-  if (!rep) return { sent: [], viewings: 0 };
   const slot = scheduleSlot(now);
+  const card = await postInboundCard(now).catch((e) => (console.warn("[loop-schedule] inbound card failed", e), false));
+  const rep = repDigits();
+  if (!rep) return { sent: card ? [inboundCardKey(slot)] : [], viewings: 0 };
   const viewings = await viewingsBetween(slot.from, slot.to);
   const to = `+${rep}`;
-  const sent: string[] = [];
+  const sent: string[] = card ? [inboundCardKey(slot)] : [];
   // The evening message carries the day in one line: always on an empty day, and in the digest, where it
   // replaces the per-step feed. An empty day also gets the numbers' one-liner — he wants to know.
   let extra: string | null = null;

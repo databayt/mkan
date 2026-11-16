@@ -8,6 +8,7 @@ import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { isE2eFixture } from "@/lib/monetize/e2e-fixture";
 import { loadChatFacts } from "@/lib/monetize/chat-funnel";
+import { loadInbound } from "@/lib/monetize/inbound";
 import { REAL_PERSON } from "@/lib/monetize/team";
 import { numbersLines, numbersMessage, type NumberLine } from "./loop-numbers-pure";
 
@@ -39,5 +40,7 @@ export async function loadNumbers(now = new Date()): Promise<NumberLine[]> {
 
 /** The report as a message. */
 export async function numbersReport(now = new Date()): Promise<string> {
-  return numbersMessage(await loadNumbers(now));
+  // Inbound first (2026-11-16); a failed read is "not ready", never a broken Sunday message.
+  const inbound = await loadInbound(now).catch(() => null);
+  return numbersMessage(await loadNumbers(now), undefined, inbound);
 }

@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { parseCondition, type Metrics } from "./metrics";
 import type { NextStep } from "./next-steps";
+import type { InboundOverview } from "./inbound-pure";
 import { roadmapMonth, roadmapWeek, roadTaskPrompt, STANDING_TASKS } from "./roadmap";
 
 /**
@@ -275,6 +276,23 @@ export function roadmapPlan(now = new Date()): PlanSprint | null {
     auto: true,
     tasks: tasks.map((t, i) => ({ key: `r${i + 1}`, title: t.title, ...(t.block !== "cost" ? { block: t.block } : {}) })),
     prompts: tasks.map((t, i) => ({ task: `r${i + 1}`, text: roadTaskPrompt(t, r), metric: t.metric })),
+  };
+}
+
+/**
+ * The inbound overview as the planner reads it (context.inbound, 2026-11-16): this week, last week, the target,
+ * each channel's upstream, and the bottleneck. Null = not readable: the planner is told so instead of guessing.
+ * People and first words are left out — the planner works on counts, never on someone's message.
+ */
+export function inboundContext(o: InboundOverview | null) {
+  if (!o) return null;
+  return {
+    thisWeek: o.total.week,
+    lastWeek: o.total.lastWeek,
+    target: o.total.target,
+    web: { week: o.web.week, lastWeek: o.web.lastWeek, movedToWa: o.web.movedToWa, upstream: o.web.upstream, sources: o.web.sources.slice(0, 5) },
+    wa: { week: o.wa.week, lastWeek: o.wa.lastWeek, upstream: o.wa.upstream, sources: o.wa.sources.slice(0, 5) },
+    bottleneck: o.bottleneck,
   };
 }
 

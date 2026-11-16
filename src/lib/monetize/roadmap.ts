@@ -38,6 +38,16 @@ export const STANDING_TASKS: RoadTask[] = [
     do: "TikTok is Mkan's main entity. Read docs/tiktok-playbook.md and the TikTok tile on /monetize (its weakest part: part.<key> in the metrics). Judge the experiment in the playbook's Experiments list if one is due; then pick the playbook lever for the weakest TikTok number and make that one change in the posting code (the caption, the on-screen hook, the length, the follow ask, the question, the cadence), with its baseline written in the Experiments list. Never post or reply by hand.",
     doneWhen: "one lever is changed on main with its experiment written down (or the running one judged and the playbook updated), and the TikTok tile's weakest number has a before value",
   },
+  {
+    // Abdout, 2026-11-16: the inbound number (new people reaching Mkan, 7 a week) is THE number; the loop always
+    // works on it. Measured on `people` (real people reaching the line); the experiment itself is read on Sunday
+    // through its ?s= marker, which shows up as a source in the numbers message.
+    title: "Inbound: run one experiment to bring people",
+    block: "chat",
+    metric: "people",
+    do: "Inbound (new people reaching Mkan, web and WhatsApp, target 7 a week) is the number. Read docs/demand.md and context.inbound: judge last week's experiment by its ?s= marker in this week's sources, then run ONE new experiment from the doc's ladder aimed at the bottleneck, and give every link it uses an ?s= marker so Sunday's numbers can read it. Write it down in the doc's Experiments list with its baseline. Change code or config only; never contact a person.",
+    doneWhen: "one inbound experiment is live on main with its ?s= marker and baseline written in docs/demand.md (or last week's judged and the doc updated)",
+  },
 ];
 
 export interface RoadSprint {

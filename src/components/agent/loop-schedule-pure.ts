@@ -40,6 +40,11 @@ export function scheduleSlot(now: Date): ScheduleSlot {
 export const scheduleLabel = (slot: Pick<ScheduleSlot, "sentDay" | "part">) => `loop:schedule:${slot.sentDay}:${slot.part}`;
 export const numbersLabel = (slot: Pick<ScheduleSlot, "sentDay">) => `loop:numbers:${slot.sentDay}`;
 
+/** The Monday #mkan inbound card goes once per Monday: the WaState key that records it (2026-11-16). */
+export const inboundCardKey = (slot: Pick<ScheduleSlot, "sentDay">) => `inbound-card:${slot.sentDay}`;
+/** Monday's 07:00 slot — the only one that posts the card. */
+export const isMondayMorning = (slot: Pick<ScheduleSlot, "part" | "sentDay">) => slot.part === "am" && new Date(`${slot.sentDay}T00:00:00Z`).getUTCDay() === 1;
+
 /** A viewing as the schedule needs it. */
 export interface ScheduleViewing {
   at: Date;

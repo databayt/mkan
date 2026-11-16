@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { ROADMAP, roadmapAhead, roadmapNext, roadmapWeek, roadTaskPrompt, rungsView, STANDING_TASKS } from "@/lib/monetize/roadmap";
-import { mentionsGated, monthTitle, roadmapPlan, validatePlan, weekWindow } from "@/lib/monetize/sprint-auto";
+import { inboundContext, mentionsGated, monthTitle, roadmapPlan, validatePlan, weekWindow } from "@/lib/monetize/sprint-auto";
 
 // The live metric keys (scripts/sprint/live.ts → readMetrics, read 2026-11-07): a task on any other key
 // could never be measured by the loop.
@@ -36,6 +36,15 @@ describe("the road to money", () => {
       expect(LIVE_KEYS).toContain(t.metric);
       expect(mentionsGated(roadTaskPrompt(t, ROADMAP[1]!))).toBe(false);
     }
+  });
+
+  it("keeps a standing inbound task, planned into every week with its ?s= marker rule", () => {
+    const t = STANDING_TASKS.find((x) => /^Inbound/.test(x.title))!;
+    expect(t.do).toMatch(/\?s= marker/);
+    expect(t.do).toMatch(/docs\/demand\.md/);
+    const plan = roadmapPlan(new Date("2026-11-10T09:00:00Z"))!;
+    expect(plan.tasks.some((x) => /^Inbound/.test(x.title))).toBe(true);
+    expect(inboundContext(null)).toBeNull();
   });
 
   it("finds this week's sprint and the ones after it", () => {

@@ -2,7 +2,7 @@
  * The schedule to Mkan's person (2026-11-15): twice a day, with everything he needs for each viewing.
  */
 import { describe, expect, it } from "vitest";
-import { calendarLink, dayLine, repAfterMessage, repReminderMessage, scheduleLabel, scheduleMessage, scheduleSlot, viewingBlock, type ScheduleViewing } from "@/components/agent/loop-schedule-pure";
+import { calendarLink, inboundCardKey, isMondayMorning, dayLine, repAfterMessage, repReminderMessage, scheduleLabel, scheduleMessage, scheduleSlot, viewingBlock, type ScheduleViewing } from "@/components/agent/loop-schedule-pure";
 
 const kigali = (s: string) => new Date(`${s}:00+02:00`);
 const viewing: ScheduleViewing = {
@@ -103,5 +103,17 @@ describe("the rep's own reminders", () => {
       "In 2 h: K5811 · 3-bedroom · Tue 17 Nov, 10:00\nMeet: meeting point not set yet\nTenant: +250788123456",
     );
     expect(repAfterMessage("K5811")).toBe("How did K5811 go? reply: viewed K5811 · signed K5811 share 9000 · lost K5811 <why>");
+  });
+});
+
+describe("the Monday inbound card", () => {
+  const kigali = (iso: string) => new Date(`${iso}:00+02:00`);
+  it("goes on Monday 07:00 only, keyed by the Monday", () => {
+    const mon = scheduleSlot(kigali("2026-11-16T07:00"));
+    expect(isMondayMorning(mon)).toBe(true);
+    expect(inboundCardKey(mon)).toBe("inbound-card:2026-11-16");
+    expect(isMondayMorning(scheduleSlot(kigali("2026-11-16T20:00")))).toBe(false);
+    expect(isMondayMorning(scheduleSlot(kigali("2026-11-17T07:00")))).toBe(false);
+    expect(isMondayMorning(scheduleSlot(kigali("2026-11-22T20:00")))).toBe(false);
   });
 });
