@@ -1986,3 +1986,26 @@ model CrmLink {
 
   @@unique([object, twentyId])
 }
+
+/// A signal upstream of a chat (2026-11-16): someone visited a page, tapped a WhatsApp button or opened the
+/// chat — so a drop in people reaching Mkan shows in reach or intent before it shows in chats. One row per
+/// visitor, per Kigali day, per kind and place: counts are people, not hits. Written by /api/track
+/// (bots, admins and the team's browsers skipped); older than 120 days is deleted by agent-retention.
+model SiteSignal {
+  id          Int      @id @default(autoincrement())
+  /// The Kigali day, YYYY-MM-DD.
+  day         String
+  /// "visit" | "wa_tap" | "chat_open"
+  kind        String
+  /// "home" | "find" | "today" | "tt" | "k" | "listing" | "bubble" | "sheet"
+  place       String
+  /// First touch: a ?s= marker (fb-kimironko, wa-status, gbp…), else the referrer (tiktok, facebook,
+  /// google, whatsapp), else "direct".
+  source      String   @default("direct")
+  visitorHash String
+  hits        Int      @default(1)
+  createdAt   DateTime @default(now())
+
+  @@unique([day, kind, place, visitorHash])
+  @@index([day, kind])
+}
