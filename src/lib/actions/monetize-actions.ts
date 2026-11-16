@@ -306,3 +306,48 @@ export async function markSetupStep(form: FormData): Promise<void> {
   updateTag(MONETIZE_TAG);
 }
 
+
+// ── The people behind the inbound number: marking the team's own (2026-11-16) ──
+
+/** Add profile ids to WaState `team-profiles` — the same JSON list scripts/monetize/team.ts writes. */
+async function addTeamProfiles(ids: string[]): Promise<void> {
+  const { idList, TEAM_PROFILES_KEY } = await import("@/lib/monetize/team");
+  const row = await db.waState.findUnique({ where: { key: TEAM_PROFILES_KEY }, select: { value: true } });
+  const next = [...new Set([...idList(row?.value), ...ids])];
+  await db.waState.upsert({ where: { key: TEAM_PROFILES_KEY }, create: { key: TEAM_PROFILES_KEY, value: next }, update: { value: next } });
+}
+
+/** "Ours": this person is the team testing, so they leave every count of people (REAL_PERSON reads the list). */
+export async function markProfileOurs(profileId: string): Promise<void> {
+  const session = await requireAdmin();
+  const id = z.string().trim().min(1).max(64).parse(profileId);
+  if (!(await db.agentProfile.findUnique({ where: { id }, select: { id: true } }))) throw new Error("Profile not found");
+  await addTeamProfiles([id]);
+  logger.info("monetize:profile-ours", { actorId: session.user.id, profileId: id });
+  revalidatePath("/[lang]/monetize", "page");
+  updateTag(MONETIZE_TAG);
+}
+
+/**
+ * "This browser is the team's": a year-long cookie (its visits and taps stop counting, /api/track) and the
+ * browser's own agent profile, if it has one, joins the team list. No profile is created here.
+ */
+export async function markThisBrowserTeam(): Promise<void> {
+  const session = await requireAdmin();
+  const { cookies } = await import("next/headers");
+  const { TEAM_COOKIE, TEAM_COOKIE_MAX_AGE } = await import("@/lib/analytics/team-cookie");
+  (await cookies()).set(TEAM_COOKIE, "1", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: TEAM_COOKIE_MAX_AGE,
+    path: "/",
+  });
+  const { resolveViewer } = await import("@/components/agent/profile");
+  // Read-only resolve: the profile(s) this browser already has (signed in, also the anonymous one it carries).
+  const viewer = await resolveViewer({ write: false });
+  if (viewer.ids.length) await addTeamProfiles(viewer.ids);
+  logger.info("monetize:browser-team", { actorId: session.user.id, profiles: viewer.ids.length });
+  revalidatePath("/[lang]/monetize", "page");
+  updateTag(MONETIZE_TAG);
+}

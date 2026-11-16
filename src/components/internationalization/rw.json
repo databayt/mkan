@@ -7083,6 +7083,85 @@
           "what": "Go live on momodeveloper.mtn.co.rw; production keys in the Keychain."
         }
       }
+    },
+    "inbound": {
+      "title": "Abantu batugeraho",
+      "total": "Iki cyumweru: {n} muri {target} b'abantu bashya (intego ni umwe ku munsi)",
+      "totalLast": "Icyumweru gishize: {n}",
+      "bottleneck": "Ikibazo gikuru: {now}",
+      "next": "Gikurikira: {next}",
+      "nextRate": "Gikurikira: {next} {rate}",
+      "stage": {
+        "inbound": "abantu batugeraho",
+        "homes": "ikiganiro → amazu yerekanwe",
+        "pick": "yerekanwe → yatoranyijwe",
+        "asked": "yatoranyijwe → umuhuza yabajijwe",
+        "yes": "yabajijwe → umuhuza yavuze yego",
+        "time": "yego → igihe cyavuzwe",
+        "booked": "igihe → yateganyijwe",
+        "viewed": "yateganyijwe → yasuwe",
+        "signed": "yasuwe → yasinywe",
+        "paid": "yasinywe → yishyuwe"
+      },
+      "web": "Urubuga",
+      "wa": "WhatsApp",
+      "webHint": "Abantu batwandikiye bwa mbere mu kiganiro cyo ku rubuga.",
+      "waHint": "Abantu batwandikiye bwa mbere kuri WhatsApp.",
+      "thisWeek": "abantu bashya muri iki cyumweru",
+      "up": "▲ {n} ugereranyije n'icyumweru gishize",
+      "down": "▼ {n} ugereranyije n'icyumweru gishize",
+      "same": "nk'icyumweru gishize",
+      "today": "Uyu munsi {n}",
+      "todayStatus": {
+        "met": "uri ku murongo",
+        "behind": "inyuma y'umugabane wa buri munsi ({share})"
+      },
+      "trend": "Abantu bashya buri munsi: {list}",
+      "upWeb": "abasuye {reach} → bafunguye ikiganiro {intent} → bandikiye {people}",
+      "upWa": "abakanze {reach} → bageze {people}",
+      "tiktokViews": "Abarebye kuri TikTok {n}",
+      "since": "turabara kuva {date}",
+      "sources": "Aho baturuka",
+      "noSources": "nta muntu uraza muri iki cyumweru",
+      "movedToWa": "→ WhatsApp {n}",
+      "weakTag": "Intambwe idakomeye",
+      "weak": {
+        "web": {
+          "reach": {
+            "t": "Kugerwaho",
+            "means": "Abantu bake ni bo bagera ku rubuga, bityo bake ni bo bandika."
+          },
+          "intent": {
+            "t": "Gufungura ikiganiro",
+            "means": "Abantu barasura ariko bake bafungura ikiganiro."
+          },
+          "arrival": {
+            "t": "Kwandika",
+            "means": "Abantu bafungura ikiganiro ariko bake ni bo bandika ubutumwa bwa mbere."
+          }
+        },
+        "wa": {
+          "reach": {
+            "t": "Kugerwaho",
+            "means": "Abantu bake ni bo bakanda ku mabutoni ya WhatsApp."
+          },
+          "arrival": {
+            "t": "Kugera",
+            "means": "Abantu bakanda WhatsApp ariko ubutumwa buke ni bwo bugera."
+          }
+        }
+      },
+      "people": {
+        "title": "Abantu bari inyuma y'umubare",
+        "note": "Ibigeragezo by'itsinda ntibibarwa nk'abantu batugeraho. Bishyireho ikimenyetso, umubare ube mwiza.",
+        "empty": "Nta bantu bashya mu minsi 30 ishize.",
+        "ours": "Ni abacu",
+        "oursDone": "Byashyizweho ikimenyetso",
+        "browser": "Iyi browser ni iy'itsinda",
+        "browserDone": "Iyi browser yashyizweho ikimenyetso",
+        "moved": "→ WhatsApp",
+        "noWords": "—"
+      }
     }
   },
   "tt": {

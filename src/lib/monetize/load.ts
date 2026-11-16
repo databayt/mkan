@@ -24,6 +24,8 @@ import { connectionMode, introCap, MKAN_TERMS } from "@/components/agent/intro-p
 import { KIGALI_LONG_TERMS } from "@/components/agent/cost";
 import { pathToMoney, type PathView } from "./path";
 import { SETUP_STATE_KEY, type SetupState } from "./setup";
+import { loadInbound } from "./inbound";
+import type { InboundOverview } from "./inbound-pure";
 
 /**
  * Everything /monetize shows, read in one pass.
@@ -83,6 +85,8 @@ export interface MonetizeOverview {
   score?: ScorecardView | null;
   /** The TikTok page: followers, views, posts — now, this week, one point a day (score-samples.ts reachOf). */
   reach?: ReachView | null;
+  /** The people who reach us, web alone and WhatsApp alone (inbound-pure.ts). Null = unreadable. */
+  inbound?: InboundOverview | null;
   /** Mkan's business setup, ticked by Abdout on /monetize (setup.ts; WaState `mkan-setup`). */
   setup?: SetupState | null;
   /** Direct intros until INTRO_CAP deals are paid, then Mkan in the middle (deal-intro.ts). */
@@ -452,6 +456,9 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
     paidThisMonth: monthPaid.length,
   });
 
+  // The cards' numbers ride in the cached overview (60 s); a failed read hides the cards, not the page.
+  const inbound = await loadInbound(new Date(now)).catch(() => null);
+
   return {
     days,
     generatedAt: new Date(now).toISOString(),
@@ -486,6 +493,7 @@ export async function loadMonetize(days = 7): Promise<MonetizeOverview> {
     funnel,
     firstShare,
     score,
+    inbound,
     reach: reachOf(postPoints(byBlock("post")), now),
     setup: (setupRow?.value as SetupState | null | undefined) ?? {},
     // The cap the line itself reads (MKAN_INTRO_CAP; 0 = Mkan in the middle from the first deal).

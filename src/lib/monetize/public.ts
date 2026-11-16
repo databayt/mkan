@@ -41,6 +41,8 @@ export function toPublic(data: MonetizeOverview): MonetizeOverview {
     lessons: data.lessons.map((l) => ({ ...l, text: r(l.text) })),
     blocks: data.blocks.map((b) => ({ ...b, jobs: b.jobs.map((j) => ({ ...j, summary: j.summary == null ? j.summary : r(j.summary) })) })),
     experiments: data.experiments.map((e) => ({ ...e, hypothesis: r(e.hypothesis) })),
+    // The counts stay public; the people behind them (first words, who is who) are the admin's.
+    inbound: data.inbound ? { ...data.inbound, people: [] } : data.inbound,
     // The business setup is the admin's checklist (who ticked what, when): not for visitors.
     setup: null,
     firstShare: data.firstShare && {

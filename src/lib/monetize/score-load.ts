@@ -85,7 +85,10 @@ export async function loadScoreQueries(now = Date.now()): Promise<ScoreQueries> 
     ]),
     db.$queryRaw<{ stops: number; wa: number }[]>`
       SELECT COALESCE((SELECT jsonb_array_length(value::jsonb) FROM "WaState" WHERE key = 'tenant-stop' AND jsonb_typeof(value::jsonb) = 'array'), 0)::int AS stops,
-             (SELECT COUNT(*) FROM "AgentProfile" WHERE "waPhone" IS NOT NULL)::int AS wa`.catch(() => [{ stops: 0, wa: 0 }]),
+             (SELECT COUNT(*) FROM "AgentProfile" p WHERE p."waPhone" IS NOT NULL AND ${REAL_PERSON}
+                AND EXISTS (SELECT 1 FROM "AgentTask" u, jsonb_array_elements(u.messages) m WHERE u."profileId" = p.id AND m->>'role' = 'user')
+                -- the inbound cards' definition (inbound-pure.ts, 2026-11-16): a WhatsApp profile that came through "Continue on WhatsApp" is a web person
+                AND COALESCE((SELECT t."refSource" FROM "AgentTask" t WHERE t."profileId" = p.id ORDER BY t."createdAt" ASC LIMIT 1), p."firstSource") IS DISTINCT FROM 'web')::int AS wa`.catch(() => [{ stops: 0, wa: 0 }]),
     // Brokers who ever said a home is free (the answering broker's own row), and of them who agreed Mkan's terms.
     // Broker.availableAnswers only counts since its counter shipped, so the requests are the record.
     db.$queryRaw<{ saidYes: number; agreed: number }[]>`

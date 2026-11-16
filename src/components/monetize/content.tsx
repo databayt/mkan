@@ -17,6 +17,7 @@ import { DealsSection } from "./deals-section";
 import { SetupSection } from "./setup-section";
 import { Road } from "./road";
 import { Scorecard } from "./scorecard";
+import { InboundCards } from "./inbound-cards";
 
 /**
  * /monetize, short (Abdout, 2026-11-07: "simple and clean. And short"): the title row; the four
@@ -65,6 +66,7 @@ export function MonetizeContent({
         </div>
       </header>
 
+      {data.inbound && <InboundCards inbound={data.inbound} labels={labels} locale={locale} canEdit={canEdit} />}
       {data.score && <Scorecard score={data.score} reach={data.reach} intro={data.intro} path={data.path} labels={labels} locale={locale} />}
       {canEdit && deals && <DealsSection deals={deals} labels={labels} locale={locale} payoutSet={payoutSet} held={heldIntros} momoMode={momoMode} firstTen={firstTen} />}
       {canEdit && <SetupSection state={data.setup ?? {}} labels={labels} locale={locale} />}

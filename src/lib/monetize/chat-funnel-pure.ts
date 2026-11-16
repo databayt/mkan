@@ -7,6 +7,8 @@
  * that waits on a broker or a tenant is a rate to move. Pure: facts in, table out — the loader
  * (chat-funnel.ts) reads, `pnpm mkan:read funnel` prints, `pnpm funnel:review` judges.
  */
+import { maskText, redactPublic } from "@/lib/redact";
+
 export const CHAT_STAGES = ["chat", "homes", "pick", "asked", "yes", "time", "booked", "viewed", "signed", "paid"] as const;
 export type ChatStage = (typeof CHAT_STAGES)[number];
 
@@ -16,6 +18,10 @@ export type Owner = "tenant" | "broker" | "line" | "mkan" | "none";
 export interface ChatFacts {
   /** The task id — never a phone number. */
   id: string;
+  /** The person (AgentProfile id) — what the team marking acts on; never a phone. Added 2026-11-16 for the inbound cards. */
+  profileId?: string | null;
+  /** The first words they wrote, phones and emails masked, at most 120 characters (inbound people list, admin only). */
+  firstWords?: string;
   channel: "wa" | "web";
   /** tiktok | k_page | organic | web */
   source: string;
@@ -292,7 +298,7 @@ export interface TaskRow {
   source: string | null;
   lang: string;
   createdAt: Date;
-  messages: { role?: string; kind?: string; count?: number; checked?: string; at?: string }[];
+  messages: { role?: string; kind?: string; count?: number; checked?: string; at?: string; text?: string }[];
   /** The budget the tenant gave, monthly. */
   budget: number | null;
   requests: { consentAt: Date | null; sentAt: Date | null; respondedAt: Date | null; status: string; rent: number | null }[];
@@ -327,6 +333,8 @@ export function chatFacts(tasks: TaskRow[], deals: DealFacts[]): ChatFacts[] {
     const key = t.profileId ?? t.id;
     const f: ChatFacts & { newest: number } = people.get(key) ?? {
       id: t.id,
+      profileId: t.profileId,
+      firstWords: "",
       channel: t.wa ? "wa" : "web",
       source: t.source || (t.wa ? "organic" : "web"),
       lang: t.lang,
@@ -343,6 +351,10 @@ export function chatFacts(tasks: TaskRow[], deals: DealFacts[]): ChatFacts[] {
     }
     const at = f.at;
     for (const m of t.messages) {
+      if (m.role === "user" && !f.firstWords && typeof m.text === "string" && m.text.trim()) {
+        // The first thing the person said, for the admin's "who is this" list (2026-11-16); masked before it leaves.
+        f.firstWords = maskText(redactPublic(m.text), 120);
+      }
       const when = dateOf(m.at);
       if (!when) continue;
       if (m.role === "user") {

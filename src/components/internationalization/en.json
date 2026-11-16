@@ -7083,6 +7083,85 @@
           "what": "Go live on momodeveloper.mtn.co.rw; production keys in the Keychain."
         }
       }
+    },
+    "inbound": {
+      "title": "People reaching us",
+      "total": "This week: {n} of {target} new people (target 1 a day)",
+      "totalLast": "Last week: {n}",
+      "bottleneck": "Bottleneck: {now}",
+      "next": "Next: {next}",
+      "nextRate": "Next: {next} {rate}",
+      "stage": {
+        "inbound": "people reaching us",
+        "homes": "chat → shown homes",
+        "pick": "shown → picked",
+        "asked": "picked → broker asked",
+        "yes": "asked → broker said yes",
+        "time": "yes → time named",
+        "booked": "time → booked",
+        "viewed": "booked → viewed",
+        "signed": "viewed → signed",
+        "paid": "signed → paid"
+      },
+      "web": "Web",
+      "wa": "WhatsApp",
+      "webHint": "People who first wrote in the chat on the website.",
+      "waHint": "People who first wrote to us on WhatsApp.",
+      "thisWeek": "new people this week",
+      "up": "▲ {n} on last week",
+      "down": "▼ {n} on last week",
+      "same": "same as last week",
+      "today": "Today {n}",
+      "todayStatus": {
+        "met": "on pace",
+        "behind": "behind the daily share ({share})"
+      },
+      "trend": "New people each day: {list}",
+      "upWeb": "visitors {reach} → opened the chat {intent} → wrote {people}",
+      "upWa": "taps {reach} → arrived {people}",
+      "tiktokViews": "TikTok views {n}",
+      "since": "counting since {date}",
+      "sources": "Sources",
+      "noSources": "no one yet this week",
+      "movedToWa": "→ WhatsApp {n}",
+      "weakTag": "Weakest step",
+      "weak": {
+        "web": {
+          "reach": {
+            "t": "Reach",
+            "means": "Too few people reach the site, so too few ever write."
+          },
+          "intent": {
+            "t": "Opening the chat",
+            "means": "People visit but few open the chat."
+          },
+          "arrival": {
+            "t": "Writing",
+            "means": "People open the chat but few write a first message."
+          }
+        },
+        "wa": {
+          "reach": {
+            "t": "Reach",
+            "means": "Too few people tap the WhatsApp buttons."
+          },
+          "arrival": {
+            "t": "Arriving",
+            "means": "People tap WhatsApp but few messages arrive."
+          }
+        }
+      },
+      "people": {
+        "title": "The people behind the number",
+        "note": "The team's own tests are not people reaching us. Mark them, and the number is clean.",
+        "empty": "No new people in the last 30 days.",
+        "ours": "Ours",
+        "oursDone": "Marked",
+        "browser": "This browser is the team's",
+        "browserDone": "This browser is marked",
+        "moved": "→ WhatsApp",
+        "noWords": "—"
+      }
     }
   },
   "tt": {
