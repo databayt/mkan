@@ -1,5 +1,26 @@
 # Agent — open issues
 
+## 2026-11-16 — The people reaching us: web alone, WhatsApp alone, seen before they drop
+
+- **Why:** 0 real people in two days. Abdout: track who approaches us on the web and on WhatsApp, study the
+  number, know a problem before it shows, two cards on /monetize, and a doc on boosting it (`docs/demand.md`).
+  His calls: new people by first channel (web → WhatsApp counts once, under web), target 1 a day in total,
+  weekly warnings only.
+- **Shipped** (Worker at `d720f2e`):
+  - The cards first on /monetize, from `src/lib/monetize/inbound*.ts`. The admin list of the people behind the
+    number has an "Ours" tap and "This browser is the team's".
+  - Signals upstream (`SiteSignal` via /api/track): a visit, a WhatsApp tap or a chat opened, per person per
+    day. Bots, automated browsers, admins and team browsers are skipped.
+  - The `?s=` / referrer first touch (`mkan_src`), carried into WhatsApp as ` s:<marker>`.
+    `refSourceOf` reads it below the page marks; `firstSource` keeps it.
+  - The Sunday numbers lead with inbound; a Monday #mkan card; a standing weekly "Inbound" task for the
+    sprint loop.
+- **What the chat side changed:** `whatsapp-format.ts` `RefSource` widened to `KnownRefSource | (string & {})`.
+  `whatsapp-chat.ts` strips the ` s:` marker before the reader sees it. `actions.ts` stamps a web person's
+  `firstSource` from `mkan_src` on the first send.
+- **Owed:** clean launch week with the "Ours" taps (most of 10-21..24 was the team); a phone test of
+  `mkan.sd/en/today?s=check` → tap WhatsApp → the chat's source reads `check`.
+
 ## 2026-11-15 — Abdout in the loop for the first 10 deals; Twenty is the record; Today on Mkan
 
 - **Why:** Abdout: "make me man in the loop for the first 10 deals … send me schedule to go with them to
