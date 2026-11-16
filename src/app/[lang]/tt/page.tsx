@@ -10,6 +10,7 @@ import { scrubTitle } from "@/lib/redact";
 import { fill } from "@/components/agent/format";
 import { continueOnWhatsApp } from "@/components/agent/wa-link";
 import { TIKTOK_BIO_MARK } from "@/components/agent/whatsapp-format";
+import { Signal } from "@/components/analytics/signal";
 import { loadTtHomes, type TtHome } from "@/lib/tt/homes";
 import { TtCta } from "./tt-cta";
 
@@ -46,6 +47,7 @@ export default async function TtPage({ params }: { params: Promise<{ lang: Local
 
   return (
     <main className="mx-auto w-full max-w-lg px-4 pb-16 pt-6">
+      <Signal kind="visit" place="tt" />
       <h1 className="text-xl font-semibold">{t?.title ?? "Homes from our TikTok"}</h1>
       <p className="mt-1 text-sm text-muted-foreground">{t?.lead ?? "Tap a home to ask about it on WhatsApp. It's free for you."}</p>
       <TtCta href={general} className="mt-4 w-full py-3 text-[15px]">

@@ -24,6 +24,7 @@ import { getListingReviews, getHostOtherReviewCount } from "@/lib/actions/review
 import { auth } from "@/lib/auth";
 import type { Locale } from "@/components/internationalization/config";
 import { localize, localizeNested, getText } from "@/components/translation/localize";
+import { Signal } from "@/components/analytics/signal";
 import TrackView from "@/components/analytics/track-view";
 import { listingSegment } from "@/lib/listing-code";
 import { homePath } from "@/components/agent/home-path";
@@ -316,6 +317,7 @@ export default async function ListingPage({ params, searchParams }: ListingPageP
           hidden with CSS, so a tracker inside them would double-count one
           human visit. */}
       <TrackView listingId={listing.id} />
+      <Signal kind="visit" place="listing" />
       {/* Desktop Layout - Preserved. Header matches /listings: the compact
           search pill expands into the big search (opening the clicked segment),
           and the hamburger menu + avatar behave identically. disableScrollExpand

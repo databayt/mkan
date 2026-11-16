@@ -143,7 +143,21 @@ const CHECK_WORD_RE =
 export const asksToCheck = (text: string): boolean => readHomeRef(text) != null && CHECK_WORD_RE.test(text);
 
 /** Where a chat's home code came from — the first-share funnel's attribution (2026-11-05). */
-export type RefSource = "tiktok" | "tiktok_bio" | "today" | "k_page" | "web" | "organic";
+export type KnownRefSource = "tiktok" | "tiktok_bio" | "today" | "k_page" | "web" | "organic";
+/**
+ * A share marker (`fb-kimironko`, `wa-status`, `gbp`…) is a source too (2026-11-16): the `?s=` of the link
+ * that brought the person, carried in their first WhatsApp text as ` s:<marker>`.
+ */
+export type RefSource = KnownRefSource | (string & {});
+
+/** ` s:<marker>` in a WhatsApp text — the first-touch source the site appended to the prefilled message. */
+const SHARE_MARK_RE = /(?:^|\s)s:([a-z0-9][a-z0-9_-]{0,31})(?=\s|$)/i;
+
+/** The share marker a message carries, lowercase; null when none. */
+export const readShareMarker = (text: string): string | null => text.match(SHARE_MARK_RE)?.[1]?.toLowerCase() ?? null;
+
+/** The message without its share marker, so the agent reads only what the tenant needs. */
+export const withoutShareMarker = (text: string): string => text.replace(new RegExp(SHARE_MARK_RE.source, "gi"), " ").replace(/[ \t]{2,}/g, " ").trim();
 
 /** The words the /k/<code> page prefills after the code, so its chats count apart from TikTok's. */
 export const K_PAGE_MARK = "mkan.sd";
@@ -164,15 +178,21 @@ const TIKTOK_WORDS_RE =
 
 /**
  * The marker first (a /tt message is that page whatever else it carries); then a code with the /k page's mark is that page; a code carried with a web chat's `ref:` is /find;
- * a bare code is what a TikTok caption asks viewers to send. No code: TikTok when the words say so, else organic.
+ * then an ` s:<marker>` the site appended (the link that brought the person); a bare code is what a TikTok
+ * caption asks viewers to send. No code: TikTok when the words say so, else organic.
  */
 export function refSourceOf(text: string, webRef: string | null): RefSource {
   if (/\btiktok_bio\b/i.test(text)) return "tiktok_bio";
   if (/\bmkan_today\b/i.test(text)) return "today";
+  const hasCode = readHomeRef(text) != null;
+  if (hasCode && /\bmkan\.sd\b/i.test(text)) return "k_page";
+  if (webRef) return "web";
+  // A share marker beats the guesses below, never the page markers above (2026-11-16).
+  const shared = readShareMarker(text);
+  if (shared) return shared;
   // A pasted TikTok link is TikTok's too (tiktok-link.ts reads which home it shows).
-  if (readHomeRef(text) == null) return webRef ? "web" : TIKTOK_WORDS_RE.test(text) || /\btiktok\.com\//i.test(text) ? "tiktok" : "organic";
-  if (/\bmkan\.sd\b/i.test(text)) return "k_page";
-  return webRef ? "web" : "tiktok";
+  if (!hasCode) return TIKTOK_WORDS_RE.test(text) || /\btiktok\.com\//i.test(text) ? "tiktok" : "organic";
+  return "tiktok";
 }
 
 /**

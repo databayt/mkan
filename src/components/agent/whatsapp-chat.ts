@@ -26,7 +26,7 @@ import { startTurn, TURN_DEADLINE_MS } from "./run";
 import { loadTask, STUCK_AFTER_MS } from "./task-view";
 import type { AgentMessage, AgentTaskView } from "./types";
 import { busyText, checkText, formatWhatsApp, isFresh, readPick, readRef, retryPlan, takenIn, waLang, wantsViewing, type CheckOutcome, type WaDict, type WaLang } from "./whatsapp-format";
-import { askAroundText, botText, firstMessageKind, isBareYes, isThanks, lastAgent, MAX_HOMES, personAfterHello, personText, asksForHome, readHomeRef, refSourceOf, shownHomes, thanksText, wantsPerson, whichOneText, type RefSource } from "./whatsapp-format";
+import { askAroundText, botText, firstMessageKind, isBareYes, isThanks, lastAgent, MAX_HOMES, personAfterHello, personText, asksForHome, readHomeRef, refSourceOf, shownHomes, thanksText, wantsPerson, whichOneText, withoutShareMarker, type RefSource } from "./whatsapp-format";
 import { afterHomesKind, chatText, helloText, unsureText, videoNotFoundText, visitText } from "./whatsapp-format";
 import { homeForTikTokLink } from "./tiktok-link";
 import { acceptOffered } from "./viewing-loop";
@@ -179,8 +179,10 @@ export async function handleTenantWhatsApp(input: {
     return { reply: null, why: "duplicate" };
   }
 
-  const { ref, rest } = readRef(raw);
-  if (!profile.firstSource) await stampFirstSource(profile.id, refSourceOf(rest, ref), null);
+  // An ` s:<marker>` the site appended is read for the source, then taken out: the agent reads only what the tenant needs (2026-11-16).
+  const { ref, rest: restMarked } = readRef(raw);
+  const rest = withoutShareMarker(restMarked);
+  if (!profile.firstSource) await stampFirstSource(profile.id, refSourceOf(restMarked, ref), null);
   const latest = recent[0] && Date.now() - recent[0].updatedAt.getTime() < CONTINUE_MS ? recent[0] : null;
   // One of Abdout's own contacts: the agent answers only a message that asks for a home, or one that
   // carries on a home search it already started; everything else on this number stays his.
@@ -269,7 +271,7 @@ export async function handleTenantWhatsApp(input: {
     return { reply: videoNotFoundText(lang), taskId: current?.id ?? null };
   }
   if (refHome) current = null;
-  const refSource: RefSource | null = refHome ? (linkedHome ? "tiktok" : refSourceOf(rest, ref)) : null;
+  const refSource: RefSource | null = refHome ? (linkedHome ? "tiktok" : refSourceOf(restMarked, ref)) : null;
   if (refHome) await db.agentProfile.updateMany({ where: { id: profile.id, firstRef: null, firstSource: refSource }, data: { firstRef: refHome.id } }).catch(() => {});
 
   // A digit answers the last numbered question.
@@ -408,13 +410,13 @@ export async function handleTenantWhatsApp(input: {
     ...(seed && ref ? { origin: ref } : {}),
   };
   input.onAnswering?.();
-  let appended = await appendUserMessage({ profileId: profile.id, userId: profile.userId, current, message, lang, seed, refSource: refSource ?? refSourceOf(rest, ref) });
+  let appended = await appendUserMessage({ profileId: profile.id, userId: profile.userId, current, message, lang, seed, refSource: refSource ?? refSourceOf(restMarked, ref) });
   // The bridge sends one phone's messages in order, so "busy" is the tail of the last turn: wait for it,
   // then leave the message to the next poll (wa-tenant.ts gives its claim back) — never drop it.
   for (const until = Date.now() + BUSY_WAIT_MS; "busy" in appended && Date.now() < until; ) {
     await sleep(1_000);
     current = current ? await db.agentTask.findUnique({ where: { id: current.id }, select: { id: true, status: true, messages: true, updatedAt: true, locale: true } }) : null;
-    appended = await appendUserMessage({ profileId: profile.id, userId: profile.userId, current, message, lang, seed, refSource: refSource ?? refSourceOf(rest, ref) });
+    appended = await appendUserMessage({ profileId: profile.id, userId: profile.userId, current, message, lang, seed, refSource: refSource ?? refSourceOf(restMarked, ref) });
   }
   if ("busy" in appended) return { reply: null, why: "busy" };
   const { taskId } = appended;

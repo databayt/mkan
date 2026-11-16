@@ -7,6 +7,8 @@
  * `ListingEventType` enum in prisma/schema.prisma (which is append-only).
  */
 
+import { currentSource, withSourceMarker } from "./source";
+
 export type TrackableEvent =
   | "VIEW"
   | "CONTACT_PHONE_REVEAL"
@@ -30,8 +32,10 @@ export function trackEvent(listingId: number, type: TrackableEvent): void {
   if (typeof window === "undefined") return;
   if (!Number.isFinite(listingId) || listingId <= 0) return;
 
-  const payload = JSON.stringify({ listingId, type });
+  send(JSON.stringify({ listingId, type }));
+}
 
+function send(payload: string): void {
   try {
     if (typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
       const blob = new Blob([payload], { type: "text/plain;charset=UTF-8" });
@@ -50,4 +54,48 @@ export function trackEvent(listingId: number, type: TrackableEvent): void {
   } catch {
     // Ignore — analytics must never surface to the visitor.
   }
+}
+
+/**
+ * People upstream of a chat (2026-11-16): a visit, a WhatsApp tap, a chat opened. The kinds and places
+ * mirror src/lib/analytics/signals.ts (kept as strings here so this file stays free of server imports).
+ * The source is the visitor's first touch (source.ts) — a `?s=` marker or the referrer.
+ */
+export type SignalKind = "visit" | "wa_tap" | "chat_open";
+export type SignalPlace = "home" | "find" | "today" | "tt" | "k" | "listing" | "bubble" | "sheet";
+
+export function trackSignal(kind: SignalKind, place: SignalPlace): void {
+  if (typeof window === "undefined") return;
+  try {
+    send(JSON.stringify({ signal: { kind, place, source: currentSource() } }));
+  } catch {
+    // Ignore — analytics must never surface to the visitor.
+  }
+}
+
+const sentOnce = new Set<string>();
+
+/** Once per page load, for events that can repeat (the chat opening, a first keypress). */
+export function trackSignalOnce(kind: SignalKind, place: SignalPlace): void {
+  const key = `${kind}:${place}`;
+  if (sentOnce.has(key)) return;
+  sentOnce.add(key);
+  trackSignal(kind, place);
+}
+
+/**
+ * onClick for a WhatsApp link: counts the tap and, before the browser follows the link, adds
+ * ` s:<source>` to its prefilled text so the chat that arrives can be attributed to the link that
+ * brought the person (whatsapp-format.ts refSourceOf). Only for a non-direct source.
+ */
+export function onWaTap(place: SignalPlace): (event: { currentTarget: { href?: string } }) => void {
+  return (event) => {
+    try {
+      trackSignal("wa_tap", place);
+      const el = event.currentTarget;
+      if (el && typeof el.href === "string") el.href = withSourceMarker(el.href, currentSource());
+    } catch {
+      // Ignore — the link must still open.
+    }
+  };
 }

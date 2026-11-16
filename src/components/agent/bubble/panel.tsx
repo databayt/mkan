@@ -324,7 +324,7 @@ export default function AgentPanel({ open, onClose, onWaiting }: { open: boolean
                 <Suggestions onPick={(text) => void search(text)} onGuided={() => setGuided(true)} disabled={pending} compact />
               </div>
             )}
-            <Composer size="sm" onSend={(text) => search(text)} onPlus={() => setGuided(true)} disabled={pending || running || !loaded} busy={running} restore={lostText} />
+            <Composer size="sm" onSend={(text) => search(text)} onPlus={() => setGuided(true)} disabled={pending || running || !loaded} busy={running} restore={lostText} signalPlace={null} />
           </>
         )}
       </footer>

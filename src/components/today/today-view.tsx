@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Signal } from "@/components/analytics/signal";
 import { ArrowUpRight } from "lucide-react";
 import { fill } from "@/components/agent/format";
 import { continueOnWhatsApp } from "@/components/agent/wa-link";
@@ -46,6 +47,7 @@ export function TodayView({
   const others = days.filter((x) => x !== showing);
   return (
     <main className="mx-auto w-full max-w-lg px-4 pb-16 pt-6">
+      <Signal kind="visit" place="today" />
       <h1 className="text-xl font-semibold">{t?.title ?? "Today on Mkan"}</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         {homes.length === 0 || mode === "today" || !showing
@@ -60,7 +62,7 @@ export function TodayView({
       {homes.length === 0 ? (
         <>
           <p className="mt-6 rounded-xl bg-muted p-4 text-sm">{t?.empty ?? "No homes were posted in the last few days. New homes go up every day: tell Mkan what you need on WhatsApp."}</p>
-          <TtCta href={general} className="mt-4 w-full py-3 text-[15px]">
+          <TtCta href={general} place="today" className="mt-4 w-full py-3 text-[15px]">
             {t?.general ?? "Chat with Mkan on WhatsApp"}
           </TtCta>
         </>

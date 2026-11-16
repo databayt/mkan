@@ -2,7 +2,8 @@
 
 import { after } from "next/server";
 import { db } from "@/lib/db";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { readSourceCookie } from "@/lib/analytics/source";
 import { assertRateLimit, getClientId, RateLimitError } from "@/lib/rate-limit";
 import { i18n, type Locale } from "@/components/internationalization/config";
 import { appendTaskEvent } from "./broker";
@@ -112,6 +113,13 @@ export async function sendAgentMessage(input: {
     ...(clear.length ? { clear } : {}),
     ...(answers.length ? { answers } : {}),
   };
+
+  // First send of a web person: how they first reached Mkan, from the 30-day mkan_src cookie (a ?s= marker or the
+  // referrer). Only when none is stamped yet; "direct" has no cookie, so it stays null (2026-11-16).
+  const firstTouch = readSourceCookie((await cookies()).toString());
+  if (firstTouch && firstTouch !== "direct") {
+    await db.agentProfile.updateMany({ where: { id: profileId, firstSource: null }, data: { firstSource: firstTouch } }).catch(() => {});
+  }
 
   const appended = await appendUserMessage({ profileId, userId: viewer.profile.userId, current, message: userMsg, lang, refSource: "web" });
   if ("busy" in appended) return { ok: false, error: "busy" };

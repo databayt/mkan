@@ -21,6 +21,7 @@ import { continueOnWhatsApp } from "@/components/agent/wa-link";
 import { brokerSendMode } from "@/components/agent/broker-sends";
 import { K_PAGE_MARK } from "@/components/agent/whatsapp-format";
 import { scrubTitle } from "@/lib/redact";
+import { Signal } from "@/components/analytics/signal";
 import TrackView from "@/components/analytics/track-view";
 import { WhatsAppCta } from "./whatsapp-cta";
 import { VideoHero } from "@/components/listings/video-hero";
@@ -188,6 +189,7 @@ export default async function BrokerHomePage({ params }: HomePageProps) {
       />
     {/* One VIEW per visit (the TikTok funnel's first step on Mkan's side; leads count since 2026-11-07). */}
     <TrackView listingId={home.id} />
+    <Signal kind="visit" place="k" />
     <main className="w-full px-4 pb-16 pt-4">
       {home.videoUrl && (
         <VideoHero src={home.videoUrl} poster={home.videoPosterUrl} alt={`${t.video} ${ref_}`} labels={{ mute: t.mute, unmute: t.unmute }}>

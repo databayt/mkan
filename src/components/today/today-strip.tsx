@@ -31,7 +31,7 @@ export async function TodayStrip({ lang, d }: { lang: string; d: Dictionary }) {
         <Link href={`/${lang}/find`} prefetch={false} className="flex flex-1 items-center justify-center rounded-full bg-foreground py-3 text-[15px] font-medium text-background">
           {t?.ctaFind ?? "Tell Mkan what you need"}
         </Link>
-        <TtCta href={whatsapp} className="flex-1 border border-foreground/20 bg-transparent py-3 text-[15px] !text-foreground">
+        <TtCta href={whatsapp} place="home" className="flex-1 border border-foreground/20 bg-transparent py-3 text-[15px] !text-foreground">
           {t?.ctaWhatsApp ?? "Chat on WhatsApp"}
         </TtCta>
       </div>

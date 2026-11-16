@@ -17,6 +17,7 @@ import { Availability, FitLine, kindLine, placeName, SaveHeart, type NotForMe } 
 import type { ShortlistItem } from "./types";
 import { ViewingPanel } from "./viewing";
 import { askBrokerWithNumber } from "./demand-actions";
+import { onWaTap } from "@/lib/analytics/beacon";
 import { continueOnWhatsApp } from "./wa-link";
 
 /**
@@ -193,6 +194,7 @@ export default function CardSheet({
               </p>
               <a
                 href={continueOnWhatsApp(taskId, fill(c?.bookViewingWords ?? "I'd like to view {ref}", { ref }))}
+                onClick={onWaTap("sheet")}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-center gap-2 rounded-full border py-3 text-[15px] font-medium transition-colors hover:bg-muted"
@@ -258,6 +260,7 @@ export default function CardSheet({
               )}
               <a
                 href={continueOnWhatsApp(taskId, fill(c?.checkWords ?? "Check {ref} for me", { ref }))}
+                onClick={onWaTap("sheet")}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex w-full items-center justify-center gap-2 rounded-full py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"

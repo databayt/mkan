@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { MessageCircle } from "lucide-react";
 
-import { trackEvent } from "@/lib/analytics/beacon";
+import { onWaTap, trackEvent } from "@/lib/analytics/beacon";
 
 /**
  * The /k page's "Get the broker's answer on WhatsApp": the tap is the funnel's step between a TikTok
@@ -16,7 +16,10 @@ export function WhatsAppCta({ href, listingId, children, className }: { href: st
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      onClick={() => trackEvent(listingId, "CONTACT_MESSAGE")}
+      onClick={(e) => {
+        onWaTap("k")(e);
+        trackEvent(listingId, "CONTACT_MESSAGE");
+      }}
       className={className ?? "flex w-full items-center justify-center gap-2 rounded-full bg-foreground py-3 text-[15px] font-medium text-background"}
     >
       <MessageCircle className="size-4" aria-hidden />

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import en from "@/components/internationalization/en.json";
 import ar from "@/components/internationalization/ar.json";
-import { aboutHomes, askAroundText, asksForHome, botText, checkText, firstMessageKind, formatWhatsApp, isBareYes, isFresh, isThanks, K_PAGE_MARK, TIKTOK_BIO_MARK, onlyGreetedSoFar, personAfterHello, pickInWords, readHomeRef, readPick, readRef, refSourceOf, saysYes, shownHomes, thanksText, waLang, wantsPerson, whichOneText, type WaDict } from "@/components/agent/whatsapp-format";
+import { aboutHomes, askAroundText, asksForHome, botText, checkText, firstMessageKind, formatWhatsApp, isBareYes, isFresh, isThanks, K_PAGE_MARK, TIKTOK_BIO_MARK, onlyGreetedSoFar, personAfterHello, pickInWords, readHomeRef, readPick, readRef, readShareMarker, refSourceOf, withoutShareMarker, saysYes, shownHomes, thanksText, waLang, wantsPerson, whichOneText, type WaDict } from "@/components/agent/whatsapp-format";
 import type { AgentMessage, AgentTaskView, ShortlistItem } from "@/components/agent/types";
 
 const dict = (d: typeof en): WaDict => d.agent as unknown as WaDict;
@@ -350,5 +350,29 @@ describe("the chat keeps its language on a message that has none (2026-11-06)", 
     expect(waLang("I want 2 bedrooms in Remera", "ar")).toBe("en");
     expect(waLang("أريد شقة في كيميهورورا", "en")).toBe("ar");
     expect(waLang("ndashaka inzu", "en")).toBe("rw");
+  });
+});
+
+describe("refSourceOf — a share marker (s:<marker>, 2026-11-16)", () => {
+  it("returns the marker itself over the generic guesses", () => {
+    expect(refSourceOf("Hello, I need a 2 bedroom s:fb-kimironko", null)).toBe("fb-kimironko");
+    expect(refSourceOf("Check K5808 for me s:wa-status", null)).toBe("wa-status");
+    expect(refSourceOf("Hi I saw your video s:gbp", null)).toBe("gbp");
+  });
+  it("never beats an explicit page marker or a web hand-off", () => {
+    expect(refSourceOf(`hi ${TIKTOK_BIO_MARK} s:fb-x`, null)).toBe("tiktok_bio");
+    expect(refSourceOf("hi mkan_today s:fb-x", null)).toBe("today");
+    expect(refSourceOf(`K5808 ${K_PAGE_MARK} s:fb-x`, null)).toBe("k_page");
+    expect(refSourceOf("hi s:fb-x", "cmh2abcdefghijklmnopqrst")).toBe("web");
+  });
+  it("an s: that is not a marker is ignored", () => {
+    expect(refSourceOf("2 bedroom in Remera", null)).toBe("organic");
+    expect(refSourceOf("ids:abc 2 bedroom", null)).toBe("organic");
+  });
+  it("reads and strips the marker", () => {
+    expect(readShareMarker("Check K5808 for me s:FB-Kimironko")).toBe("fb-kimironko");
+    expect(readShareMarker("no marker")).toBeNull();
+    expect(withoutShareMarker("Hello, I need a 2 bedroom s:fb-kimironko")).toBe("Hello, I need a 2 bedroom");
+    expect(withoutShareMarker("Check K5808 for me mkan_today s:gbp")).toBe("Check K5808 for me mkan_today");
   });
 });

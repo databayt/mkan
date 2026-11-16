@@ -68,6 +68,7 @@ export function HomeCard({ home, lang, l, d, priority = false }: { home: TodayHo
       <TtCta
         href={continueOnWhatsApp(null, `${fill(card?.checkWords ?? "Check {ref} for me", { ref: home.ref })} ${TODAY_MARK}`)}
         listingId={home.id}
+        place="today"
         className="mt-3 w-full py-2.5 text-sm"
       >
         {t?.check ?? "Check availability on WhatsApp"}

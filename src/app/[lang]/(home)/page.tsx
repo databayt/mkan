@@ -7,6 +7,7 @@ import { Listing } from "@/types/listing";
 import HomeContent from "./home-content";
 import { getDictionary } from "@/components/internationalization/dictionaries";
 import { localize, localizeNested } from "@/components/translation/localize";
+import { Signal } from "@/components/analytics/signal";
 import { TodayStrip } from "@/components/today/today-strip";
 
 // ISR: prerender /en + /ar (params from the layout's generateStaticParams) and
@@ -65,6 +66,7 @@ export default async function HomePage({
 
   return (
     <>
+      <Signal kind="visit" place="home" />
       <JsonLd data={organizationJsonLd()} />
       <JsonLd data={webSiteJsonLd(lang)} />
       {/* "Today on Mkan" (2026-11-15): rendered here, on the server, and handed to the client page as a node. */}

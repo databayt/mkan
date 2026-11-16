@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { ArrowDown, Loader2, MessageCircle, MoreHorizontal, SlidersHorizontal, SquarePen, Trash2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
+import { onWaTap } from "@/lib/analytics/beacon";
 import { cn } from "@/lib/utils";
 import { Wizard, type Picks } from "./wizard";
 import { ActivityRows, QuestionsRow, StatusLine, WaitingRow } from "./activity";
@@ -164,7 +165,7 @@ export function AgentContent({ initialTask }: { initialTask: AgentTaskView | nul
                   {c?.guided ?? "Guided search"}
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild className="gap-2.5 rounded-xl px-3 py-2.5 text-[15px]">
-                  <a href={continueOnWhatsApp(task?.id, c?.whatsappText ?? "Continue my Mkan search")} target="_blank" rel="noopener noreferrer">
+                  <a href={continueOnWhatsApp(task?.id, c?.whatsappText ?? "Continue my Mkan search")} onClick={onWaTap("find")} target="_blank" rel="noopener noreferrer">
                     <MessageCircle className="size-4" aria-hidden />
                     {c?.whatsapp ?? "Continue on WhatsApp"}
                   </a>

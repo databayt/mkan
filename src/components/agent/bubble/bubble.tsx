@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
+import { trackSignalOnce } from "@/lib/analytics/beacon";
 import { cn } from "@/lib/utils";
 
 // The panel (and the agent hook behind it) loads on first open, or earlier
@@ -68,6 +69,11 @@ export function AgentBubble() {
   const close = useCallback(() => setOpen(false), []);
 
   useEffect(() => (visible && !mounted ? warmPanel() : undefined), [visible, mounted]);
+
+  // The panel opening is the chat opening: one beacon per page load, however many times it opens (2026-11-16).
+  useEffect(() => {
+    if (open && visible) trackSignalOnce("chat_open", "bubble");
+  }, [open, visible]);
 
   // The open panel pushes the page aside (globals.css `data-agent-panel`).
   useEffect(() => {

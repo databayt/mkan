@@ -8,6 +8,7 @@ import { roundPrice } from "./fields";
 import { fill } from "./format";
 import type { Requirements } from "./requirements";
 import type { AgentMessage } from "./types";
+import { onWaTap } from "@/lib/analytics/beacon";
 import { continueOnWhatsApp } from "./wa-link";
 
 type Pick = (text: string, filters: Partial<Requirements>, clear?: string[]) => void;
@@ -134,6 +135,7 @@ export function ToWhatsApp({ taskId, listingId, compact = false, hint = false }:
   const link = (
     <a
       href={continueOnWhatsApp(taskId, words)}
+      onClick={onWaTap(compact ? "bubble" : "find")}
       target="_blank"
       rel="noopener noreferrer"
       className={cn(

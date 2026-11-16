@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } fr
 import { ArrowUp, Mic, Plus, Square } from "lucide-react";
 import { useDictionary } from "@/components/internationalization/use-dictionary";
 import { useLocale } from "@/components/internationalization/use-locale";
+import { trackSignalOnce } from "@/lib/analytics/beacon";
 import { cn } from "@/lib/utils";
 
 /** About six lines of text before the box scrolls. */
@@ -46,6 +47,7 @@ export function Composer({
   autoFocus,
   canSendEmpty = false,
   restore,
+  signalPlace = "find",
 }: {
   /** Resolves true when the message was accepted; the text is cleared then. */
   onSend: (text: string) => Promise<boolean>;
@@ -59,6 +61,8 @@ export function Composer({
   busy?: boolean;
   size?: "lg" | "sm";
   autoFocus?: boolean;
+  /** Where the first keypress is counted as the chat opening (analytics/beacon.ts); null in the bubble, which counts its opening itself. */
+  signalPlace?: "find" | null;
   /** Badges are picked, so an empty box can still send. */
   canSendEmpty?: boolean;
 }) {
@@ -176,8 +180,14 @@ export function Composer({
           ref={ref}
           data-agent-composer
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => {
+            setText(e.target.value);
+            // Phone keyboards do not always send a keydown, so typing counts too.
+            if (signalPlace) trackSignalOnce("chat_open", signalPlace);
+          }}
+          // The first keypress is the chat opening on /find (2026-11-16); the bubble counts its own opening.
           onKeyDown={(e) => {
+            if (signalPlace) trackSignalOnce("chat_open", signalPlace);
             if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
               e.preventDefault();
               void submit();

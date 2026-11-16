@@ -6,6 +6,7 @@ import { getAgentTask } from "@/components/agent/actions";
 import { AgentContent } from "@/components/agent/content";
 import { verifyChatSig } from "@/components/agent/chat-link";
 import { SharedChat } from "@/components/agent/shared-chat";
+import { Signal } from "@/components/analytics/signal";
 import { loadSharedTask } from "@/components/agent/task-view";
 
 // Per-visitor: `?c=<id>` opens one of this browser's (or account's) chats; a
@@ -41,6 +42,7 @@ export default async function FindPage({ params, searchParams }: { params: Promi
   }
   return (
     <main id="main-content">
+      <Signal kind="visit" place="find" />
       <AgentContent initialTask={task} />
     </main>
   );
