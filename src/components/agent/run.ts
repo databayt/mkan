@@ -30,6 +30,7 @@ import {
   parseAdjustments,
   parseRequirements,
   reconcile,
+  sameBrief,
   type Requirements,
 } from "./requirements";
 import { relaxations, type Relaxed } from "./relax";
@@ -37,7 +38,7 @@ import { searchKigali, toShortlist } from "./search";
 import { openDemand } from "./demand";
 import { canSpend } from "./claude";
 import { checkTarget, followUpKind, underHomes } from "./follow-up";
-import { asksToCheck } from "./whatsapp-format";
+import { askedBudget, asksForMore, asksToCheck } from "./whatsapp-format";
 import { handOffFailedChat } from "./failed-handoff";
 import { asksForToday } from "./today-pure";
 import { todayCards } from "./today";
@@ -467,6 +468,25 @@ async function turn(taskId: string, gate: Gate, onShown: () => void): Promise<vo
       ]);
       await firstReply({ role: "agent", kind: "clarify", fields: clarify, at: now() }, { status: restingStatus(shown), requirements: json(requirements) });
       return;
+    }
+
+    // WhatsApp only (2026-11-21): the chat is not a search box.
+    if (lastUser?.wa && !lastUser.pin && !tapped) {
+      // Restating the brief under homes already sent ("1 bedroom, 150k, Remera" again) moves nothing: one line,
+      // never the same list again (…077 got the same six homes seven times).
+      if (shown.length > 0 && !asksForMore(latest) && sameBrief(base, requirements)) {
+        await Promise.all([understood, learn([])]);
+        await firstReply({ role: "agent", kind: "shortlist", count: shown.length, same: true, at: now() }, { status: restingStatus(shown), requirements: json(requirements) });
+        return;
+      }
+      // No budget yet and no homes sent: ask for it once, before any list. "Looking for one bedroom" got the
+      // 500k flats first, and "400k-500k" came after two lists of 800k villas (…114, …715). Not asked twice.
+      const statesBrief = (["bedrooms", "district", "neighbourhood", "homeType", "furnished", "area", "near", "purpose"] as const).some((k) => requirements[k] != null);
+      if (shown.length === 0 && statesBrief && !requirements.maxPrice && !requirements.cheap && !askedBudget(messages) && !asksToCheck(latest)) {
+        await Promise.all([understood, learn([]), trace.record("asked", "waiting_person", { fields: "maxPrice" })]);
+        await firstReply({ role: "agent", kind: "ask", field: "maxPrice", at: now() }, { status: restingStatus(shown), requirements: json(requirements) });
+        return;
+      }
     }
 
     // 2. Search mkan — the bookkeeping writes ride alongside the query.

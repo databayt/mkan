@@ -94,6 +94,24 @@ describe('homes before questions', () => {
     expect(requestConfirmations).not.toHaveBeenCalled();
   });
 
+  // …114 and …715 (2026-11-17/19): "one bedroom" and "2bedroom, furnished" each got 500k and 800k homes first.
+  it('on WhatsApp, a brief with no budget asks for the budget before any list', async () => {
+    await turnWith({ role: 'user', text: 'Am looking for one bedroom', wa: 'wamid.1' });
+    expect(search).not.toHaveBeenCalled();
+    expect(replies()).toEqual([expect.objectContaining({ kind: 'ask', field: 'maxPrice' })]);
+  });
+
+  it('on WhatsApp, a brief that carries its budget searches at once', async () => {
+    await turnWith({ role: 'user', text: 'one bedroom, max budget 150k', wa: 'wamid.1' });
+    expect(search.mock.calls[0]![0]).toMatchObject({ bedrooms: 1, maxPrice: 150_000 });
+    expect(replies()[0]).not.toMatchObject({ kind: 'ask' });
+  });
+
+  it('on /find the budget still comes after the homes', async () => {
+    await turnWith({ role: 'user', text: 'Am looking for one bedroom' });
+    expect(search).toHaveBeenCalled();
+  });
+
   it('answers a few nights with "monthly only": no search, no broker', async () => {
     await turnWith({ role: 'user', text: '3 nights in Kiyovu for 2 people' });
     expect(search).not.toHaveBeenCalled();
@@ -279,8 +297,14 @@ describe('under the homes on /find', () => {
     expect(search).toHaveBeenCalled();
   });
 
-  it('leaves a WhatsApp message to its own gate', async () => {
+  it('a WhatsApp message that changes nothing about the brief gets the same-homes line, not a search', async () => {
     await turnWith({ text: 'How are you', wa: 'wamid.test' });
+    expect(search).not.toHaveBeenCalled();
+    expect(replies()).toEqual([expect.objectContaining({ kind: 'shortlist', same: true })]);
+  });
+
+  it('a WhatsApp ask for more still searches', async () => {
+    await turnWith({ text: 'show me more', wa: 'wamid.test' });
     expect(search).toHaveBeenCalled();
   });
 

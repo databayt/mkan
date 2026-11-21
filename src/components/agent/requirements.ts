@@ -557,6 +557,20 @@ export function parseAdjustments(input: string, current: Requirements): { set: P
   return { set, clear };
 }
 
+/**
+ * Does this message leave the brief as it was? Restating "1 bedroom, 150k, Remera" under homes already
+ * sent changes nothing: the same homes would come back (…077 got the same six seven times). `stay` and
+ * `pricePeriod` are inferred along the way, so they are not compared.
+ */
+export function sameBrief(a: Requirements, b: Requirements): boolean {
+  const norm = (r: Requirements) => {
+    const o: Record<string, unknown> = { ...r, stay: null, pricePeriod: null };
+    for (const k of ["mustHaves", "neighbourhoods"] as const) if (Array.isArray(o[k])) o[k] = [...(o[k] as string[])].sort();
+    return JSON.stringify(Object.keys(EMPTY_REQUIREMENTS).map((k) => o[k] ?? null));
+  };
+  return norm(a) === norm(b);
+}
+
 export function clearFields(r: Requirements, keys: readonly string[]): Requirements {
   const out = { ...r };
   for (const k of keys) if ((CLEARABLE as readonly string[]).includes(k)) (out as Record<string, unknown>)[k] = null;
