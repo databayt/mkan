@@ -29,6 +29,7 @@ import { aboutMeMessage, availableAckMessage, needReplyMessage, needSummary, off
 import { isOffer, parseBrokerReply, readTakenWithOther, repostAnswer, type BrokerReply, type OtherHome } from "./broker-reply";
 import { coerceRequirements, EMPTY_REQUIREMENTS, mergeRequirements } from "./requirements";
 import { answerTerms, introBrokerUpdate, introReplyFor } from "./deal-intro";
+import { readViewingTime } from "./deal-pure";
 import { brokerViewingReply, noteMeetingPlace, type ViewingReply } from "./viewing-loop";
 import { readState, writeState } from "./wa-state";
 
@@ -167,6 +168,13 @@ export async function recordOtherHome(requestIds: string[], takenListingId: numb
   );
 }
 
+/** The time a broker named beside their yes: one `viewing_proposed` event on each chat that asked (via: broker). */
+async function recordBrokerTime(requestIds: string[], listingId: number, at: Date, phone: string): Promise<void> {
+  const rows = await db.brokerRequest.findMany({ where: { id: { in: requestIds } }, select: { taskId: true } });
+  const taskIds = [...new Set(rows.map((r) => r.taskId).filter((id): id is string => !!id))];
+  await Promise.all(taskIds.map((taskId) => appendTaskEvent(taskId, "viewing_proposed", "uncertain", { listingId, at: at.toISOString(), by: "broker", broker: `+${phone.replace(/\D/g, "")}` })));
+}
+
 /** Write a word back to the broker — once per ask and label — for the caller to send. Null when it already went. */
 async function replyOnce(ask: Ask, label: string, text: string): Promise<{ text: string; outboundId: string } | null> {
   const already = await db.outboundMessage.count({ where: { to: ask.to, label, createdAt: { gte: ask.sentAt ?? new Date(0) } } });
@@ -271,6 +279,12 @@ async function answerAvailabilityAsk(read: NonNullable<Awaited<ReturnType<typeof
     // the tenant's number: one message, not a thanks and then another.
     const intro = answer === "AVAILABLE" && isNews ? await introReplyFor(phone, home).catch(() => null) : null;
     if (intro) return { kind: "availability", listingId: home, answer, applied: isNews, reply: await replyOnce(ask, "auto-terms", intro) };
+    // A yes that carries a time ("yes, Thursday 10am works" to an ask that proposed two): kept on the chats that
+    // asked, so the viewing is offered at that time instead of a blank "when can you come?".
+    if (answer === "AVAILABLE" && isNews) {
+      const when = readViewingTime(text, new Date());
+      if (when && "at" in when) await recordBrokerTime(ask.brokerRequestIds, home, when.at, phone).catch(() => {});
+    }
     // "Budget?" next to the yes gets its answer in the same message; "when do you want to visit?" waits for the tenant.
     const aboutTenant = r.question && !/visit|view|come|see/i.test(text);
     const body = answer === "RENTED" ? takenAckMessage(ask.id) : aboutTenant ? `${availableAckMessage(ask.id)} ${need.they}` : availableAckMessage(ask.id);

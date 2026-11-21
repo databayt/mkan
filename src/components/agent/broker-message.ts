@@ -125,6 +125,12 @@ export interface BrokerVoice {
    * glance. Default true for EN and RW brokers; a French broker keeps French. `false` writes one language.
    */
   bilingual?: boolean;
+  /**
+   * Times Mkan's person can be at the viewing (viewing-loop.ts offerSlots), as labels. The ask then gives the
+   * broker a yes AND a time in one reply: "Is it free? Could we view it Mon 23 Nov, 09:00 or Tue 24 Nov, 09:00?"
+   * (2026-11-21: of 11 picks, four brokers said yes and not one viewing time was ever agreed).
+   */
+  slots?: { en: string; rw: string }[];
 }
 
 /** A first name fit to greet with: letters only, no emoji, no handle, not an agency's whole name. */
@@ -153,6 +159,16 @@ export function availabilityMessage(homes: BrokerHomeLine[], seed: string, voice
   return `${rw}\n\n${en}`;
 }
 
+/** "Is it free? Could we view it A or B?" — the second half of the ask, in the broker's language; empty without slots. */
+export function viewingSlotLine(lang: Lang, many: boolean, slots: BrokerVoice["slots"]): string {
+  const list = (slots ?? []).slice(0, 2);
+  if (list.length === 0) return "";
+  const t = (k: "en" | "rw") => list.map((x) => x[k]);
+  if (lang === "FR") return ` ${many ? "Si l'une est libre, pourrait-on la visiter" : "Si oui, pourrait-on la visiter"} le ${t("en").join(" ou le ")} ?`;
+  if (lang === "RW") return ` ${many ? "Niba imwe ihari, twayisura" : "Niba ihari, twayisura"} ${t("rw").join(" cyangwa ")}?`;
+  return ` ${many ? "If one is free, could we view it" : "Could we view it"} ${t("en").join(" or ")}?`;
+}
+
 /** The ask in one language. `listText` replaces the home list (the English half of a bilingual ask). */
 function askIn(lang: Lang, homes: BrokerHomeLine[], seed: string, voice: BrokerVoice, listText?: string): string {
   const links = [...new Set(homes.map((h) => h.link))];
@@ -164,28 +180,29 @@ function askIn(lang: Lang, homes: BrokerHomeLine[], seed: string, voice: BrokerV
   const need = voice.need?.trim() ? `\n${voice.need.trim()}` : "";
   // One question, and for one home the answer is a digit.
   const menu = many ? "" : ` ${REPLY_MENU[lang]}`;
+  const slotLine = viewingSlotLine(lang, many, voice.slots);
   if (lang === "FR") {
     const hi = `Bonjour${name ? ` ${name}` : ""}`;
     const q = (many ? "Sont-elles toujours disponibles ?" : "Est-elle toujours disponible ?") + menu;
     if (voice.introduce)
-      return `${hi}, ici Mkan. Nous aidons des gens à trouver un logement à Kigali et nous les amenons à des agents comme vous. Un locataire que nous accompagnons s'intéresse à ${many ? "vos maisons" : "votre maison"} :\n${list}${need}\n${q} Si oui, nous organisons la visite avec vous.\nSi vous préférez ne plus recevoir nos messages, répondez simplement stop.`;
-    return pickPhrase(seed, [`${hi}, c'est Mkan. Un locataire que nous accompagnons aime ${many ? "celles-ci" : "celle-ci"} :\n${list}${need}\n${q}`, `${hi}, Mkan à nouveau. Un locataire s'intéresse à ${many ? "ces maisons" : "cette maison"} :\n${list}${need}\n${q}`]);
+      return `${hi}, ici Mkan. Nous aidons des gens à trouver un logement à Kigali et nous les amenons à des agents comme vous. Un locataire que nous accompagnons s'intéresse à ${many ? "vos maisons" : "votre maison"} :\n${list}${need}\n${q}${slotLine} Si oui, nous organisons la visite avec vous.\nSi vous préférez ne plus recevoir nos messages, répondez simplement stop.`;
+    return pickPhrase(seed, [`${hi}, c'est Mkan. Un locataire que nous accompagnons aime ${many ? "celles-ci" : "celle-ci"} :\n${list}${need}\n${q}${slotLine}`, `${hi}, Mkan à nouveau. Un locataire s'intéresse à ${many ? "ces maisons" : "cette maison"} :\n${list}${need}\n${q}${slotLine}`]);
   }
   if (lang === "RW") {
     const hi = `Muraho${name ? ` ${name}` : ""}`;
     const q = (many ? "Ziracyahari?" : "Iracyahari?") + menu;
     if (voice.introduce)
-      return `${hi}, ni Mkan. Dufasha abantu kubona inzu i Kigali tukabazana ku ba komisiyoneri nkawe. Umukiriya dufasha yashimye ${many ? "amazu yawe" : "inzu yawe"}:\n${list}${need}\n${q} Niba ${many ? "zihari" : "ihari"}, turategura gusura nawe.\nNiba udashaka ko tukwandikira, subiza stop.`;
-    return pickPhrase(seed, [`${hi}, ni Mkan. Umukiriya dufasha yashimye ${many ? "aya mazu" : "iyi nzu"}:\n${list}${need}\n${q}`, `${hi}, ni Mkan nanone. Dufite umukiriya ushaka ${many ? "aya mazu" : "iyi nzu"}:\n${list}${need}\n${q}`]);
+      return `${hi}, ni Mkan. Dufasha abantu kubona inzu i Kigali tukabazana ku ba komisiyoneri nkawe. Umukiriya dufasha yashimye ${many ? "amazu yawe" : "inzu yawe"}:\n${list}${need}\n${q}${slotLine} Niba ${many ? "zihari" : "ihari"}, turategura gusura nawe.\nNiba udashaka ko tukwandikira, subiza stop.`;
+    return pickPhrase(seed, [`${hi}, ni Mkan. Umukiriya dufasha yashimye ${many ? "aya mazu" : "iyi nzu"}:\n${list}${need}\n${q}${slotLine}`, `${hi}, ni Mkan nanone. Dufite umukiriya ushaka ${many ? "aya mazu" : "iyi nzu"}:\n${list}${need}\n${q}${slotLine}`]);
   }
   const hi = `Hi${name ? ` ${name}` : " there"}`;
   const q = (many ? "Are they still available?" : "Is it still available?") + menu;
   if (voice.introduce)
-    return `${hi}, this is Mkan. We help people find homes in Kigali and bring them to brokers like you. A tenant we're helping is interested in ${many ? "these homes of yours" : "your home"}:\n${list}${need}\n${q} If ${many ? "they are" : "it is"}, we'll set up the viewing with you.\nIf you'd rather we didn't message you, just reply stop.`;
+    return `${hi}, this is Mkan. We help people find homes in Kigali and bring them to brokers like you. A tenant we're helping is interested in ${many ? "these homes of yours" : "your home"}:\n${list}${need}\n${q}${slotLine} If ${many ? "they are" : "it is"}, we'll set up the viewing with you.\nIf you'd rather we didn't message you, just reply stop.`;
   return pickPhrase(seed, [
-    `${hi}, Mkan here. A tenant we're helping likes ${many ? "these" : "this one"}:\n${list}${need}\n${q}`,
-    `Hello${name ? ` ${name}` : ""}, it's Mkan again. We have a tenant interested in ${many ? "these homes" : "this home"}:\n${list}${need}\n${q}`,
-    `${hi}, Mkan again. One of our tenants is asking about ${many ? "these" : "this one"}:\n${list}${need}\n${q}`,
+    `${hi}, Mkan here. A tenant we're helping likes ${many ? "these" : "this one"}:\n${list}${need}\n${q}${slotLine}`,
+    `Hello${name ? ` ${name}` : ""}, it's Mkan again. We have a tenant interested in ${many ? "these homes" : "this home"}:\n${list}${need}\n${q}${slotLine}`,
+    `${hi}, Mkan again. One of our tenants is asking about ${many ? "these" : "this one"}:\n${list}${need}\n${q}${slotLine}`,
   ]);
 }
 

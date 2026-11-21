@@ -22,10 +22,10 @@ import { db } from "@/lib/db";
 import { listingPath } from "@/lib/listing-code";
 import { publicAppUrl, waLink } from "../../../scripts/crm/public-links";
 import { lastTenantAt, reachedAt, REASK_GAP_DAYS, TENANT_REACH, tenantActive, tenantGate, tenantNumber } from "./broker-gate";
-import { askedOnLabel } from "./deal-pure";
+import { askedOnLabel, viewingLabel } from "./deal-pure";
 import { ALERT_LABEL, inSendWindow, phoneKey, REST_DAYS, brokerRest, startOfKigaliDay } from "../../../scripts/wa/outbox-pure";
 import { answerStats, dueForNext, MAX_BROKERS_PER_HOME, nudgeDue, rankBrokers, SILENT_LOOKBACK_DAYS, type BrokerSignal } from "./broker-rank";
-import { availabilityMessage, brokerAnswerMessage, brokerNumber, needSummary, noReplyMessage, nudgeMessage, takenNextMessage, viewingRep, type BrokerHomeLine } from "./broker-message";
+import { availabilityMessage, brokerAnswerMessage, brokerNumber, needSummary, noReplyMessage, nudgeMessage, takenNextMessage, viewingRep, type BrokerHomeLine, type BrokerVoice } from "./broker-message";
 import { brokerSendMode, testPhones } from "./broker-sends";
 import { CONFIRMATION_TTL_DAYS } from "./rank";
 import { coerceRequirements, EMPTY_REQUIREMENTS, mergeRequirements, type Requirements } from "./requirements";
@@ -319,10 +319,11 @@ const handleOf = (b: BrokerLink) => (b.user.sourceHostId?.startsWith("tiktok:") 
 /** Send each broker one message for all their homes, and record the channel it went by. */
 async function sendGrouped(
   groups: Map<string, { phone: string; handle: string | null; homes: BrokerHomeLine[]; ids: string[]; pick?: boolean }>,
+  slots: BrokerVoice["slots"] = [],
 ): Promise<{ broker: string | null; count: number; channel: string }[]> {
   return Promise.all(
     [...groups.values()].map(async (m) => {
-      const channel = await sendToBroker(m.phone, availabilityMessage(m.homes, m.ids.join()), `${m.pick ? PICK_LABEL : ""}${m.handle ? `@${m.handle}` : m.phone}`, m.ids);
+      const channel = await sendToBroker(m.phone, availabilityMessage(m.homes, m.ids.join(), { introduce: true, ...(slots?.length ? { slots } : {}) }), `${m.pick ? PICK_LABEL : ""}${m.handle ? `@${m.handle}` : m.phone}`, m.ids);
       // "queued": the Mac's outbox stamps channel "evolution" and sentAt once it really went out.
       await db.brokerRequest.updateMany({ where: { id: { in: m.ids } }, data: { channel, sentAt: null } });
       return { broker: m.handle ? `@${m.handle}` : null, count: m.homes.length, channel };
@@ -424,7 +425,15 @@ export async function requestConfirmations(
     if (a.override) g.pick = true;
     groups.set(a.broker.userId, g);
   }
-  for (const sent of await sendGrouped(groups)) events.push(["broker_contact_started", "waiting_person", sent]);
+  // The ask proposes two times Mkan's person can be there, so one reply can give a yes and a time. Dynamic:
+  // viewing-loop imports this module. No free time (or no diary) is just the plain ask.
+  const slots = groups.size
+    ? await import("./viewing-loop")
+        .then(({ offerSlots }) => offerSlots())
+        .then((times) => times.map((t) => ({ en: viewingLabel(t, "en"), rw: viewingLabel(t, "rw") })))
+        .catch(() => [])
+    : [];
+  for (const sent of await sendGrouped(groups, slots)) events.push(["broker_contact_started", "waiting_person", sent]);
   await appendTaskEvents(taskId, events);
   return waiting;
 }
