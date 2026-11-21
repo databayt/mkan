@@ -42,6 +42,8 @@ import { afterViewingFor, openViewingAsk, prepareDealSheet, proposeViewing, read
 import { askTimeMessage, readAfterViewing, readViewingTime, viewingLabel } from "./deal-pure";
 import { introFollowUpFor, introMode, introTenantAnswer, startIntro } from "./deal-intro";
 import { postSlackCard } from "./whatsapp";
+import { driveTurn } from "./driver";
+import { driverEnabled } from "./driver-pure";
 
 const MAX_TEXT = 600;
 /** A WhatsApp chat is one search while it stays this fresh. */
@@ -208,7 +210,8 @@ export async function handleTenantWhatsApp(input: {
   // autonomous (Abdout, 2026-11-21) — no hand-off, no card, no promise that anyone will reply. It answers the
   // need behind the ask (talk, see it, trust it) and moves to a viewing of the home they are on, with two
   // times Mkan's person can be there; a Mkan person attends every viewing, so that is true.
-  if (asksToTalk(rest) && !isFresh(rest)) {
+  const talkOn = asksToTalk(rest) && !isFresh(rest);
+  const answerTalk = async (): Promise<WaResult> => {
     await noteHandoff(input.msgId, "asked-to-talk");
     let title: string | null = null;
     let slots: string[] = [];
@@ -225,7 +228,10 @@ export async function handleTenantWhatsApp(input: {
       await stampSeen(current.id, input.msgId, focus?.id ?? 0);
     }
     return { reply: talkText(lang, { title, slots }), taskId: current?.id ?? null };
-  }
+  };
+  // With the conversational driver on, the driver answers it (and offers the viewing); this stays its fallback.
+  const driverOn = driverEnabled();
+  if (talkOn && !driverOn) return answerTalk();
 
   // An intro's follow-up ("did you see it? 1 / 2 / 3", "did you take it? and 1–5"): the deal's next step,
   // not a pick of home #1 (deal-intro.ts). A new search or a home code still runs as one.
@@ -301,6 +307,30 @@ export async function handleTenantWhatsApp(input: {
   let text = ref && !refHome ? "" : rest;
   // The turn reads words, not a URL: what was said beside the link, else the home's own code.
   if (hasLink) text = withoutTikTokLink(text) || (linkedHome ? `K${linkedHome}` : text);
+  // The conversational driver (driver.ts, MKAN_DRIVER=on): one Claude turn holds the chat. A web hand-off, a first
+  // message that is not about a home and a driver that cannot run fall through to the Phase 1 path below, unchanged.
+  const strangerLike = !current && !ref && !refHome && firstMessageKind(text) === "other";
+  const offTopicLike = !!current && !ref && !refHome && personAfterHello(text, current.messages as unknown as AgentMessage[]);
+  if (driverOn && !ref && !strangerLike && !offTopicLike) {
+    const res = await driveTurn({
+      profile,
+      viewer,
+      digits,
+      current,
+      message: { role: "user", text, at: new Date().toISOString(), wa: input.msgId, ...(refHome ? { filters: refHome.filters, pin: refHome.id } : {}) },
+      lang,
+      refSource: refSource ?? refSourceOf(restMarked, ref),
+      refHome,
+      onAnswering: input.onAnswering,
+    });
+    if (res.kind === "busy") return { reply: null, why: "busy" };
+    if (res.kind === "reply") {
+      if (refHome) await db.agentTask.updateMany({ where: { id: res.taskId, refListingId: null }, data: { refListingId: refHome.id, refSource } }).catch(() => {});
+      return { reply: res.reply, taskId: res.taskId, media: res.media };
+    }
+    console.log(`[wa] driver fell back to the pipeline: ${res.why}`);
+    if (talkOn) return answerTalk();
+  }
   if (current) {
     const view = await loadTask(viewer, current.id);
     const pick = readPick(rest, view, d);

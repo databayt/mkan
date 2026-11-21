@@ -76,6 +76,18 @@ export interface QuestionAnswer {
   text?: string;
 }
 
+/**
+ * What the conversational driver (driver.ts, WhatsApp) keeps on the messages it writes: `said` the message as
+ * sent (the model reads its own earlier words back), `shownIds` the homes that message put in front of the tenant,
+ * `offered` the viewing times (ISO) it offered for a home, so a later "the second one" can be booked.
+ */
+export interface DriverNote {
+  said?: string;
+  shownIds?: number[];
+  offered?: { id: number; at: string[] };
+  driver?: true;
+}
+
 export type AgentMessage =
   /** `filters` are the badges the tenant picked; they win over the text. `clear` empties fields (a refine chip). */
   /** `wa`: the WhatsApp message id it came in as — a retried webhook or the fallback poll is answered once. */
@@ -97,9 +109,9 @@ export type AgentMessage =
   /** `checked`: the message asked for the pinned home's check itself ("Check K1234 for me" from /find's card) and it ran (availability.ts askBroker). */
   /** `today`: the homes @mkan.rw posted on the Kigali `day` (today-pure.ts, today.ts) — WhatsApp ends the list on the /today link; `earlier` when today had none yet (2026-11-15). */
   /** `same`: exactly the homes the last shortlist showed, in the same order — the message moved nothing ("How are you", "?"); WhatsApp says so instead of sending them again (2026-11-02). */
-  | { role: "agent"; kind: "shortlist"; count: number; relaxed?: Relaxed[]; refine?: HardField; text?: string; pendingText?: boolean; demand?: boolean; asked?: number; pin?: { id: number; found: boolean }; same?: boolean; checked?: "asked" | "slow" | "handed" | "none" | "unreachable"; today?: { day: string; earlier?: boolean }; at: string }
+  | ({ role: "agent"; kind: "shortlist"; count: number; relaxed?: Relaxed[]; refine?: HardField; text?: string; pendingText?: boolean; demand?: boolean; asked?: number; pin?: { id: number; found: boolean }; same?: boolean; checked?: "asked" | "slow" | "handed" | "none" | "unreachable"; today?: { day: string; earlier?: boolean }; at: string } & DriverNote)
   /** A question about renting, answered from knowledge.ts, or a greeting; no search ran. */
-  | { role: "agent"; kind: "answer"; topic: "question" | "other"; text?: string; at: string }
+  | ({ role: "agent"; kind: "answer"; topic: "question" | "other"; text?: string; at: string } & DriverNote)
   /**
    * Under the homes on /find, a message that moved nothing ("How are you", "?", "Can we meet now",
    * "thanks"): one line back, no search ran, and the homes stay where they were (2026-11-03).

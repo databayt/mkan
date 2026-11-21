@@ -91,6 +91,33 @@ profile. Reads (page render, poll) never write; writes (actions, the chat list) 
   next to Neon (us-east-1) — `/api/health?detailed=true` shows the placement, DB latency and event-loop lag. Prisma
   uses `PrismaPg` over TCP with a bounded pool (connect 5 s, idle 60 s, query 15 s; `src/lib/db.ts`).
 
+## The conversational driver — WhatsApp (2026-11-21, `MKAN_DRIVER=on`; off by default)
+
+The Phase 1 turn (reader → search → template) is a search box in a chat skin. With `MKAN_DRIVER=on` a WhatsApp
+tenant message is ONE Claude tool-use turn (`driver.ts`, Sonnet 5.5 — `AGENT_CLAUDE_MODEL` overrides, `AGENT_CLAUDE=off`
+kills it, spend lane `agent-drive` under the same monthly cap) that sells a viewing: it sees the chat (both sides),
+the brief, the homes shown, pending broker asks and the viewing state, calls tools, and writes one message.
+
+```
+whatsapp-chat.ts (after STOP / "are you a bot?" / a viewing already being arranged / a deal's next step)
+  └─ driveTurn: appendUserMessage ─► driver-loop.ts converse (≤4 tool rounds, then a call with no tools; a refused
+     message goes back with its reason ≤2×; AGENT_TURN_DEADLINE_MS − 2 s) ─► tools in driver.ts:
+       update_brief · search_homes (searchKigali + rankCandidates + relax; never homes already shown, never past the
+       budget, never a shop) · show_homes (≤2, the Phase 1 list + native photos, becomes AgentTask.shortlist so "1"
+       still picks) · answer_from_listing (writerFacts) · check_availability (askAvailabilityFor, in parallel) ·
+       offer_viewing_slots (viewing-loop offerSlots + openViewingAsk) · book_viewing (deal.ts proposeViewing)
+     ─► guardDriverText (driver-pure.ts): no number a tool or the tenant did not give, no link, no "available" without a
+        broker's yes, no "can't connect you", no promise that a person will reply, no claim to be human, no budget
+        re-ask, same script as the tenant, no sentence already sent in the chat
+  └─ API off / capped / slow / failed with nothing done: the message is taken back out of the chat and the Phase 1
+     path answers, unchanged. Failed after a tool acted (homes shown, a broker asked): it still answers, from what the
+     tools did — a broker is never asked twice.
+```
+
+Every tool call is an `AgentEvent` (search_done, shortlist_ready, availability_asked, viewing_proposed, requirements_extracted
+with `reader: "driver"`), so the /find panel and `mkan:read` keep working. Web /find stays on the Phase 1 pipeline.
+Eval: `pnpm agent:eval-chat --replay --driver=on --print` (spend per lane is printed at the end).
+
 ## Broker sends — who may reach a broker (2026-11-01)
 
 A broker is asked about a home **only** for a real WhatsApp tenant who picked it — a digit, or

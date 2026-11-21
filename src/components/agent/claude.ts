@@ -24,10 +24,20 @@ import { db } from "@/lib/db";
 export const AGENT_MODEL = process.env.AGENT_CLAUDE_MODEL?.trim() || "claude-haiku-5-5";
 const CAP_USD = Number(process.env.AGENT_API_CAP_USD) > 0 ? Number(process.env.AGENT_API_CAP_USD) : 15;
 
+/**
+ * The conversational driver (driver.ts, WhatsApp, MKAN_DRIVER=on): Claude Sonnet 5.5 unless AGENT_CLAUDE_MODEL
+ * names another. The reader and writer stay on AGENT_MODEL (Haiku 5.5 by default) — one env var moves them
+ * together only when it is set on purpose.
+ */
+export const DRIVER_MODEL = process.env.AGENT_CLAUDE_MODEL?.trim() || "claude-sonnet-5-5";
+
 /** Claude Haiku 5.5 per million tokens, prompts up to 100k tokens (ours are ~3k). */
 const PRICE_PER_MTOK = { input: 0.1, output: 0.5, cacheRead: 0.01, cacheWrite: 0.125 };
+/** Claude Sonnet 5.5: $2 / $10, cache reads $0.10, 5-minute cache writes 1.25x input. */
+const SONNET_PRICE_PER_MTOK = { input: 2, output: 10, cacheRead: 0.1, cacheWrite: 2.5 };
+const priceTable = (model?: string) => (model && /sonnet/i.test(model) ? SONNET_PRICE_PER_MTOK : PRICE_PER_MTOK);
 
-export type SpendLane = "agent-read" | "agent-write" | "agent-eval";
+export type SpendLane = "agent-read" | "agent-write" | "agent-eval" | "agent-drive";
 const CAPPED_LANE = "capped";
 const LEDGER_TTL_MS = 60_000;
 
@@ -71,19 +81,20 @@ export async function canSpend(): Promise<boolean> {
 }
 
 /** Dollars for one response, at the rates above. */
-export function priceOf(usage: Pick<Anthropic.Usage, "input_tokens" | "output_tokens" | "cache_read_input_tokens" | "cache_creation_input_tokens">): number {
+export function priceOf(usage: Pick<Anthropic.Usage, "input_tokens" | "output_tokens" | "cache_read_input_tokens" | "cache_creation_input_tokens">, model?: string): number {
+  const p = priceTable(model);
   return (
-    (usage.input_tokens * PRICE_PER_MTOK.input +
-      usage.output_tokens * PRICE_PER_MTOK.output +
-      (usage.cache_read_input_tokens ?? 0) * PRICE_PER_MTOK.cacheRead +
-      (usage.cache_creation_input_tokens ?? 0) * PRICE_PER_MTOK.cacheWrite) /
+    (usage.input_tokens * p.input +
+      usage.output_tokens * p.output +
+      (usage.cache_read_input_tokens ?? 0) * p.cacheRead +
+      (usage.cache_creation_input_tokens ?? 0) * p.cacheWrite) /
     1_000_000
   );
 }
 
 /** Add one response to the ledger (one upsert); the cached totals move with it. */
-export async function recordSpend(lane: SpendLane, usage: Anthropic.Usage): Promise<void> {
-  const usd = priceOf(usage);
+export async function recordSpend(lane: SpendLane, usage: Anthropic.Usage, model?: string): Promise<void> {
+  const usd = priceOf(usage, model);
   if (ledger) {
     ledger.month += usd;
     ledger.today += usd;
