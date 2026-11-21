@@ -91,6 +91,46 @@ profile. Reads (page render, poll) never write; writes (actions, the chat list) 
   next to Neon (us-east-1) — `/api/health?detailed=true` shows the placement, DB latency and event-loop lag. Prisma
   uses `PrismaPg` over TCP with a bounded pool (connect 5 s, idle 60 s, query 15 s; `src/lib/db.ts`).
 
+## The chat funnel — sell a viewing, not a list (2026-11-21)
+
+Read from every real chat (`docs/chat-funnel.md`; the public page is `content/docs-*/chat-funnel.mdx`): 60 days,
+44 people → 42 shown homes → 11 picks → 4 broker yeses → **0 viewing times**. The chat now has one job per stage
+(understand → show two → ask the broker with two times → book), and stays autonomous (Abdout, 2026-11-21): no
+hand-off and no promise that a person will reply. What it says instead is true: a Mkan person goes to every viewing.
+
+Phase 1, inside the existing pipeline (live with the next deploy):
+
+- **Search keeps the brief** (`rank.ts`, `search.ts`, `requirements.ts`). The top of a price range is the ceiling.
+  Every place listed is kept. Shops, business rooms and nightly stays never reach a monthly search.
+- **WhatsApp never re-searches the same brief.** A restated brief gets a one-line "same homes" answer. A brief with
+  no budget asks for it once, before any list. A known budget is never asked again, the generic
+  "area, size and budget" line included.
+- **A list that reads like WhatsApp** (`whatsapp-format.ts`). Two homes, not three. Each home is also sent as a native
+  photo (`sendMedia`; `MKAN_WA_MEDIA` is on by default, and the text goes out even when a photo fails). The long tail
+  is sent once per chat. One language per message, and the last message is never sent again.
+- **"Talk to someone"** is answered, never refused. The reply says a Mkan person meets the tenant at the house and
+  offers two free times. It posts no #mkan card and makes no promise. The home-answer writer may no longer refuse.
+- **Taken → next.** A taken pick gets the next two homes at once (the list is reordered, so "1" checks the next one).
+  A broker's "taken, but I have another…" is kept on the asking chats and answered with a request for its photos
+  and rent (`broker-reply.ts`, `broker-home.ts`).
+- **Brokers.** The availability ask offers two viewing times ("Is it free? Could we view it A or B?"), and a yes
+  that names a time is kept. Cadence (pinned by tests): one message per broker per day, never the same home within
+  72 h, at most three asks a week.
+- **Personal chats.** A chat where a person talked long ago and the agent never did is marked personal and left
+  alone (STOP and START still work). Mkan's own person writing from their phone is never taken for a tenant.
+
+Proof: `pnpm agent:eval-chat` (`scripts/agent/eval-chat*.ts`, `tests/agent/eval-chat-score.test.ts`). The masked real
+chats (18 WhatsApp with both sides, 28 web) are scored on eleven checks: budget, commercial homes, repeated lists,
+budget re-asks, refusing or promising a person, unanswered questions, language flips, viewing-slot offer, plural.
+- `--baseline` scores the old line's real replies for free.
+- `--replay` drives each chat through `handleTenantWhatsApp` on `EVAL_DATABASE_URL`, a Neon test branch distinct
+  from `DATABASE_URL`, with sends locked.
+- `--print` shows each replayed chat.
+- `--driver=on|off` sets the driver.
+
+The spend per lane is printed at the end of a run. On the 18 WhatsApp chats: old line 76.5%, Phase 1 84.4%,
+driver 98.6%.
+
 ## The conversational driver — WhatsApp (2026-11-21, `MKAN_DRIVER=on`; off by default)
 
 The Phase 1 turn (reader → search → template) is a search box in a chat skin. With `MKAN_DRIVER=on` a WhatsApp

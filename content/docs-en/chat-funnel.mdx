@@ -1,0 +1,163 @@
+---
+title: Chat funnel
+description: How the Mkan chat takes a tenant from the first message to a viewing, why it was rebuilt, and how we measure it.
+summary: "The chat sells a viewing, not a list: understand the brief, show two homes as photos, offer two viewing times, and recover when a home is taken."
+keywords: [chatbot, funnel, whatsapp, viewing, conversion, driver]
+---
+
+## Why it was rebuilt
+
+In November 2026 we read every real chat on the site and on WhatsApp: 117 chats over 75 days, 39 WhatsApp tenant threads and 51 broker threads. Here is the 60-day funnel, counting real people only:
+
+| Step | People | Rate |
+| --- | --- | --- |
+| Started a chat | 44 | |
+| Were shown homes | 42 | 95% |
+| Picked a home | 11 | 26% |
+| Broker said it is free | 4 | 36% of asks, median wait 25 h |
+| Got a viewing time | **0** | |
+| Went to a viewing | **0** | |
+
+Showing homes was never the problem. 31 of the 44 saw homes and left. The conversation lost them, and cost was not the reason: Claude spent $0.07 that month.
+
+<Callout title="What the chats showed">
+  - **A search box in a chat skin.** Every message re-ran the search. "How are you?" got the same six homes seven times.
+  - **It did not listen.** "Up to 150k" got 500k flats first. "Furnished, 150k" got a shop.
+  - **It could not show the home.** Replies were walls of titles and links, with no photo on WhatsApp.
+  - **It refused people.** "Can I talk to a human?" got "I can't connect you to a person here".
+  - **"Taken" ended the chat.** Most picks were taken, and the reply was "sorry, here is a link".
+  - **Brokers were burned.** They were asked about the same home every day. Their "come Tuesday 10am" was never answered.
+</Callout>
+
+What tenants want is simple: to **see** the place, a price they can trust, whether it is furnished, where it is, and someone to go and see it with. Most budgets are under 250k a month.
+
+## The idea: sell a viewing, not a list
+
+The chat acts like a good Kigali broker on WhatsApp. Each stage has one job and one way out.
+
+<Mermaid chart={`flowchart TD
+  A(["First message: TikTok code, site, or hello"]) --> B["Understand: area, budget, size, furnished, move-in"]
+  B -->|Missing a detail| Q["One question at a time"]
+  Q --> B
+  B --> C["Search: never past the budget, no shops, no nightly stays"]
+  C --> D["Show two homes as WhatsApp photos"]
+  D --> E{"Tenant reacts"}
+  E -->|A question| F["Answer from the listing"]
+  F --> E
+  E -->|Wants a person| G["A Mkan person meets you at the house"]
+  G --> H
+  E -->|Picks a home| I["Ask the broker: free? and two viewing times"]
+  I -->|Taken| J["The next best home, at once"]
+  J --> E
+  I -->|Free| H["Offer two viewing times"]
+  H --> K(["Viewing booked"])`} />
+
+| # | Stage | What the chat does | How we know it worked |
+| --- | --- | --- | --- |
+| 0 | **Hook** | Greets in the tenant's language and names what they came for. | They reply |
+| 1 | **Understand** | Fills five details (area, top budget, size, furnished, move-in date), asking one question at a time. Small talk does not restart the search. | Brief known |
+| 2 | **Show** | Two homes, each a photo with a short caption: rent, area and one reason it fits. The link to see more comes once. | A home is picked |
+| 3 | **Ask the broker** | One message asks "is it free?" and offers two viewing times together. | Broker answers |
+| 4 | **Book** | Offers two concrete times. A Mkan person goes to every viewing. | Viewing booked |
+| 5 | **"Talk to someone"** | Never refuses and never promises that someone will reply. It answers the need behind the ask, says a Mkan person meets you at the house, and offers two times. | Ask leads to times |
+| 6 | **Taken** | Never ends on "sorry". The next best home comes at once. When a broker says "I have another one", that home is kept. | Recovered pick |
+| 7 | **Viewing and deal** | Reminder, the viewing, then "how was it?" and the deal sheet. | Viewed, signed, paid |
+
+<Callout title="The chat stays autonomous">
+  Abdout's decision on 2026-11-21: no hand-off to a person, and no promise that a person will answer. What is true, and what the chat says, is that someone from Mkan is at every viewing. The team can still take over any chat by typing in it.
+</Callout>
+
+## How it talks
+
+- One to three short lines, in the tenant's language (Kinyarwanda, English, French, Arabic). It follows the latest message that has words in it.
+- Prices are written the way people text them: "150k a month".
+- It names the home and the area. It never repeats a sentence it already sent, and it never asks for a budget it already has.
+- It never invents a price, a date or an "available". Every number comes from the listing, the broker or the tenant.
+- When asked, it says honestly that it is the Mkan assistant.
+
+## The broker side
+
+Brokers feed the funnel, so the chat protects them:
+
+- At most one message per broker a day, never the same home twice in 72 hours, and at most three asks a week.
+- One message asks whether the home is free **and** offers two viewing times, so one reply brings both a yes and a time.
+- "Taken, but I have another one in Gikondo" is kept as a new home, and the broker is asked for its photos and rent.
+
+## Built in three phases
+
+<Steps>
+
+### Phase 1: stop the bleeding (live with the next deploy)
+
+Hand fixes inside the existing pipeline:
+- the budget is a hard ceiling, and every place a tenant lists is kept
+- no shops or nightly stays in monthly searches
+- two homes with native WhatsApp photos instead of link walls
+- no repeated lists
+- the budget is asked once
+- "talk to someone" leads to viewing times
+- a taken home leads to the next one
+- broker messages are paced
+- the agent stays out of personal chats on the line
+
+### Phase 2: the conversational driver (built, switched off)
+
+Each WhatsApp message becomes one Claude turn (Sonnet 5.5) that holds the conversation and uses seven tools:
+- `update_brief`
+- `search_homes`
+- `show_homes`
+- `answer_from_listing`
+- `check_availability`
+- `offer_viewing_slots`
+- `book_viewing`
+
+Code still owns every price, availability and booking. A guard rejects any reply with a number, link, promise or repeat that the tools did not back. When Claude is off, capped, slow or fails, the Phase 1 path answers. It is switched on with `MKAN_DRIVER=on`.
+
+### Phase 3: prove it before going live
+
+The real chats are masked into a test set (18 WhatsApp threads with both sides, 28 web). `pnpm agent:eval-chat --replay` replays them on a Neon test branch, with every send blocked, and scores eleven checks per chat.
+
+</Steps>
+
+## The numbers
+
+Replay of the 18 WhatsApp chats:
+
+| Check | Old chat | Phase 1 | Driver |
+| --- | --- | --- | --- |
+| **Overall** | 76.5% | 84.4% | **98.6%** |
+| Answered the tenant's question | 1 of 5 | 1 of 5 | 4 of 5 |
+| Offered a viewing time | 0 of 8 | 3 of 7 | 7 of 7 |
+| Never repeated a message | 65% | 9 of 15 | 15 of 15 |
+| Did not re-ask a known budget | 11 of 12 | 11 of 12 | 12 of 12 |
+
+The driver scored 94.5% to 98.6% across runs. "Answered the question" is the least stable check.
+
+After a deploy, this is the funnel to watch:
+
+```bash
+pnpm mkan:read funnel --days=14
+```
+
+Targets for the first two weeks:
+- shown → picked: from 26% to 40% or more
+- at least one viewing booked
+- zero "I can't connect you" replies
+
+## Known gaps
+
+- The driver asks for the budget during small talk, and it offers the same two times a little too often.
+- Its production response time has not been measured yet. After 13 seconds the Phase 1 path answers instead.
+- It does not yet write the tenant's memory, and its Kinyarwanda replies are not yet checked by a native speaker.
+
+## For the team
+
+- Full analysis: `docs/chat-funnel.md`. Code and rules: `src/components/agent/README.md`. Change log: `src/components/agent/ISSUE.md`.
+- Switches:
+  - `MKAN_DRIVER=on` turns the driver on.
+  - `MKAN_WA_MEDIA` sends photos and is on by default.
+  - `AGENT_CLAUDE=off` turns off every Claude call.
+  - `AGENT_API_CAP_USD` caps monthly Claude spend at $15.
+- Test without sending anything:
+  - `pnpm agent:eval-chat --replay --only=wa --print`. It needs `EVAL_DATABASE_URL` pointing at a Neon test branch.
+  - `pnpm wa:e2e`.

@@ -1,5 +1,57 @@
 # Agent — open issues
 
+## 2026-11-21 — The chat funnel: sell a viewing, not a list
+
+- **Why:** Abdout: "The chat block is the bottleneck. It's not intuitive, not smart, doesn't sound human,
+  doesn't give real value end to end." Every real chat was read (117 web + WhatsApp, 39 WhatsApp tenant threads,
+  51 broker threads). Over 60 days: 44 people → 42 shown homes → 11 picks → 4 broker yeses → 0 viewing times,
+  ever. His calls: stay fully autonomous (no hand-off, never promise that a person will reply, never refuse);
+  a full rebuild in three phases. Analysis: `docs/chat-funnel.md`. Public page: `/docs/chat-funnel`.
+- **Shipped on main** (pushed, `cac65ae4..a3f5b961`; **not deployed**, prod is still `d720f2e`):
+  - Phase 1 (`64c402dd` `5550e9e2` `91f3d5cb` `953d0b92` `0cd17647` `2dd62d9f` `b008ce97` `b0287090` `9410d063`):
+    - Search keeps the brief.
+    - No re-search on a restated brief.
+    - The budget is asked once.
+    - Two homes plus native photos (`MKAN_WA_MEDIA`, on by default).
+    - "Talk to someone" leads to two viewing times.
+    - A taken home leads to the next, and the broker's other home is kept.
+    - The broker ask offers two times, with the cadence pinned.
+    - The agent stays out of personal chats.
+
+    README: "The chat funnel".
+  - Phase 2 (`8d36778d` `81bc2bf3` `a3f5b961`): the conversational driver, behind `MKAN_DRIVER` (off).
+    - One Sonnet 5.5 tool-use turn, spend lane `agent-drive`, using seven tools.
+    - `guardDriverText` checks every reply, and Phase 1 is the fallback.
+    - It thinks adaptively, answers in the latest message's language, and writes prices as "150k a month".
+
+    README: "The conversational driver".
+  - Phase 3 (`332b00e8` `90db683d` `ba74e598` `6b2a13fa`): the `agent:eval-chat` set, scorer and guarded replay.
+- **Proof:** tsc clean; vitest 879/879 (61 files); i18n check passes. On the 18 WhatsApp chats, the replay
+  scores old line 76.5%, Phase 1 84.4% and driver 98.6% (94.5–98.6% across runs). Driver checks:
+  - answered the question: 4 of 5
+  - slot offered: 7 of 7
+  - no identical repeat: 15 of 15
+  - no budget re-ask: 12 of 12
+  - one language: 17 of 18
+
+  The eval spent about $2.6 of the $15 cap.
+- **Owed:**
+  - Deploy main. The Mac was on battery, so `ship.sh` refused. No prisma change, so no data step.
+  - Then watch `pnpm mkan:read funnel --days=14`. Targets:
+    - shown → picked from 26% to ≥40%
+    - ≥1 viewing booked in two weeks
+    - zero "I can't connect you" replies
+  - Abdout's call after a day or two of Phase 1: `MKAN_DRIVER=on`. Then read the `[driver]` timings, since the
+    production latency is unmeasured (13 s budget, then Phase 1 answers).
+  - Driver tuning:
+    - it asks the budget during small talk
+    - it re-offers the same two slots too often
+  - Driver gaps:
+    - it does not write `AgentProfile.memory`
+    - its Kinyarwanda replies have not had a native read
+  - A broker's proposed time is not yet fed into the tenant's booking.
+  - The French locale is still missing on the old path.
+
 ## 2026-11-16 — The people reaching us: web alone, WhatsApp alone, seen before they drop
 
 - **Why:** 0 real people in two days. Abdout: track who approaches us on the web and on WhatsApp, study the

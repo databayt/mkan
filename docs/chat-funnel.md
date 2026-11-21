@@ -43,3 +43,9 @@ One idea runs through it: **the bot sells a viewing, not a list.** Each stage ha
 
 **Voice rules:** Kigali-local, mirrors the tenant's language (rw / en / fr / ar), 1–3 short lines, varies its wording, names the home and the area, no boilerplate tail on every message, never claims to be human, and never states a price or availability the data doesn't back. The guards in `writer.ts` stay.
 
+
+## Status (2026-11-21)
+
+All three phases are on main and not deployed yet. The public page is `content/docs-{en,ar}/chat-funnel.mdx`
+(`/docs/chat-funnel`). For what shipped, see `src/components/agent/README.md` ("The chat funnel", "The conversational
+driver"). For the scores and what is still owed, see `src/components/agent/ISSUE.md` (2026-11-21).
