@@ -148,7 +148,8 @@ export const isDirectChat = (remoteJid: string | undefined) => !!remoteJid && (r
 // ── the same words twice ─────────────────────────────────────────────────────────────────────────
 
 /** The agent's own messages to tenants (WaState `tenant-sent`): `id` once WhatsApp gave one, `h` the words' hash. */
-export type Sent = { id: string; phone: string; at: string; h?: string }[];
+/** `m`: a photo's caption — it never counts as "the last message" a repeat is checked against. */
+export type Sent = { id: string; phone: string; at: string; h?: string; m?: true }[];
 
 /** A reply's words, hashed: its echo is ours even when it comes back before the send returned its id. */
 export const textHash = (t: string) => createHash('sha1').update(t.replace(/\s+/g, ' ').trim()).digest('hex').slice(0, 12);
@@ -165,3 +166,22 @@ export function saidJustNow(sent: Sent, phone: string, text: string, now: number
   const h = textHash(text);
   return sent.some((s) => !!s.id && s.phone === phone && s.h === h && now - new Date(s.at).getTime() < REPEAT_WINDOW_MS);
 }
+
+/**
+ * The very last message sent to this phone, word for word, however long ago (within a chat's day): a list
+ * or a line sent again identical is a machine. …077 got the same six homes seven times and a vendor got
+ * "Happy to help. Tell me the area…" four times in a row (2026-11-21). A list is replaced by the one-line
+ * "same homes" answer; anything else is not sent.
+ */
+export const REPEAT_LAST_WITHIN_MS = 24 * 60 * 60 * 1000;
+export function repeatsLast(sent: Sent, phone: string, text: string, now: number): boolean {
+  const mine = sent.filter((s) => !!s.id && s.phone === phone && !s.m);
+  const last = mine[mine.length - 1];
+  return !!last && last.h === textHash(text) && now - new Date(last.at).getTime() < REPEAT_LAST_WITHIN_MS;
+}
+
+/** How many homes a reply lists: its "*1. Title*" lines. */
+export const homesListed = (reply: string): number => (reply.match(/^\*\d+\. /gm) ?? []).length;
+
+/** Homes sent as native WhatsApp photos beside the list (MKAN_WA_MEDIA): on unless it says off. */
+export const mediaEnabled = (flag: string | undefined = process.env.MKAN_WA_MEDIA): boolean => !/^(?:0|off|false|no)$/i.test((flag ?? '').trim());

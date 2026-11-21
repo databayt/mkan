@@ -129,6 +129,25 @@ export async function sendText(to: string, text: string, name = INSTANCE): Promi
   });
 }
 
+/**
+ * A photo (or a video's poster) as native WhatsApp media with a short caption — mirrors `sendText`.
+ * `media` is a public https URL; the bridge fetches it. Throws EvolutionError like every call here, so a
+ * caller that must not fail the message around it catches.
+ */
+export async function sendMedia(
+  to: string,
+  media: { url: string; caption?: string; mediatype?: "image" | "video"; mimetype?: string; fileName?: string },
+  name = INSTANCE,
+): Promise<{ key?: { id?: string } }> {
+  const mediatype = media.mediatype ?? "image";
+  const ext = (media.url.split("?")[0]?.match(/\.(jpe?g|png|webp|mp4)$/i)?.[1] ?? (mediatype === "video" ? "mp4" : "jpg")).toLowerCase();
+  const mimetype = media.mimetype ?? (mediatype === "video" ? "video/mp4" : ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg");
+  return request(`/message/sendMedia/${encodeURIComponent(name)}`, {
+    method: "POST",
+    body: JSON.stringify({ number: digits(to), mediatype, mimetype, caption: media.caption ?? "", media: media.url, fileName: media.fileName ?? `home.${ext}` }),
+  });
+}
+
 /** One stored message as Evolution v2 returns it from /chat/findMessages and the webhook. */
 export interface EvoMessage {
   id?: string;

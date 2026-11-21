@@ -8,13 +8,14 @@ import "server-only";
  * shows "typing…", runs the turn in-process (whatsapp-chat.ts) and sends the
  * reply. The turn dedupes by message id, so the two paths answer once.
  */
-import { followLine, langOfWords, LATE_AFTER_MS, lateLead, MAX_AGE_MS, MEDIA_NUDGE_MS, REPEAT_WINDOW_MS, saidJustNow, showsAHome, startText, stopConfirmText, tenantDecision, textHash, typePleaseText, type Sent, type TenantDecision } from "../../../scripts/wa/tenant-pure";
+import { followLine, homesListed, langOfWords, LATE_AFTER_MS, lateLead, MAX_AGE_MS, mediaEnabled, MEDIA_NUDGE_MS, REPEAT_WINDOW_MS, repeatsLast, saidJustNow, showsAHome, startText, stopConfirmText, tenantDecision, textHash, typePleaseText, type Sent, type TenantDecision } from "../../../scripts/wa/tenant-pure";
 import { db } from "@/lib/db";
-import { sendPresence, sendText } from "@/lib/whatsapp/evolution";
+import { sendMedia, sendPresence, sendText } from "@/lib/whatsapp/evolution";
 import { isPersonal } from "./personal";
 import { readRepWord, repDigits } from "./rep-word-pure";
 import { addToList, CLAIM_STALE_MS, claimMessage, holdReply, MAX_ANSWER_TRIES, mutateState, readState, releaseMessage, removeFromList, settleMessage, writeState } from "./wa-state";
 import { handleTenantWhatsApp, silenceTenant } from "./whatsapp-chat";
+import { sameHomesText, type WaLang } from "./whatsapp-format";
 import { postSlackCard } from "./whatsapp";
 
 const SENT_KEEP = 2000;
@@ -27,9 +28,9 @@ const ECHO_WINDOW_MS = 120_000;
  * with the text before a send (no id yet) and with the id after: a slow send's echo used to arrive
  * first, look like a person taking over, and mute the agent in that chat for 12 h (2026-11-06).
  */
-export async function recordSent(phone: string, id: string | undefined, text?: string): Promise<void> {
+export async function recordSent(phone: string, id: string | undefined, text?: string, media = false): Promise<void> {
   if (!id && !text) return;
-  const entry = { id: id ?? "", phone, at: new Date().toISOString(), ...(text ? { h: textHash(text) } : {}) };
+  const entry = { id: id ?? "", phone, at: new Date().toISOString(), ...(text ? { h: textHash(text) } : {}), ...(media ? { m: true as const } : {}) };
   await mutateState<Sent>("tenant-sent", [], (sent) => [...sent, entry].slice(-SENT_KEEP));
 }
 
@@ -72,6 +73,26 @@ export interface TenantMessage {
   sentAt: Date;
   /** A voice note, photo, location… (outbox-pure.ts isMedia): no words to read. */
   media?: boolean;
+}
+
+/** A few seconds between photos: three images at once from a number this young reads as spam to WhatsApp. */
+const PHOTO_GAP_MS = 2_500;
+
+/** Photo + caption per home; one that fails is skipped, never retried, never the reason a reply is not sent. */
+async function sendHomePhotos(phone: string, media: { url: string; caption: string }[]): Promise<number> {
+  let sent = 0;
+  for (const item of media) {
+    try {
+      await new Promise((r) => setTimeout(r, PHOTO_GAP_MS));
+      await recordSent(phone, undefined, item.caption, true);
+      const out = await sendMedia(phone, { url: item.url, caption: item.caption });
+      await recordSent(phone, out?.key?.id, item.caption, true);
+      sent += 1;
+    } catch (err) {
+      console.warn(`[wa] photo to +${phone} not sent: ${(err as Error).message}`);
+    }
+  }
+  return sent;
 }
 
 const log = (msg: string) => console.log(`[wa] ${msg}`);
@@ -220,6 +241,7 @@ export function answerTenant(m: TenantMessage): Promise<TenantOutcome> {
       }
       const res = await handleTenantWhatsApp({ phone: m.phone, text: m.text, msgId: m.msgId, retry: claim.mode === "retry", onAnswering: () => void sendPresence(m.phone, 4_000).catch(() => {}) });
       if ("done" in res && res.done) hold = res.done;
+      const media = "media" in res && res.media ? res.media : [];
       if (!res.reply) {
         const why = "why" in res ? res.why : "none";
         if (why === "busy") {
@@ -244,22 +266,41 @@ export function answerTenant(m: TenantMessage): Promise<TenantOutcome> {
       // The first reply that shows homes points to the TikTok page, once per phone, ever; never to Abdout's own contacts.
       const followKey = `tfollow:${m.phone}`;
       const askFollow = !personal && showsAHome(body) && !(await readState<{ at?: string }>(followKey, {})).at;
-      const reply = askFollow ? `${body}\n\n${followLine(await chatLocale(m.phone, m.text))}` : body;
+      let plugged = askFollow;
+      let reply = askFollow ? `${body}\n\n${followLine(await chatLocale(m.phone, m.text))}` : body;
       // The same words twice in a row read as a machine: an "Okay" after a status line got that line again
       // (11-07 and 11-12, three times in one chat). Said once; the second message needs no answer.
-      if (saidJustNow(await readState<Sent>("tenant-sent", []), m.phone, reply, Date.now())) {
+      const sentNow = await readState<Sent>("tenant-sent", []);
+      if (saidJustNow(sentNow, m.phone, reply, Date.now())) {
         await settleMessage(m.msgId);
         log(`tenant +${m.phone} not answered: the same reply went out under ${Math.round(REPEAT_WINDOW_MS / 60_000)} min ago`);
         return "nothing";
       }
+      // The same words as the last message sent, at any gap in the chat's day: a list becomes the one-line
+      // "same homes" answer, anything else stays unsent (…077: seven identical lists; …612: four "Happy to help").
+      if (repeatsLast(sentNow, m.phone, reply, Date.now())) {
+        const n = homesListed(reply);
+        const loc = await chatLocale(m.phone, m.text);
+        const alt = n > 0 ? sameHomesText((loc === "ar" || loc === "rw" ? loc : "en") as WaLang, n) : null;
+        if (!alt || repeatsLast(sentNow, m.phone, alt, Date.now())) {
+          await settleMessage(m.msgId);
+          log(`tenant +${m.phone} not answered: the last message sent was the same words`);
+          return "nothing";
+        }
+        reply = alt;
+        plugged = false;
+      }
       await holdReply(m.msgId, reply, claim.tries);
       // Marked with the held reply: a failed send is re-sent with the line already in it.
-      if (askFollow) await writeState(followKey, { at: new Date().toISOString() });
+      if (plugged) await writeState(followKey, { at: new Date().toISOString() });
       await recordSent(m.phone, undefined, reply);
       const out = await sendText(m.phone, reply);
       await recordSent(m.phone, out?.key?.id, reply);
       await settleMessage(m.msgId);
-      log(`tenant +${m.phone} answered${late ? " late" : ""}${askFollow ? " + TikTok follow line" : ""} (${reply.length} chars)`);
+      // The homes' own photos, as native media with a short caption (MKAN_WA_MEDIA, on unless set off). The
+      // list above already carries every link, so a photo that fails to send costs nothing.
+      if (media.length && mediaEnabled() && !personal) await sendHomePhotos(m.phone, media);
+      log(`tenant +${m.phone} answered${late ? " late" : ""}${plugged ? " + TikTok follow line" : ""} (${reply.length} chars)`);
       return "sent";
     } catch (err) {
       // The claim stays: "working" goes stale and is retried, "reply" is re-sent.

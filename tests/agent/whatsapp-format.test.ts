@@ -44,13 +44,16 @@ const view = (agent: AgentMessage, shortlist: ShortlistItem[] = []): AgentTaskVi
 });
 
 describe("formatWhatsApp", () => {
-  it("lists at most three homes with price, place and an absolute link, then the chat link", () => {
+  it("lists at most two homes with price, place and an absolute link, then the chat link", () => {
     const v = view({ role: "agent", kind: "shortlist", count: 5, at }, [1, 2, 3, 4, 5].map((i) => home(i)));
     const out = formatWhatsApp(v, dict(en), "en", CHAT, APP);
-    expect(out).toContain("I found 5 homes");
+    // WhatsApp has no cards, and "1 homes" was a real message (2026-11-21).
+    expect(out.startsWith("Here are the homes that fit:")).toBe(true);
+    expect(out).not.toMatch(/card|I found/);
     expect(out).toContain("*1. Home 1* · RWF 400,000/month");
     expect(out).toContain("https://mkan.sd/en/listings/k1");
-    expect(out).not.toContain("Home 4");
+    expect(out).toContain("*2. Home 2*");
+    expect(out).not.toContain("Home 3");
     expect(out.endsWith(CHAT)).toBe(true);
   });
 
@@ -61,9 +64,9 @@ describe("formatWhatsApp", () => {
     // A broker home links to Mkan's own page, never the broker's ad: its caption carries their number (11-01).
     expect(out).toContain("https://mkan.sd/en/k/K7");
     expect(out).not.toContain("tiktok.com");
-    expect(out).toContain("Reply with a home's number");
+    expect(out).toContain("Reply with a number and I'll check it's still free");
     const plain = formatWhatsApp(view({ role: "agent", kind: "shortlist", count: 1, at }, [home(1)]), dict(en), "en", CHAT, APP);
-    expect(plain).not.toContain("Reply with a home's number");
+    expect(plain).not.toContain("Reply with a number");
   });
 
   it("turns the clarify stepper into one numbered question", () => {

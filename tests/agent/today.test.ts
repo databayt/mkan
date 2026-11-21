@@ -57,17 +57,17 @@ const view = (n: number, earlier = false): AgentTaskView => ({
 const dict = (d: typeof en): WaDict => d.agent as unknown as WaDict;
 
 describe("WhatsApp renders today's homes", () => {
-  it("numbered 1-3, how many more, and the /today link instead of the chat link", () => {
+  it("numbered 1-2, how many more, and the /today link instead of the chat link", () => {
     const out = formatWhatsApp(view(5), dict(en), "en", "https://mkan.sd/en/find?c=t1", "https://mkan.sd");
     expect(out.startsWith("Posted today")).toBe(true);
     expect(out).toContain("*1. Home 1*");
-    expect(out).toContain("*3. Home 3*");
-    expect(out).not.toContain("Home 4");
-    expect(out).toContain("2 more posted today");
+    expect(out).toContain("*2. Home 2*");
+    expect(out).not.toContain("Home 3");
+    expect(out).toContain("3 more posted today");
     expect(out.endsWith("https://mkan.sd/en/today")).toBe(true);
     expect(out).not.toContain("/find?c=");
   });
-  it("three or fewer: no count", () => {
+  it("two or fewer: no count", () => {
     const out = formatWhatsApp(view(2), dict(en), "en", "x", "https://mkan.sd");
     expect(out).toContain("All of today's homes");
     expect(out).not.toMatch(/\d more/);

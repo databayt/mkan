@@ -56,13 +56,24 @@ const COPY: Record<
     /** Under today's homes: the /today link, and with it how many more than the 3 listed ("{n}"). */
     todayAll: string;
     todayMore: string;
+    /** The list's own opening line: WhatsApp has no cards, so it never says "each card" or "1 homes". */
+    listMany: string;
+    listOne: string;
+    /** Nothing fit the budget; these are the closest, a little above it ("{budget}"). */
+    closest: string;
+    /** Nothing fit every detail; these are the closest. */
+    widened: string;
+    /** The same tail, shorter, for a list that follows another list in the chat. */
+    checkShort: string;
+    /** The budget ask, once, before any homes: the most they can pay a month. */
+    askBudget: string;
   }
 > = {
   en: {
     month: "/month",
     night: "/night",
     seeAll: "All homes, photos and move-in costs:",
-    check: "Reply with a home's number and I'll check with its broker that it's still free, and set up a viewing. It's free for you.",
+    check: "Reply with a number and I'll check it's still free, then set up a viewing. It's free for you.",
     stop: "Reply STOP to stop.",
     pick: "Reply with a number, or just type.",
     asked: "asked",
@@ -71,18 +82,24 @@ const COPY: Record<
     pinFound: "Here's {ref}:",
     pinGone: "{ref} isn't available any more, sorry. Here are homes like it:",
     pinGoneAlone: "{ref} isn't available any more, sorry.",
-    checkPinned: "Want me to check it's still free and set up a viewing? Reply *1*. It's free for you. 2 or 3 for the others.",
+    checkPinned: "Want me to check it's still free and set up a viewing? Reply *1*. It's free for you. *2* is the other.",
     bookPinned: "The broker says it's available. Reply *1* and I'll set up the viewing — it's free for you.",
     book: "A home marked available can be viewed: reply with its number and I'll set it up. It's free for you.",
     askAround: "Want me to ask a few brokers who work in that area? Reply *yes* and I'll message you when one has something.",
     todayAll: "All of today's homes, with videos:",
     todayMore: "{n} more posted today. All of today's homes, with videos:",
+    listMany: "Here are the homes that fit:",
+    listOne: "Here's the home that fits:",
+    closest: "Nothing at or under {budget} a month. The closest are a little above it:",
+    widened: "Nothing matched every detail, so these are the closest:",
+    checkShort: "Which one? Reply with its number.",
+    askBudget: "What's the most you can pay a month, in RWF?",
   },
   ar: {
     month: "/شهر",
     night: "/ليلة",
     seeAll: "كل المنازل وصورها وتكلفة الانتقال:",
-    check: "أرسل رقم المنزل وسأتأكد من الوسيط أنه ما زال متاحاً وأرتب لك معاينة، مجاناً.",
+    check: "أرسل الرقم وسأتأكد أنه ما زال متاحاً ثم أرتب لك معاينة، مجاناً.",
     stop: "أرسل STOP للإيقاف.",
     pick: "أرسل رقماً، أو اكتب ما تريد.",
     asked: "تم السؤال",
@@ -91,18 +108,24 @@ const COPY: Record<
     pinFound: "هذا {ref}:",
     pinGone: "{ref} لم يعد متاحاً للأسف. هذه منازل قريبة منه:",
     pinGoneAlone: "{ref} لم يعد متاحاً للأسف.",
-    checkPinned: "هل أتأكد أنه ما زال متاحاً وأرتب لك معاينة؟ أرسل *1*، والمعاينة مجانية لك. أو 2 و3 للمنزلين الآخرين.",
+    checkPinned: "هل أتأكد أنه ما زال متاحاً وأرتب لك معاينة؟ أرسل *1*، والمعاينة مجانية لك. و*2* للمنزل الآخر.",
     bookPinned: "يقول الوسيط إنه متاح. أرسل *1* وسأرتب لك المعاينة، وهي مجانية لك.",
     book: "يمكنك معاينة المنزل المتاح: أرسل رقمه وسأرتب ذلك، والمعاينة مجانية لك.",
     askAround: "هل أسأل بعض الوسطاء الذين يعملون في تلك المنطقة؟ أرسل *نعم* وسأراسلك حين يجد أحدهم شيئاً.",
     todayAll: "كل منازل اليوم مع الفيديوهات:",
     todayMore: "هناك {n} أخرى نُشرت اليوم. كل منازل اليوم مع الفيديوهات:",
+    listMany: "هذه المنازل التي تناسبك:",
+    listOne: "هذا المنزل الذي يناسبك:",
+    closest: "لا يوجد شيء بـ {budget} أو أقل في الشهر. هذه الأقرب، وهي أعلى قليلاً:",
+    widened: "لم يطابق شيء كل التفاصيل، فهذه الأقرب:",
+    checkShort: "أيّهما؟ أرسل رقمه.",
+    askBudget: "ما أقصى مبلغ تدفعه في الشهر بالفرنك الرواندي؟",
   },
   rw: {
     month: "/ukwezi",
     night: "/ijoro",
     seeAll: "Amazu yose, amafoto n'ikiguzi cyo kwimuka:",
-    check: "Ohereza nimero y'inzu, mbaze komisiyoneri niba igihari kandi dupange gusura. Ni ubuntu kuri wowe.",
+    check: "Ohereza nimero ndebe niba igihari, hanyuma dupange gusura. Ni ubuntu kuri wowe.",
     stop: "Ohereza STOP kugira ngo uhagarike.",
     pick: "Ohereza nimero, cyangwa wandike.",
     asked: "nabajije",
@@ -111,12 +134,18 @@ const COPY: Record<
     pinFound: "Iyi ni {ref}:",
     pinGone: "{ref} ntikiboneka, mbabarira. Dore amazu ameze nkayo:",
     pinGoneAlone: "{ref} ntikiboneka, mbabarira.",
-    checkPinned: "Nkubarize niba igihari kandi dupange gusura? Ohereza *1*. Ni ubuntu kuri wowe. 2 cyangwa 3 ku yandi.",
+    checkPinned: "Nkubarize niba igihari kandi dupange gusura? Ohereza *1*. Ni ubuntu kuri wowe. *2* ni yindi.",
     bookPinned: "Komisiyoneri avuga ko iracyahari. Ohereza *1* ngupangire gusura — ni ubuntu kuri wowe.",
     book: "Inzu yanditseho ko iracyahari ushobora kuyisura: ohereza nimero yayo nkagupangira. Ni ubuntu kuri wowe.",
     askAround: "Mbaze abakomisiyoneri bake bakorera muri ako gace? Ohereza *yego* nzakwandikira nibagira icyo babona.",
     todayAll: "Amazu yose y'uyu munsi, hamwe na videwo:",
     todayMore: "Hari andi {n} yashyizweho uyu munsi. Amazu yose y'uyu munsi, hamwe na videwo:",
+    listMany: "Dore amazu aguhuye:",
+    listOne: "Dore inzu ikuhuye:",
+    closest: "Nta nzu iri kuri {budget} cyangwa munsi yayo ku kwezi. Izi ni zo zegereye, zirenga gato:",
+    widened: "Nta nzu ihuje ibyo wavuze byose, none izi ni zo zegereye:",
+    checkShort: "Iyihe? Ohereza nimero yayo.",
+    askBudget: "Ni angahe menshi ushobora kwishyura ku kwezi, mu mafaranga y'u Rwanda?",
   },
 };
 
@@ -209,7 +238,11 @@ export const asksForHome = (text: string): boolean =>
 /** "yes" to the last question, in the tenant's words — a digit 1 too. */
 export const saysYes = (text: string) => /^(?:1|yes|yeah|yep|ok(?:ay)?|sure|please|go ahead|yego|ndiyo|oui|نعم|ايوه|أيوه|ايوا|تمام)[\s.!]*$/i.test(text.trim());
 
-export const MAX_HOMES = 3;
+/**
+ * Homes a WhatsApp list shows: two, not three (2026-11-21) — a wall of three titles, three links, a /find
+ * link and a plug read as a form letter, and tenants answered none of it. The rest wait behind "more".
+ */
+export const MAX_HOMES = 2;
 
 /** "I'd like to view K1234" — the /find card's "Book the viewing on WhatsApp" prefill, in en / ar / rw / fr. */
 export const wantsViewing = (text: string): boolean =>
@@ -233,11 +266,17 @@ export function isLanguageNeutral(text: string): boolean {
   return NEUTRAL_WORDS.test(words);
 }
 
+/** Words that say a message is English: place names and numbers alone are not. */
+const ENGLISH_WORDS = /\b(?:the|an?|is|are|am|i|you|my|me|for|in|with|and|to|of|need|want|looking|please|hello|hi|hey|how|what|can|do|does|home|house|room|rooms|rent|budget|bedroom|bedrooms|apartment|price|month|furnished|thanks|thank|yes|no)\b/i;
+
 /** The language of a WhatsApp message: Arabic script, a few Kinyarwanda words, else English — or the chat's own when the message says nothing. */
 export function waLang(text: string, prev?: string | null): WaLang {
   if (prev && (prev === "en" || prev === "ar" || prev === "rw") && isLanguageNeutral(text)) return prev;
   if (/[؀-ۿ]/.test(text)) return "ar";
   if (/\b(muraho|mwaramutse|mwiriwe|ndashaka|inzu|icyumba|ibyumba|amafaranga|ukwezi|ibihumbi|murakoze|ese|ibishya|munsi)\b/i.test(text)) return "rw";
+  // No Kinyarwanda and no English in it either — "kimironko, remera" after a Kinyarwanda chat (…505, 11-17) —
+  // keeps the chat's language: a list in two languages is the mix tenants saw.
+  if ((prev === "rw" || prev === "ar") && !ENGLISH_WORDS.test(text)) return prev;
   return "en";
 }
 
@@ -308,6 +347,27 @@ export function retryPlan(stand: TakenIn, task: { status: string; updatedAt: Dat
   return task.status === "RUNNING" && now - task.updatedAt.getTime() < stuckMs ? "held" : "rerun";
 }
 
+/** An earlier list went out in this chat (not a repeat, not a ref's home): its tail was already said. */
+export function earlierList(view: AgentTaskView): boolean {
+  const last = view.messages.findLastIndex((x) => x.role === "agent");
+  return view.messages.slice(0, Math.max(0, last)).some((x) => x.role === "agent" && x.kind === "shortlist" && !x.same && !x.pin);
+}
+
+/** The budget question already went out in this chat: it is not asked again, and not offered under the homes. */
+export const askedBudget = (messages: AgentMessage[] | null | undefined): boolean => (messages ?? []).some((x) => x.role === "agent" && x.kind === "ask" && x.field === "maxPrice");
+
+/** The line that opens a list: the writer's own when it wrote one, else a plain one that says what these are. */
+function listOpening(view: AgentTaskView, m: Extract<AgentMessage, { kind: "shortlist" }>, lang: WaLang, fill: (s: string | undefined, vars: Record<string, string | number>) => string): string {
+  const c = COPY[lang];
+  const budget = m.relaxed?.find((x) => x.key === "budget");
+  // Honest about a stretch: over the budget, or off a detail, is said before the homes, never "that match".
+  if (budget) return fill(c.closest, { budget: money(view.requirements?.maxPrice ?? Number(budget.to ?? 0)) });
+  if (m.relaxed?.length) return c.widened;
+  const written = m.text?.trim();
+  if (written) return written;
+  return Math.min(MAX_HOMES, view.shortlist.length) === 1 ? c.listOne : c.listMany;
+}
+
 /** Everything the tenant gets for the turn that just ran. */
 export function formatWhatsApp(view: AgentTaskView, d: WaDict, lang: WaLang, chatUrl: string, appUrl: string): string {
   const c = COPY[lang];
@@ -319,6 +379,8 @@ export function formatWhatsApp(view: AgentTaskView, d: WaDict, lang: WaLang, cha
   switch (m.kind) {
     case "ask":
       if (m.field === "stay") parts.push(numbered(d.ask.stay ?? "", [d.clarify.options.stay?.long?.label ?? "Months", d.clarify.options.stay?.short?.label ?? "A few nights"], lang));
+      // Monthly only: the dictionary's budget ask still says "per night or per month".
+      else if (m.field === "maxPrice") parts.push(c.askBudget);
       else parts.push(d.ask[m.field] ?? d.ask.maxPrice ?? "");
       break;
     case "clarify": {
@@ -338,7 +400,7 @@ export function formatWhatsApp(view: AgentTaskView, d: WaDict, lang: WaLang, cha
       const ref = m.pin ? `K${m.pin.id}` : null;
       if (m.pin?.found) parts.push(fill(c.pinFound, { ref: ref! }));
       else if (m.pin) parts.push(fill(c.pinGone, { ref: ref! }));
-      else parts.push(m.text?.trim() || fill(d.reply.shortlist, { count: m.count }));
+      else parts.push(listOpening(view, m, lang, fill));
       if (m.demand && m.asked) parts.push(fill(d.demand.widenedAsked, { count: m.asked }));
       const homes = homeLines(view.shortlist, lang, appUrl);
       if (homes.length) parts.push(homes.join("\n\n"));
@@ -349,10 +411,12 @@ export function formatWhatsApp(view: AgentTaskView, d: WaDict, lang: WaLang, cha
       else if (pinned?.lead && pinned.availability === "asked") parts.push(checkText(lang, "already", pinned.title.trim()));
       else if (pinned?.availability === "confirmed") parts.push(c.bookPinned);
       else if (pinned?.lead && pinned.availability === "unconfirmed") parts.push(c.checkPinned);
-      else if (view.shortlist.some((s) => s.lead && s.availability === "unconfirmed")) parts.push(c.check);
+      // The long tail once; a list that follows another list in the chat gets the short one (2026-11-21).
+      else if (view.shortlist.slice(0, MAX_HOMES).some((s) => s.lead && s.availability === "unconfirmed")) parts.push(earlierList(view) ? c.checkShort : c.check);
       if (!pinned && view.shortlist.slice(0, MAX_HOMES).some((s) => s.availability === "confirmed")) parts.push(c.book);
       if (!m.pin && m.refine === "stay") parts.push(d.refine.stay ?? "");
-      else if (!m.pin && m.refine === "maxPrice") parts.push(d.refine.budget ?? "");
+      // Never "keep these within a budget?" to a tenant who gave one, or was already asked (…114, 2026-11-19).
+      else if (!m.pin && m.refine === "maxPrice" && !view.requirements?.maxPrice && !askedBudget(view.messages)) parts.push(d.refine.budget ?? "");
       break;
     }
     case "answer":
@@ -385,6 +449,40 @@ export function formatWhatsApp(view: AgentTaskView, d: WaDict, lang: WaLang, cha
     parts.push(`${more > 0 ? fill(c.todayMore, { n: more }) : c.todayAll}\n${appUrl}/${lang}/today`);
   } else if (m.kind === "shortlist" || m.kind === "none") parts.push(`${c.seeAll}\n${chatUrl}`);
   return parts.filter((p) => p.trim()).join("\n\n");
+}
+
+/** One reason a home fits, in a few words — the caption's last line. */
+const REASON_WORDS: Record<WaLang, Partial<Record<ShortlistItem["reasons"][number], string>>> = {
+  en: { inBudget: "Within your budget", neighbourhood: "In the area you asked for", district: "In your district", bedroomsExact: "The size you asked for", bedroomsMore: "More room than you asked for", furnished: "Furnished, as you asked", lowPrice: "One of the lowest prices", confirmed: "Confirmed available", wellRated: "Well rated" },
+  ar: { inBudget: "ضمن ميزانيتك", neighbourhood: "في المنطقة التي طلبتها", district: "في منطقتك", bedroomsExact: "بالحجم الذي طلبته", bedroomsMore: "أوسع مما طلبت", furnished: "مفروش كما طلبت", lowPrice: "من أقل الأسعار", confirmed: "متاح ومؤكد", wellRated: "تقييمه جيد" },
+  rw: { inBudget: "Iri mu ngengo y'imari yawe", neighbourhood: "Iri mu gace wavuze", district: "Iri mu karere kawe", bedroomsExact: "Ingano wasabye", bedroomsMore: "Ifite umwanya urenze uwo wasabye", furnished: "Ifite ibikoresho nk'uko wabisabye", lowPrice: "Ni imwe mu zihendutse", confirmed: "Irahari byemejwe", wellRated: "Ifite amanota meza" },
+};
+
+/** A native WhatsApp photo for one listed home: its cover (or a video's poster) and a three-line caption. */
+export interface HomeMedia {
+  id: number;
+  url: string;
+  caption: string;
+}
+
+/**
+ * The photos that go with a list (2026-11-21: "the photos don't show well", "do you have video?" — nothing was
+ * ever sent as media): the cover of each home the list shows, captioned with rent, area and one reason it fits.
+ * Only a list's homes, never a repeat of one; homes with no public https photo are left out.
+ */
+export function homeMedia(view: AgentTaskView, lang: WaLang, appUrl: string): HomeMedia[] {
+  const m = lastAgent(view);
+  if (!m || m.kind !== "shortlist" || m.same) return [];
+  const c = COPY[lang];
+  return view.shortlist.slice(0, MAX_HOMES).flatMap((item) => {
+    const url = absolute(item.photo ?? "", appUrl);
+    if (!url || !/^https:\/\//.test(url)) return [];
+    const where = place(item, lang);
+    const reason = item.why?.trim() || REASON_WORDS[lang][item.reasons[0]!] || null;
+    const head = `*${item.title.trim()}*`;
+    const price = `${money(item.cost.headline)}${item.cost.period === "night" ? c.night : c.month}${where ? ` · ${where}` : ""}`;
+    return [{ id: item.id, url, caption: [head, price, reason].filter(Boolean).join("\n") }];
+  });
 }
 
 /** A short reply when the agent cannot run this message: the last turn is still going, or too many messages. */
@@ -772,6 +870,9 @@ const AVAILABLE_RE = /still available|is it (?:still )?(?:available|free)|are (?
 const VISIT_RE = /\b(?:meet|meeting|visit|viewing|view it|see (?:it|the (?:house|home|place|room|apartment)|them)|come (?:and )?see|tour|show me the (?:house|home))\b|gusura|kureba inzu|turebe|tubonane|نلتقي|زيارة|معاينة|اشوف|أشوف|visiter|voir la maison/i;
 const ABOUT_RE = /^(?:\?+|what(?:'s| is) this[?؟]?|who (?:is this|are you)[?؟]?|what (?:do you do|are you)[?؟]?|how does (?:this|it) work[?؟]?|ni iki[?؟]?|ni nde[?؟]?|ما هذا[?؟]?|من انت[?؟]?|من أنت[?؟]?|c'?est quoi[?؟]?|qui (?:êtes|etes)-vous[?؟]?)[\s?!.؟]*$/iu;
 const SMALL_TALK_RE = /^(?:(?:so|and|ok|okay|well|hey)[\s,]+)?(?:hi+|hello+|hey+|hallo|yo|good (?:morning|afternoon|evening|night)|how (?:are|r) (?:you|u)|how(?:'s| is) (?:it|it going|your day|everything)(?: today)?|what'?s up|wassup|sup|you (?:there|around|awake|sleeping)|are you there|muraho|mwiriwe|mwaramutse|amakuru|bite|ni meza|bonjour|bonsoir|salut|ça va|ca va|salam|habari|mambo|السلام عليكم|سلام|مرحبا|اهلا|أهلا|كيف حالك|كيفك)[\s,.!?؟👋🙏😊😁😄🙂]*$/iu;
+
+/** "more", "others", "another one": a tenant asking for different homes, not restating the same brief. */
+export const asksForMore = (text: string): boolean => MORE_RE.test(text);
 
 export type AfterHomes = "search" | "check" | "visit" | "about" | "chat" | "person";
 

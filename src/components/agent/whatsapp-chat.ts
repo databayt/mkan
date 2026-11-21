@@ -25,7 +25,7 @@ import { hashKey, type Viewer } from "./profile";
 import { startTurn, TURN_DEADLINE_MS } from "./run";
 import { loadTask, STUCK_AFTER_MS } from "./task-view";
 import type { AgentMessage, AgentTaskView } from "./types";
-import { busyText, checkText, formatWhatsApp, isFresh, readPick, readRef, retryPlan, takenIn, waLang, wantsViewing, type CheckOutcome, type WaDict, type WaLang } from "./whatsapp-format";
+import { busyText, checkText, formatWhatsApp, homeMedia, isFresh, readPick, readRef, retryPlan, takenIn, waLang, wantsViewing, type CheckOutcome, type HomeMedia, type WaDict, type WaLang } from "./whatsapp-format";
 import { askAroundText, botText, firstMessageKind, isBareYes, isThanks, lastAgent, MAX_HOMES, personAfterHello, personText, asksForHome, readHomeRef, refSourceOf, shownHomes, thanksText, wantsPerson, whichOneText, withoutShareMarker, type RefSource } from "./whatsapp-format";
 import { afterHomesKind, chatText, helloText, unsureText, videoNotFoundText, visitText } from "./whatsapp-format";
 import { homeForTikTokLink } from "./tiktok-link";
@@ -58,7 +58,7 @@ const REF_MAX_AGE_MS = 30 * 24 * 3_600_000;
 
 export type WaResult =
   /** `done`: the turn behind the reply, still writing its tail (the writer, the broker ask) — the phone's next message waits for it. */
-  | { reply: string; taskId: string | null; done?: Promise<void> }
+  | { reply: string; taskId: string | null; done?: Promise<void>; media?: HomeMedia[] }
   /**
    * Nothing to send: a message already answered, the last turn still running ("busy": not taken in, the claim
    * is given back), or this message's own turn still running ("held": taken in, the claim is kept).
@@ -459,7 +459,7 @@ async function answerWithTurn(a: {
     const sheet = await dealSheetFor(a.taskId, refHome.id);
     if (sheet) return { reply: sheet, taskId: a.taskId };
   }
-  return { reply: formatWhatsApp(view, a.d, a.lang, chatLink(a.taskId, a.lang), publicAppUrl()), taskId: a.taskId, done };
+  return { reply: formatWhatsApp(view, a.d, a.lang, chatLink(a.taskId, a.lang), publicAppUrl()), taskId: a.taskId, done, media: homeMedia(view, a.lang, publicAppUrl()) };
 }
 
 /**
