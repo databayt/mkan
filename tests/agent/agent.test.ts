@@ -75,9 +75,10 @@ describe("parseRequirements", () => {
 const cand = (over: Partial<Candidate>): Candidate => ({
   id: 1,
   hostId: "h1",
-  rentPeriod: "NIGHTLY",
-  pricePerNight: 10_000,
-  priceMonth: null,
+  // Monthly: the agent never offers a nightly stay to a monthly search (rank.ts notAHome).
+  rentPeriod: "MONTHLY",
+  pricePerNight: null,
+  priceMonth: 300_000,
   monthlyDiscount: 0,
   cleaningFee: 0,
   bedrooms: 2,
@@ -95,11 +96,11 @@ describe("rank", () => {
   it("leads with typical prices when no budget was given, not the best-rated luxury", () => {
     const open = { ...EMPTY_REQUIREMENTS, stay: "long" as const, bedrooms: 2 };
     const homes = [
-      cand({ id: 1, hostId: "a", pricePerNight: 100_000, averageRating: 5, numberOfReviews: 200 }), // 3M/month
-      cand({ id: 2, hostId: "b", pricePerNight: 90_000, averageRating: 5, numberOfReviews: 150 }),
-      cand({ id: 3, hostId: "c", pricePerNight: 15_000, averageRating: 4.5, numberOfReviews: 8 }), // 450k
-      cand({ id: 4, hostId: "d", pricePerNight: 16_000, averageRating: 4.6, numberOfReviews: 10 }),
-      cand({ id: 5, hostId: "e", pricePerNight: 14_000, averageRating: 4.4, numberOfReviews: 5 }),
+      cand({ id: 1, hostId: "a", priceMonth: 3_000_000, averageRating: 5, numberOfReviews: 200 }),
+      cand({ id: 2, hostId: "b", priceMonth: 2_700_000, averageRating: 5, numberOfReviews: 150 }),
+      cand({ id: 3, hostId: "c", priceMonth: 450_000, averageRating: 4.5, numberOfReviews: 8 }),
+      cand({ id: 4, hostId: "d", priceMonth: 480_000, averageRating: 4.6, numberOfReviews: 10 }),
+      cand({ id: 5, hostId: "e", priceMonth: 420_000, averageRating: 4.4, numberOfReviews: 5 }),
     ];
     const { ranked } = rankCandidates(homes, open, 3);
     expect(ranked.map((r) => r.id).sort()).toEqual([3, 4, 5]);
@@ -111,10 +112,11 @@ describe("rank", () => {
   it("takes the going rate from real monthly rents, not nightly homes priced by the month", () => {
     const open = { ...EMPTY_REQUIREMENTS, stay: "long" as const };
     const month = (id: number, priceMonth: number) => cand({ id, hostId: `m${id}`, rentPeriod: "MONTHLY", pricePerNight: null, priceMonth });
-    const homes = [month(1, 400_000), month(2, 500_000), month(3, 600_000), cand({ id: 4, pricePerNight: 90_000 }), cand({ id: 5, pricePerNight: 100_000 })];
+    const night = (id: number, pricePerNight: number) => cand({ id, rentPeriod: "NIGHTLY", pricePerNight, priceMonth: null });
+    const homes = [month(1, 400_000), month(2, 500_000), month(3, 600_000), night(4, 90_000), night(5, 100_000)];
     expect(medianPrice(homes, open)).toBe(500_000);
     // Too few monthly rents to trust: every home counts.
-    expect(medianPrice([month(1, 400_000), cand({ id: 4, pricePerNight: 90_000 }), cand({ id: 5, pricePerNight: 100_000 })], open)).toBe(2_700_000);
+    expect(medianPrice([month(1, 400_000), night(4, 90_000), night(5, 100_000)], open)).toBe(2_700_000);
   });
 
   it("groups one host's reposts of the same unit", () => {
@@ -124,7 +126,7 @@ describe("rank", () => {
   });
 
   it("drops homes over budget, in another district or too small", () => {
-    expect(passesHardFilters(cand({ pricePerNight: 20_000 }), req)).toBe(false); // 600k/month
+    expect(passesHardFilters(cand({ priceMonth: 600_000 }), req)).toBe(false);
     expect(passesHardFilters(cand({ district: "Gasabo" }), req)).toBe(false);
     expect(passesHardFilters(cand({ bedrooms: 1 }), req)).toBe(false);
     expect(passesHardFilters(cand({}), req)).toBe(true);
@@ -254,7 +256,7 @@ describe("fewer questions, no dead ends", () => {
 
   it("puts the cheapest first even without a budget", () => {
     const r = { ...EMPTY_REQUIREMENTS, stay: "short" as const, cheap: true };
-    const ranked = rankCandidates([cand({ id: 1, pricePerNight: 90_000 }), cand({ id: 2, hostId: "h2", pricePerNight: 30_000 })], r).ranked;
+    const ranked = rankCandidates([cand({ id: 1, rentPeriod: "NIGHTLY", priceMonth: null, pricePerNight: 90_000 }), cand({ id: 2, hostId: "h2", rentPeriod: "NIGHTLY", priceMonth: null, pricePerNight: 30_000 })], r).ranked;
     expect(ranked.map((x) => x.id)).toEqual([2, 1]);
   });
 });

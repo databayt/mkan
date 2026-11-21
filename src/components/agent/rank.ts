@@ -59,6 +59,23 @@ export interface Candidate extends PricedHome {
   furnished?: boolean | null;
   /** The most specific Kigali zone slug on the home's location (neighbourhood, else sector). */
   zone?: string | null;
+  /** The ad's title: a shop or a nightly stay is told apart by its words (`notAHome`). */
+  title?: string | null;
+}
+
+/**
+ * A listing that is not a home to live in monthly (2026-11-21: "Shop for rent" and "Business room"
+ * reached a tenant who asked for a 150k room): commercial space, and nightly stays. Read from the ad's
+ * title and type, because brokers post a shop as a "room".
+ */
+const COMMERCIAL_RE = /\b(?:shops?|boutiques?|kiosks?|commercial|business (?:room|space|unit|premises|cent(?:er|re))|warehouses?|godown|offices? (?:space|for rent|room)|(?:plots?|land) for|for sale)\b|\b(?:ububiko|iduka|amaduka)\b|للبيع|محل تجاري/i;
+const NIGHTLY_RE = /\b(?:airbnb|per night|a night|nightly|daily rent|short[- ]?stay|guest ?house|holiday (?:home|rental)|vacation|by the night)\b/i;
+export function notAHome(c: Pick<Candidate, "title" | "propertyType" | "rentPeriod">, r: Pick<Requirements, "stay">): boolean {
+  const t = c.title ?? "";
+  if (COMMERCIAL_RE.test(t) || /^(?:commercial|office|shop|land)/i.test(c.propertyType ?? "")) return true;
+  // The agent covers monthly rentals: a nightly stay is never offered to one (a short-stay ask never reaches a search).
+  if (r.stay !== "short" && (c.rentPeriod === "NIGHTLY" || NIGHTLY_RE.test(t))) return true;
+  return false;
 }
 
 /** What the card tells the tenant to ask the broker: the ad is silent on something they asked for. */
@@ -253,7 +270,12 @@ const waterOf = (c: Candidate): boolean | null => (c.rentPeriod === "NIGHTLY" ? 
 
 /** Hard constraints: a home failing any of these is never shown. */
 export function passesHardFilters(c: Candidate, r: Requirements): boolean {
-  if (r.neighbourhood && !matchesNeighbourhood(c, r.neighbourhood)) return false;
+  if (notAHome(c, r)) return false;
+  // A list of places ("kicukiro, remera, kabeza"): a home in any of them, or in the district they named, fits.
+  if (r.neighbourhoods && r.neighbourhoods.length > 1) {
+    const inDistrict = !!r.district && !!c.district && c.district.toUpperCase() === r.district;
+    if (!r.neighbourhoods.some((n) => matchesNeighbourhood(c, n)) && !inDistrict) return false;
+  } else if (r.neighbourhood && !matchesNeighbourhood(c, r.neighbourhood)) return false;
   if (r.area) {
     // A district-centre pin says nothing about the distance to the CBD or a
     // campus: a broker lead stays in (neutral), a pinned home must be in it.
@@ -271,7 +293,7 @@ export function passesHardFilters(c: Candidate, r: Requirements): boolean {
   if (r.noCommission && commissionFree(c) === false) return false;
   if (r.bathrooms != null && c.bathrooms != null && c.bathrooms < r.bathrooms) return false;
   if (r.purpose === "family" && r.bedrooms == null && c.bedrooms != null && c.bedrooms < FAMILY_BEDROOMS) return false;
-  if (r.district && c.district && c.district.toUpperCase() !== r.district) return false;
+  if (r.district && !r.neighbourhoods?.length && c.district && c.district.toUpperCase() !== r.district) return false;
   // A studio is exactly no bedroom; any other count is a minimum.
   if (r.bedrooms === 0 && r.homeType === "studio" && c.bedrooms != null && c.bedrooms !== 0) return false;
   if (r.bedrooms != null && c.bedrooms != null && c.bedrooms < r.bedrooms) return false;

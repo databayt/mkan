@@ -9,6 +9,7 @@ export const DISTRICT_CODES = ["GASABO", "KICUKIRO", "NYARUGENGE"] as const;
 export const CLEARABLE = [
   "district",
   "neighbourhood",
+  "neighbourhoods",
   "area",
   "maxPrice",
   "pricePeriod",

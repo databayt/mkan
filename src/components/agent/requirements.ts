@@ -9,7 +9,7 @@
 import { z } from "zod";
 import { districtForPlace, DISTRICTS } from "@/lib/geo/rwanda-places";
 import { KIGALI_ZONE_BY_SLUG, KIGALI_ZONES } from "@/lib/geo/kigali-zones";
-import { AREA_KEYS, landmarkIn, nearestSchool, NEIGHBOURHOODS } from "./areas";
+import { AREA_KEYS, landmarkIn, nearestSchool, NEIGHBOURHOODS, PLACE_ZONES } from "./areas";
 import {
   CLARIFY_FIELDS,
   CLEARABLE,
@@ -50,6 +50,11 @@ export const RequirementsSchema = z.object({
   homeType: z.enum(HOME_TYPES).nullable(),
   /** A neighbourhood from `areas.ts` (Kimihurura, Kiyovu, …). */
   neighbourhood: z.string().max(40).nullable(),
+  /**
+   * Every neighbourhood a tenant listed ("kicukiro, remera, kabeza") when they gave two or more — a
+   * home in any of them fits. `neighbourhood` is the first of them; a single place leaves this null.
+   */
+  neighbourhoods: z.array(z.string().max(40)).max(6).nullable(),
   /** Near the city centre, the business district or a university. */
   area: z.enum(AREA_KEYS).nullable(),
   /**
@@ -95,6 +100,7 @@ export const EMPTY_REQUIREMENTS: Requirements = {
   bathrooms: null,
   homeType: null,
   neighbourhood: null,
+  neighbourhoods: null,
   area: null,
   purpose: null,
   waterIncluded: null,
@@ -152,6 +158,30 @@ function moneyMentions(text: string): { value: number; index: number; raw: strin
       out.push({ value, index: m.index ?? 0, raw: m[0] });
   }
   return out;
+}
+
+/**
+ * "400k-500k", "200,000 - 250,000", "300 to 450k", "1.2m-1.5m": a rent range. The unit of one end
+ * carries to the other ("200-250k"); both ends must be real rents (≥ 1,000).
+ */
+export function priceRange(text: string): { low: number; high: number } | null {
+  const num = "(\\d{1,3}(?:[,\\s]\\d{3})+|\\d+(?:\\.\\d+)?)";
+  const unit = "(k|m|million|millions|thousand|elfu|ibihumbi)?";
+  const re = new RegExp(`(?<![A-Za-z\\d.,])${num}\\s*${unit}\\s*(?:-|–|—|~|to|kugeza|\\u00e0|الى|إلى)\\s*${num}\\s*${unit}(?![A-Za-z\\d])`, "i");
+  const m = text.match(re);
+  if (!m) return null;
+  const mult = (u: string | undefined) => {
+    const x = (u ?? "").toLowerCase();
+    if (!x) return 0;
+    return x === "m" || x.startsWith("million") ? 1_000_000 : 1_000;
+  };
+  const n = (d: string) => Number(d.replace(/[,\s]/g, ""));
+  const u2 = mult(m[4]) || mult(m[2]);
+  const u1 = mult(m[2]) || mult(m[4]);
+  const low = n(m[1]!) * (u1 || 1);
+  const high = n(m[3]!) * (u2 || 1);
+  if (!Number.isFinite(low) || !Number.isFinite(high) || low < 1_000 || high < 1_000 || high < low) return null;
+  return { low, high };
 }
 
 function bedroomsOf(text: string): number | null {
@@ -279,6 +309,17 @@ function neighbourhoodOf(text: string): string | null {
   return hit?.name ?? aliasHood(s) ?? fuzzyHood(s) ?? null;
 }
 
+/** Every neighbourhood the message names, in the order it names them ("kicukiro, remera, kabeza" → Remera, Kabeza). */
+export function neighbourhoodsOf(text: string): string[] {
+  const s = text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const hits = PLACE_ZONES.filter((n) => n.name !== "Kicukiro")
+    .map((n) => ({ name: n.name, at: s.search(new RegExp(`(^|[^a-z])${n.name.toLowerCase()}([^a-z]|$)`)) }))
+    .filter((h) => h.at >= 0)
+    .sort((a, b) => a.at - b.at)
+    .map((h) => h.name);
+  return [...new Set(hits)];
+}
+
 const fold = (x: string) => x.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
 /** A zone's other spellings ("kaciyiru", "vision city", "sonatube") name its popular neighbourhood. */
@@ -366,6 +407,13 @@ export function parseRequirements(input: string): Requirements {
 
   r.district = districtOf(text);
   r.neighbourhood = neighbourhoodOf(text);
+  // Two or more places in one message are a list, and every one of them counts (2026-11-21: "kicukiro,
+  // remera, kabeza" kept Remera alone, and the district it then flipped to dropped Kicukiro's homes).
+  const hoods = neighbourhoodsOf(text);
+  if (hoods.length >= 2) {
+    r.neighbourhoods = hoods.slice(0, 6);
+    r.neighbourhood = hoods[0]!;
+  }
   r.bathrooms = bathroomsOf(text);
   for (const key of AREA_KEYS) if (AREA_RE[key].test(text)) r.area = key;
   r.purpose = FAMILY_RE.test(text) ? "family" : STUDY_RE.test(text) ? "study" : BUSINESS_RE.test(text) ? "business" : null;
@@ -385,7 +433,12 @@ export function parseRequirements(input: string): Requirements {
   const upfront = mentions.find((m) => UPFRONT_RE.test(clauseAround(text, m.index)));
   if (upfront) r.maxUpfront = upfront.value;
   const rent = mentions.filter((m) => m !== upfront).sort((a, b) => b.value - a.value)[0];
-  if (rent) {
+  // "400k-500k" is a range: its top is the ceiling (the dash made the second figure read as a home code).
+  const range = priceRange(text);
+  if (range && (!rent || range.high >= rent.value)) {
+    r.maxPrice = range.high;
+    r.pricePeriod = monthly ? "month" : nightly ? "night" : null;
+  } else if (rent) {
     r.maxPrice = rent.value;
     r.pricePeriod = monthly ? "month" : nightly ? "night" : null;
   }
@@ -489,7 +542,7 @@ export function parseAdjustments(input: string, current: Requirements): { set: P
   const text = toLatinDigits(input);
   const set: Partial<Requirements> = {};
   const clear: ClearableField[] = [];
-  if (ANY_PLACE_RE.test(text)) clear.push("district", "neighbourhood", "area");
+  if (ANY_PLACE_RE.test(text)) clear.push("district", "neighbourhood", "neighbourhoods", "area");
   if (ANY_BUDGET_RE.test(text)) clear.push("maxPrice", "pricePeriod", "cheap");
   if (ANY_FURNISH_RE.test(text)) clear.push("furnished");
   if (CHEAPER_RE.test(text)) {
@@ -517,8 +570,11 @@ export function clearFields(r: Requirements, keys: readonly string[]): Requireme
  */
 export function reconcile(prev: Requirements, next: Requirements, stated: Partial<Requirements>): Requirements {
   const out = { ...next };
+  // A newly named single place replaces an older list of them.
+  if (stated.neighbourhood && !stated.neighbourhoods) out.neighbourhoods = null;
   const hood = NEIGHBOURHOODS.find((n) => n.name === out.neighbourhood);
-  if (hood && out.district && hood.district !== out.district) {
+  // A list of places keeps the district beside it: the tenant named both ("kicukiro, remera, kabeza").
+  if (hood && out.district && hood.district !== out.district && !out.neighbourhoods?.length) {
     if (stated.district && !stated.neighbourhood) out.neighbourhood = null;
     else out.district = hood.district as Requirements["district"];
   }

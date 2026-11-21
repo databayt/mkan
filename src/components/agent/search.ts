@@ -30,6 +30,7 @@ const MAX_MONTHLY_DISCOUNT = 0.5;
 const CANDIDATE_SELECT = {
   id: true,
   hostId: true,
+  title: true,
   pricePerNight: true,
   priceMonth: true,
   rentPeriod: true,
@@ -117,14 +118,18 @@ const underZone = (slug: string): Prisma.StringNullableFilter[] => [{ equals: sl
  */
 function placeWhere(r: Requirements): Prisma.ListingWhereInput[] {
   const out: Prisma.ListingWhereInput[] = [];
-  const hood = neighbourhoodNamed(r.neighbourhood);
-  if (hood) {
+  const hoods = (r.neighbourhoods?.length ? r.neighbourhoods : r.neighbourhood ? [r.neighbourhood] : []).flatMap((n) => neighbourhoodNamed(n) ?? []);
+  if (hoods.length) {
     // A lead's zone (Location.neighbourhood / sector) places it; older leads only have their address text.
     out.push({
       OR: [
-        { location: boxAround([[hood.lat, hood.lng]], NEIGHBOURHOOD_RADIUS_KM) },
-        ...underZone(hood.slug).flatMap((f) => [{ location: { neighbourhood: f } }, { location: { sector: f } }]),
-        { source: { in: [...LEAD_SOURCES] }, location: { address: { contains: hood.name, mode: "insensitive" } } },
+        ...hoods.flatMap((hood): Prisma.ListingWhereInput[] => [
+          { location: boxAround([[hood.lat, hood.lng]], NEIGHBOURHOOD_RADIUS_KM) },
+          ...underZone(hood.slug).flatMap((f) => [{ location: { neighbourhood: f } }, { location: { sector: f } }]),
+          { source: { in: [...LEAD_SOURCES] }, location: { address: { contains: hood.name, mode: "insensitive" } } },
+        ]),
+        // A list also keeps the district the tenant named beside the places ("kicukiro, remera, kabeza").
+        ...(hoods.length > 1 && r.district ? [{ location: { state: { equals: r.district, mode: "insensitive" as const } } }] : []),
       ],
     });
   }
@@ -166,6 +171,7 @@ async function toCandidates(rows: CandidateRow[]): Promise<Candidate[]> {
     .map((row) => ({
     id: row.id,
     hostId: row.hostId,
+    title: row.title,
     rentPeriod: row.rentPeriod,
     pricePerNight: row.pricePerNight,
     priceMonth: row.priceMonth,
@@ -236,7 +242,7 @@ export async function searchKigali(
     currency: "RWF",
     location: {
       city: { equals: "Kigali", mode: "insensitive" },
-      ...(r.district ? { state: { equals: r.district, mode: "insensitive" } } : {}),
+      ...(r.district && !r.neighbourhoods?.length ? { state: { equals: r.district, mode: "insensitive" } } : {}),
     },
     ...(r.stay === "short" ? { rentPeriod: "NIGHTLY" } : {}),
     ...(excludeIds.length ? { id: { notIn: excludeIds } } : {}),

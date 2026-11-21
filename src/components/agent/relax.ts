@@ -25,7 +25,7 @@ const STEPS: Step[] = [
   (r) => {
     if (!r.neighbourhood) return null;
     const district = r.district ?? neighbourhoodNamed(r.neighbourhood)?.district ?? null;
-    return { next: { ...r, neighbourhood: null, district: district as Requirements["district"] }, step: { key: "neighbourhood", to: district ?? undefined } };
+    return { next: { ...r, neighbourhood: null, neighbourhoods: null, district: district as Requirements["district"] }, step: { key: "neighbourhood", to: district ?? undefined } };
   },
   (r) => (r.area ? { next: { ...r, area: null }, step: { key: "area" } } : null),
   // "Near Kigali Heights": the place goes, so homes further out can show.

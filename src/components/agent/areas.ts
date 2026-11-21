@@ -178,8 +178,30 @@ export function nearestSchool(at: { neighbourhood?: string | null; district?: st
   return [...inDistrict].sort((a, b) => crowd(b) - crowd(a))[0];
 }
 
-export const neighbourhoodNamed = (name: string | null | undefined): Neighbourhood | undefined =>
-  name ? NEIGHBOURHOODS.find((n) => n.name.toLowerCase() === name.toLowerCase()) : undefined;
+/** A sector or district name that also names a wider place ("Kicukiro" the district): never a place of its own. */
+const WIDE_SLUGS = new Set(["nyarugenge/kigali", "nyarugenge/nyarugenge", "kicukiro/kicukiro"]);
+
+/**
+ * A place by name: a popular neighbourhood first, else any sector or cell of the zone tree ("Kabeza",
+ * "Gikondo") — a tenant who lists several places names the small ones too (2026-11-21).
+ */
+export const neighbourhoodNamed = (name: string | null | undefined): Neighbourhood | undefined => {
+  if (!name) return undefined;
+  const lower = name.toLowerCase();
+  const popular = NEIGHBOURHOODS.find((n) => n.name.toLowerCase() === lower);
+  if (popular) return popular;
+  const z = KIGALI_ZONES.find((x) => x.level !== "district" && !WIDE_SLUGS.has(x.slug) && x.nameEn.toLowerCase() === lower);
+  return z ? { name: z.nameEn, slug: z.slug, district: z.district, lat: z.lat, lng: z.lng } : undefined;
+};
+
+/** Every sector and cell, for reading a list of places out of one message. */
+export const PLACE_ZONES: Neighbourhood[] = KIGALI_ZONES.filter((z) => z.level !== "district" && !WIDE_SLUGS.has(z.slug)).map((z) => ({
+  name: z.nameEn,
+  slug: z.slug,
+  district: z.district,
+  lat: z.lat,
+  lng: z.lng,
+}));
 
 export function inNeighbourhood(lat: number, lng: number, name: string): boolean {
   const n = neighbourhoodNamed(name);
