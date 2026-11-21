@@ -35,7 +35,7 @@
   - one language: 17 of 18
 
   The eval spent about $2.6 of the $15 cap.
-- **Owed:**
+- **Owed** (tracked in databayt/mkan#85):
   - Deploy main. The Mac was on battery, so `ship.sh` refused. No prisma change, so no data step.
   - Then watch `pnpm mkan:read funnel --days=14`. Targets:
     - shown → picked from 26% to ≥40%
