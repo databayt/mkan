@@ -109,7 +109,7 @@ export function langOfWords(text: string): 'ar' | 'rw' | null {
   return null;
 }
 
-export type TenantDecision = 'answer' | 'stop' | 'start' | 'media' | 'skip-stopped' | 'skip-human' | 'skip-old' | 'skip-empty' | 'skip-rate';
+export type TenantDecision = 'answer' | 'stop' | 'start' | 'media' | 'skip-stopped' | 'skip-human' | 'skip-personal' | 'skip-old' | 'skip-empty' | 'skip-rate';
 
 export function tenantDecision(input: {
   text: string;
@@ -122,11 +122,17 @@ export function tenantDecision(input: {
   lineRepliesLastHour: number;
   /** A voice note, photo, location… with no words: the tenant hears once that only typed messages are read. */
   media?: boolean;
+  /**
+   * The chat is the line owner's own (humanChatBeforeBot): a person talked in it and the agent never did.
+   * Judged after STOP and START, which anyone may say, and before everything that would answer.
+   */
+  personalChat?: boolean;
 }): TenantDecision {
   const { text, now } = input;
   if (isTenantStop(text)) return 'stop';
   if (isOptIn(text)) return input.stopped ? 'start' : 'answer';
   if (input.stopped) return 'skip-stopped';
+  if (input.personalChat) return 'skip-personal';
   if (now.getTime() - input.sentAt.getTime() > MAX_AGE_MS) return 'skip-old';
   if (input.humanAt && now.getTime() - input.humanAt.getTime() < HUMAN_HOLD_MS) return 'skip-human';
   if (!text.trim()) return input.media ? 'media' : 'skip-empty';
@@ -185,3 +191,14 @@ export const homesListed = (reply: string): number => (reply.match(/^\*\d+\. /gm
 
 /** Homes sent as native WhatsApp photos beside the list (MKAN_WA_MEDIA): on unless it says off. */
 export const mediaEnabled = (flag: string | undefined = process.env.MKAN_WA_MEDIA): boolean => !/^(?:0|off|false|no)$/i.test((flag ?? '').trim());
+
+/**
+ * A chat the line owner already lived in (2026-11-21: the line still carried Abdout's personal chats, and
+ * vendors and friends got "Happy to help. Tell me the area…"): a person typed in it, the hold on them has long
+ * run out, and the agent has never said a word there nor opened a chat for that number. A person who answers a
+ * brand-new tenant by hand is inside HUMAN_HOLD_MS and is not this — that chat stays the agent's afterwards.
+ */
+export function humanChatBeforeBot(i: { humanAt: Date | null; now: Date; botSentToPhone: boolean; hasAgentChat: boolean }): boolean {
+  if (!i.humanAt || i.botSentToPhone || i.hasAgentChat) return false;
+  return i.now.getTime() - i.humanAt.getTime() >= HUMAN_HOLD_MS;
+}

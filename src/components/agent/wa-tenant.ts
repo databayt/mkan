@@ -8,11 +8,12 @@ import "server-only";
  * shows "typing…", runs the turn in-process (whatsapp-chat.ts) and sends the
  * reply. The turn dedupes by message id, so the two paths answer once.
  */
-import { followLine, homesListed, langOfWords, LATE_AFTER_MS, lateLead, MAX_AGE_MS, mediaEnabled, MEDIA_NUDGE_MS, REPEAT_WINDOW_MS, repeatsLast, saidJustNow, showsAHome, startText, stopConfirmText, tenantDecision, textHash, typePleaseText, type Sent, type TenantDecision } from "../../../scripts/wa/tenant-pure";
+import { followLine, homesListed, humanChatBeforeBot, langOfWords, LATE_AFTER_MS, lateLead, MAX_AGE_MS, mediaEnabled, MEDIA_NUDGE_MS, REPEAT_WINDOW_MS, repeatsLast, saidJustNow, showsAHome, startText, stopConfirmText, tenantDecision, textHash, typePleaseText, type Sent, type TenantDecision } from "../../../scripts/wa/tenant-pure";
 import { db } from "@/lib/db";
 import { sendMedia, sendPresence, sendText } from "@/lib/whatsapp/evolution";
-import { isPersonal } from "./personal";
+import { isPersonal, markPersonal } from "./personal";
 import { readRepWord, repDigits } from "./rep-word-pure";
+import { testPhones } from "./broker-sends";
 import { addToList, CLAIM_STALE_MS, claimMessage, holdReply, MAX_ANSWER_TRIES, mutateState, readState, releaseMessage, removeFromList, settleMessage, writeState } from "./wa-state";
 import { handleTenantWhatsApp, silenceTenant } from "./whatsapp-chat";
 import { sameHomesText, type WaLang } from "./whatsapp-format";
@@ -180,6 +181,24 @@ export function answerTenant(m: TenantMessage): Promise<TenantOutcome> {
         isPersonal(m.phone),
       ]);
       const hourAgo = now.getTime() - 3_600_000;
+      // Mkan's own person writing from their phone is not a tenant: anything beyond a word the loop reads
+      // (above) is theirs, never the agent's. A number on the team's test list still gets the agent, for the phone test.
+      if (rep && m.phone === rep && !m.media && !(await testPhones().catch(() => new Set<string>())).has(m.phone)) {
+        await settleMessage(m.msgId);
+        log(`tenant +${m.phone} is Mkan's own person — no agent reply`);
+        return "skip-personal";
+      }
+      // A chat the line owner already lived in: a person talked there, long ago, and the agent never did.
+      const humanAtPhone = human[m.phone] ? new Date(human[m.phone]!) : null;
+      const personalChat =
+        !personal &&
+        humanChatBeforeBot({
+          humanAt: humanAtPhone,
+          now,
+          botSentToPhone: sent.some((s) => s.phone === m.phone),
+          hasAgentChat: humanAtPhone ? (await db.agentTask.count({ where: { profile: { waPhone: `+${m.phone}` } } }).catch(() => 1)) > 0 : false,
+        });
+      if (personalChat) await markPersonal(m.phone, "a person talked in this chat before the agent did");
       // Sent replies only (they carry an id): the pre-send echo marks would count every reply twice.
       const recent = sent.filter((s) => s.id && new Date(s.at).getTime() > hourAgo);
       const decision = tenantDecision({
@@ -191,6 +210,7 @@ export function answerTenant(m: TenantMessage): Promise<TenantOutcome> {
         phoneRepliesLastHour: recent.filter((s) => s.phone === m.phone).length,
         lineRepliesLastHour: recent.length,
         media: m.media,
+        personalChat: personalChat || undefined,
       });
       if (decision === "stop") {
         await addToList("tenant-stop", m.phone);

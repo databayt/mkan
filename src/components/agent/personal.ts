@@ -16,3 +16,14 @@ export async function isPersonal(address: string): Promise<boolean> {
   const row = await db.waState.findUnique({ where: { key: personalKey(address) }, select: { key: true } }).catch(() => null);
   return !!row;
 }
+
+/**
+ * Put a number on the list by itself — a chat the line owner already lived in (tenant-pure.ts
+ * humanChatBeforeBot). `pnpm wa:personal remove <address>` takes it off again. Never throws.
+ */
+export async function markPersonal(address: string, why: string): Promise<void> {
+  if (!address) return;
+  const key = personalKey(address);
+  const value = { why, at: new Date().toISOString(), auto: true };
+  await db.waState.upsert({ where: { key }, create: { key, value }, update: {} }).catch(() => {});
+}
