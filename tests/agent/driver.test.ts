@@ -128,6 +128,25 @@ describe("guardDriverText", () => {
   });
 });
 
+describe("notes to self never reach a tenant", () => {
+  it.each([
+    "The tenant asks for the location, but no home is shown.",
+    "\"Location\" could mean the area of K6823, but I have none.",
+    "I'd rather ask which area they want.",
+    "Let me fix that to one language: Yego.",
+  ])('refuses "%s"', (t) => expect(pure.guardDriverText(t, ctx()).ok).toBe(false));
+});
+
+describe("the language of the reply", () => {
+  it("follows the latest message, not the chat", () => {
+    expect(pure.replyLanguageOf("hey Ai, stop sending me messages", "en")).toBe("English");
+    expect(pure.replyLanguageOf("Mwiriwe", "rw")).toBe("Kinyarwanda");
+    expect(pure.replyLanguageOf("مرحبا", "ar")).toBe("Arabic");
+    expect(pure.replyLanguageOf("Il n'y a rien de meublé à ce niveau ?", "en")).toBe("French");
+    expect(pure.replyLanguageOf("Hello, I need a room", "en")).toBe("English");
+  });
+});
+
 describe("composeReply", () => {
   it("puts the list where the model asked, or after its text", () => {
     expect(pure.composeReply("x", "LIST", "Two fit.\n[[homes]]\nWhich?")).toBe("Two fit.\n\nLIST\n\nWhich?");

@@ -211,6 +211,8 @@ export async function handleTenantWhatsApp(input: {
   // need behind the ask (talk, see it, trust it) and moves to a viewing of the home they are on, with two
   // times Mkan's person can be there; a Mkan person attends every viewing, so that is true.
   const talkOn = asksToTalk(rest) && !isFresh(rest);
+  // "Can we meet now": about a viewing, so about Mkan — the driver answers it even where the not-about-a-home gate would stay quiet.
+  const meetsOn = /\b(?:can|could|shall) we (?:meet|see|visit|view)\b|\b(?:let'?s|i want to|i'?d like to|i would like to) (?:meet|see|visit|view)\b/i.test(rest);
   const answerTalk = async (): Promise<WaResult> => {
     await noteHandoff(input.msgId, "asked-to-talk");
     let title: string | null = null;
@@ -311,7 +313,7 @@ export async function handleTenantWhatsApp(input: {
   // message that is not about a home and a driver that cannot run fall through to the Phase 1 path below, unchanged.
   const strangerLike = !current && !ref && !refHome && firstMessageKind(text) === "other";
   const offTopicLike = !!current && !ref && !refHome && personAfterHello(text, current.messages as unknown as AgentMessage[]);
-  if (driverOn && !ref && !strangerLike && !offTopicLike) {
+  if (driverOn && !ref && (talkOn || meetsOn || (!strangerLike && !offTopicLike))) {
     const res = await driveTurn({
       profile,
       viewer,

@@ -26,7 +26,7 @@ import { openDemand, optInDemand } from "./demand";
 import { proposeViewing, openViewingAsk, readViewingAsk } from "./deal";
 import { readViewingTime, viewingLabel } from "./deal-pure";
 import { converse } from "./driver-loop";
-import { composeReply, DRIVER_SYSTEM, driverEnabled, guardDriverText, guardNumbers, renderTurn, type ChatLine, type DriverState } from "./driver-pure";
+import { composeReply, DRIVER_SYSTEM, driverEnabled, guardDriverText, guardNumbers, renderTurn, replyLanguageOf, type ChatLine, type DriverState } from "./driver-pure";
 import { coerceMemory } from "./memory";
 import { rankCandidates } from "./rank";
 import { relaxations } from "./relax";
@@ -36,7 +36,7 @@ import { searchKigali, toShortlist } from "./search";
 import { loadTask } from "./task-view";
 import type { AgentMessage, DriverNote, EventKind, ShortlistItem, StepStatus } from "./types";
 import type { Viewer } from "./profile";
-import { checkText, homeLines, homeMedia, MAX_HOMES, type CheckOutcome, type HomeMedia, type WaLang } from "./whatsapp-format";
+import { checkText, homeLines, homeMedia, MAX_HOMES, readHomeRef, type CheckOutcome, type HomeMedia, type WaLang } from "./whatsapp-format";
 import { offerSlots } from "./viewing-loop";
 import { writerFacts } from "./writer";
 
@@ -323,10 +323,16 @@ async function checkTool(t: Turn, input: Record<string, unknown>) {
 }
 
 async function slotsTool(t: Turn, input: Record<string, unknown>) {
-  const item = homeByNumber(t, input.home_number);
-  if (!item) return { error: "no such home in the latest list" };
+  const item = input.home_number == null ? null : homeByNumber(t, input.home_number);
+  if (input.home_number != null && !item) return { error: "no such home in the latest list" };
   const times = await offerSlots().catch(() => [] as Date[]);
   const labels = times.map((x) => viewingLabel(x, t.lang));
+  if (!item) {
+    t.events.push(["viewing_proposed", "waiting_person", { tool: "offer_viewing_slots", slots: labels }]);
+    return labels.length
+      ? { slots: labels, who: "someone from Mkan meets the tenant at the house", note: "No home is lined up yet: say viewings can be on these times, then ask the one missing thing so you can find the home." }
+      : { slots: [], note: "No time is free in the next days: ask which day suits the tenant." };
+  }
   await openViewingAsk(t.phone, t.taskId, item.id).catch(() => {});
   t.offered = { id: item.id, labels, at: times.map((x) => x.toISOString()) };
   t.events.push(["viewing_proposed", "waiting_person", { tool: "offer_viewing_slots", listingId: item.id, slots: labels }]);
@@ -488,7 +494,8 @@ export async function driveTurn(input: DriveInput): Promise<DriveResult> {
       homesShown: t.shown.map((s, i) => ({ number: i + 1, id: s.id, title: s.title, area: s.district, rent: `${money(s.cost.headline)}/month`, availability: s.availability })),
       earlierHomesShown: Math.max(0, t.shownIds.size - t.shown.length),
       viewing: viewingAsk || t.lastOffered ? { homeNumber: t.shown.findIndex((s) => s.id === (viewingAsk?.listingId ?? t.lastOffered?.id)) + 1 || null, slotsOffered: t.lastOffered ? t.lastOffered.at.map((a) => viewingLabel(new Date(a), lang)) : [], requested: !!viewingAsk?.proposedAt } : null,
-      refHome: input.refHome ? { code: `K${input.refHome.id}`, found: true } : null,
+      replyLanguage: replyLanguageOf(message.text, lang),
+      refHome: input.refHome ? { code: `K${input.refHome.id}`, found: true } : readHomeRef(message.text) ? { code: `K${readHomeRef(message.text)}`, found: false } : null,
     };
     const toolResults: unknown[] = [];
     const guard = (raw: string) =>

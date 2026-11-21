@@ -27,12 +27,8 @@ export type LoopResult =
   | { ok: true; raw: string; text: string; calls: number; tools: string[]; effects: boolean }
   | { ok: false; why: string; calls: number; tools: string[]; effects: boolean; error?: unknown };
 
-const textOf = (m: Anthropic.Message) =>
-  m.content
-    .filter((b): b is Anthropic.TextBlock => b.type === "text")
-    .map((b) => b.text)
-    .join("\n")
-    .trim();
+/** The message is the LAST text block: anything the model wrote before a tool call is thinking out loud, never sent. */
+const textOf = (m: Anthropic.Message) => m.content.filter((b): b is Anthropic.TextBlock => b.type === "text").at(-1)?.text.trim() ?? "";
 
 export async function converse(deps: LoopDeps, firstMessage: string): Promise<LoopResult> {
   const now = deps.now ?? Date.now;
