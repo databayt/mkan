@@ -36,13 +36,14 @@ import { searchKigali, toShortlist } from "./search";
 import { loadTask } from "./task-view";
 import type { AgentMessage, DriverNote, EventKind, ShortlistItem, StepStatus } from "./types";
 import type { Viewer } from "./profile";
-import { checkText, homeLines, homeMedia, MAX_HOMES, readHomeRef, type CheckOutcome, type HomeMedia, type WaLang } from "./whatsapp-format";
+import { checkText, homeLines, homeMedia, isLanguageNeutral, MAX_HOMES, readHomeRef, waLang, type CheckOutcome, type HomeMedia, type WaLang } from "./whatsapp-format";
 import { offerSlots } from "./viewing-loop";
-import { writerFacts } from "./writer";
+import { noteRwSamples, writerFacts } from "./writer";
 
 const json = (v: unknown) => v as Prisma.InputJsonValue;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-const money = (n: number) => `RWF ${Math.round(n).toLocaleString("en-US")}`;
+/** "150k" for a round thousand, the full figure otherwise: the way people text a rent (and not a list line to the eval's reader). */
+const short = (n: number) => (Math.round(n) % 1000 === 0 ? `${Math.round(n) / 1000}k` : Math.round(n).toLocaleString("en-US"));
 /** A home that is not somewhere to live (…922: a shop and a business room for a 150k furnished search). */
 const COMMERCIAL_RE = /\b(shop|business room|office|commercial|store|warehouse|boutique|salon|restaurant|bar)\b/i;
 /** How long the driver may take before the Phase 1 pipeline answers instead. */
@@ -178,7 +179,8 @@ function candidateFacts(items: ShortlistItem[], t: Turn) {
   return items.map((s, i) => ({
     id: s.id,
     title: s.title,
-    rent: `${money(s.cost.headline)}/month`,
+    rent: `${short(s.cost.headline)} a month`,
+    rent_rwf: Math.round(s.cost.headline),
     area: facts[i]?.neighbourhood ?? facts[i]?.area ?? null,
     bedrooms: s.bedrooms,
     bathrooms: s.bathrooms,
@@ -258,7 +260,7 @@ async function showTool(t: Turn, input: Record<string, unknown>) {
   t.justShown = list;
   list.forEach((s) => t.shownIds.add(s.id));
   t.events.push(["shortlist_ready", "done", { tool: "show_homes", count: list.length, ids: list.map((s) => s.id) }]);
-  return { shown: list.map((s, i) => ({ number: i + 1, title: s.title, rent: `${money(s.cost.headline)}/month` })), attached: "the list and photos are attached to your message at [[homes]]" };
+  return { shown: list.map((s, i) => ({ number: i + 1, title: s.title, rent: `${short(s.cost.headline)} a month` })), attached: "the list and photos are attached to your message at [[homes]]" };
 }
 
 function answerTool(t: Turn, input: Record<string, unknown>) {
@@ -269,8 +271,9 @@ function answerTool(t: Turn, input: Record<string, unknown>) {
   return {
     home_number: input.home_number,
     title: item.title,
-    rent: `${money(item.cost.headline)}/month`,
-    move_in_estimate: item.cost.period === "month" ? money(item.cost.total) : undefined,
+    rent: `${short(item.cost.headline)} a month`,
+    rent_rwf: Math.round(item.cost.headline),
+    move_in_estimate: item.cost.period === "month" ? `${short(item.cost.total)} (RWF ${Math.round(item.cost.total)})` : undefined,
     area: f.neighbourhood ?? f.area,
     type: f.type,
     furnishing: f.furnishing ?? "the ad does not say",
@@ -484,6 +487,9 @@ export async function driveTurn(input: DriveInput): Promise<DriveResult> {
     });
     const tenantMessages = [...before.filter((m) => m.role === "user").map((m) => (m as { text: string }).text), message.text];
     const budgetKnown = !!t.requirements.maxPrice || tenantMessages.some((x) => statedBudget(x) != null);
+    // A message with no language in it ("1", "ok", a code) keeps the language of the last one that had some.
+    const basisText = !isLanguageNeutral(message.text) ? message.text : [...tenantMessages].reverse().find((x) => !isLanguageNeutral(x)) ?? message.text;
+    const basisLang: WaLang = basisText === message.text ? lang : waLang(basisText);
     const viewingAsk = await readViewingAsk(phone).catch(() => null);
     const chat = chatLines(before);
     const said = chat.filter((l) => l.who === "mkan" && !l.text.startsWith("(")).map((l) => l.text);
@@ -491,10 +497,10 @@ export async function driveTurn(input: DriveInput): Promise<DriveResult> {
       now: new Date(Date.now() + 2 * 3_600_000).toISOString().replace("T", " ").slice(0, 16) + " (Kigali)",
       brief: briefView(t.requirements),
       budgetKnown,
-      homesShown: t.shown.map((s, i) => ({ number: i + 1, id: s.id, title: s.title, area: s.district, rent: `${money(s.cost.headline)}/month`, availability: s.availability })),
+      homesShown: t.shown.map((s, i) => ({ number: i + 1, id: s.id, title: s.title, area: s.district, rent: `${short(s.cost.headline)} a month`, availability: s.availability })),
       earlierHomesShown: Math.max(0, t.shownIds.size - t.shown.length),
       viewing: viewingAsk || t.lastOffered ? { homeNumber: t.shown.findIndex((s) => s.id === (viewingAsk?.listingId ?? t.lastOffered?.id)) + 1 || null, slotsOffered: t.lastOffered ? t.lastOffered.at.map((a) => viewingLabel(new Date(a), lang)) : [], requested: !!viewingAsk?.proposedAt } : null,
-      replyLanguage: replyLanguageOf(message.text, lang),
+      replyLanguage: replyLanguageOf(basisText, basisLang),
       refHome: input.refHome ? { code: `K${input.refHome.id}`, found: true } : readHomeRef(message.text) ? { code: `K${readHomeRef(message.text)}`, found: false } : null,
     };
     const toolResults: unknown[] = [];
@@ -504,6 +510,7 @@ export async function driveTurn(input: DriveInput): Promise<DriveResult> {
         tenantText: message.text,
         anyConfirmed: t.shown.some((s) => s.availability === "confirmed") || t.checks.some((c) => c.outcome === "confirmed"),
         budgetKnown: budgetKnown || !!t.requirements.maxPrice,
+        replyLanguage: state.replyLanguage,
         said,
       });
     await appendTaskEvents(taskId, [["requirements_extracted", "done", { reader: "driver", requirements: t.requirements }]]).catch(() => {});
@@ -549,6 +556,8 @@ export async function driveTurn(input: DriveInput): Promise<DriveResult> {
     const agentMessage: AgentMessage = t.justShown
       ? { role: "agent", kind: "shortlist", count: t.justShown.length, text, at: new Date().toISOString(), ...note }
       : { role: "agent", kind: "answer", topic: "other", text: reply, at: new Date().toISOString(), ...note };
+    // Kinyarwanda written by the model waits for a native speaker's read, like the writer's (pnpm agent:rw-samples).
+    if (state.replyLanguage === "Kinyarwanda" && loop.ok) void noteRwSamples(taskId, [{ kind: "reply", text: reply, passed: true }]);
     t.events.push(["reply_written", "done", { tool: "reply", via: spent, calls: loop.calls, tools: loop.tools, ms: Date.now() - started }]);
     await appendTaskEvents(taskId, t.events).catch((err) => console.warn(`[driver] events not written: ${(err as Error).message}`));
     const fresh = await db.agentTask.findUnique({ where: { id: taskId }, select: { shortlist: true } });

@@ -77,8 +77,17 @@ describe("guardDriverText", () => {
     expect(!g.ok && g.reason).toMatch(/175,000/);
   });
 
-  it("allows a price a tool returned and a slot label a tool returned", () => {
-    expect(pure.guardDriverText("It's RWF 150,000/month. Does Thu 26 Nov, 16:00 suit you?", ctx()).ok).toBe(true);
+  it("allows a price a tool returned, as people text it, and a slot label a tool returned", () => {
+    expect(pure.guardDriverText("It's 150k a month. Does Thu 26 Nov, 16:00 suit you?", ctx()).ok).toBe(true);
+    expect(pure.guardDriverText("It's 175k a month.", ctx()).ok).toBe(false);
+  });
+
+  it("keeps the list's price form out of prose (it reads as a second list), and notes to self in any language", () => {
+    expect(pure.guardDriverText("It's RWF 150,000/month.", ctx()).ok).toBe(false);
+    expect(pure.guardDriverText("Le tenant veut voir la chambre.", ctx({ replyLanguage: "French" })).ok).toBe(false);
+    const mixed = "None of these list furnishing, so I will be honest about that and ask for the area.\n\nLes deux chambres ne sont pas meublées, dans quel quartier voulez-vous habiter ?";
+    expect(pure.guardDriverText(mixed, ctx({ replyLanguage: "French", tenantText: "meublé ?" })).ok).toBe(false);
+    expect(pure.guardDriverText("Les deux chambres ne sont pas meublées, dans quel quartier voulez-vous habiter ?", ctx({ replyLanguage: "French", tenantText: "meublé ?" })).ok).toBe(true);
   });
 
   it("refuses to say a home is free with no broker's yes, allows it once a tool confirmed", () => {
@@ -205,8 +214,8 @@ describe("converse — tool dispatch", () => {
     const second = calls[1].messages.at(-1);
     expect(second.role).toBe("user");
     expect(second.content.map((b: any) => b.tool_use_id)).toEqual(["a", "b"]);
-    // Sonnet 5.5: no "disabled" thinking, no forced tool choice, no temperature; cached system
-    expect(calls[0].thinking).toEqual({ type: "between_tools" });
+    // Sonnet 5.5: adaptive thinking (never "disabled", which it rejects), no forced tool choice, no temperature; cached system
+    expect(calls[0].thinking).toEqual({ type: "adaptive" });
     expect(calls[0].tool_choice).toBeUndefined();
     expect(calls[0].temperature).toBeUndefined();
     expect(calls[0].system[0].cache_control).toEqual({ type: "ephemeral" });

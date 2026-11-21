@@ -55,8 +55,9 @@ export async function converse(deps: LoopDeps, firstMessage: string): Promise<Lo
           tools: DRIVER_TOOLS,
           ...(useTools ? {} : { tool_choice: { type: "none" } }),
           messages,
-          // Sonnet 5.5 rejects "disabled": thinking off between tools is its own mode, and effort stays low.
-          thinking: { type: "between_tools" },
+          // Sonnet 5.5 rejects "disabled". "between_tools" (thinking off) let the model think aloud in the message
+          // text ("The tenant says…", 2026-11-21); adaptive keeps that in hidden thinking blocks, at low effort.
+          thinking: { type: "adaptive" },
           output_config: { effort: "low" },
         },
         { timeout: left },

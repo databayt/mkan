@@ -48,7 +48,7 @@ WHAT TO DO, in this order of priority
 9. Not about homes at all: one line on what you do (find a home to rent in Kigali, check it, set up a viewing) and ask what they need.
 
 HARD RULES
-- Never state a price, a fee, an availability, a name, a place, a link or a number that a tool did not return in this turn or that the tenant did not write. Prices only as the tools gave them (RWF 150,000/month).
+- Never state a price, a fee, an availability, a name, a place, a link or a number that a tool did not return in this turn or that the tenant did not write. Prices only as the tools gave them, written the way people text a rent in Kigali: "150k a month" (never "RWF 150,000/month": that form is the list's).
 - Never say a home is available or free unless a tool says confirmed. Otherwise: "I'm checking it with the broker".
 - Never claim to be a person. If asked, you are Mkan's assistant (a bot), and someone from Mkan will be at the viewing.
 - Never promise that a person will reply, call, check or get back to them. You are the one answering. "Someone from Mkan meets you at the house" is true and fine.
@@ -57,7 +57,7 @@ HARD RULES
 - Never write a link or a phone number yourself: the list from show_homes carries Mkan's own links.
 
 HOW TO PUT HOMES IN YOUR MESSAGE
-After show_homes, the numbered list (titles, price, area, link) and the photos are attached by the system. Write [[homes]] on its own line where the list should go (usually after your first line), and end the message with your question. Say "1" and "2" for the homes. Do not repeat titles or prices in your own words; the list has them.
+After show_homes, the numbered list (titles, price, area, link) and the photos are attached by the system. Write [[homes]] on its own line where the list should go (usually after your first line), and end the message with your question. Say "1" and "2" for the homes. Do not repeat titles or prices in your own words; the list has them. Name a price in words only when the tenant asks about it.
 
 TOOLS
 - update_brief: record what the tenant told you (areas, budget, size, type, furnished, move-in). search_homes also takes these, so call update_brief alone only when you are not searching yet.
@@ -169,7 +169,12 @@ const CLAIMS_HUMAN_RE = /\b(?:i am|i'm|je suis)\s+(?:a\s+)?(?:real\s+)?(?:person
 /** A budget question, in the ways the model asks it. Narrower than ASKS_BUDGET_RE: both a topic word and a "?". */
 const BUDGET_Q_RE = /(?:\bbudget\b|how much (?:can|do|would|are|is) (?:you|your)|most you can (?:pay|spend)|max(?:imum)?\s+(?:rent|price|you)|\bcombien\b|ميزانية|ميزانيتك|ingengo y'imari|amafaranga (?:angahe|yawe|ushobora))/i;
 
+const EN_STOP_RE = /\b(?:the|and|you|is|are|to|of|for|with|that|this|your|it|so|but|i|these|them|which|about|will|can)\b/gi;
+const FR_STOP_RE = /\b(?:le|la|les|des|est|vous|pour|avec|que|une|un|du|de|et|dans|je|c'est|qui|pas|sur|ce|mais)\b/gi;
+
 export interface GuardContext {
+  /** "English" / "French" / "Kinyarwanda" / "Arabic": what the reply must be written in. */
+  replyLanguage?: string;
   /** Numbers the tenant and the tools gave this turn (and the chat's), as text. */
   allowed: Set<string>;
   /** What the tenant wrote last: its script decides the reply's. */
@@ -206,11 +211,13 @@ export function guardDriverText(raw: string, ctx: GuardContext): Guarded {
   if (!body) return { ok: false, reason: "the message is empty" };
   if (body.length > maxLen) return { ok: false, reason: `too long (${body.length} characters; keep it to 1-3 short lines)` };
   if (body.includes("[[")) return { ok: false, reason: "contains a template mark" };
-  if (/\b(?:the tenant|refHome|tool result|system prompt|the guard)\b|\b(?:I(?:'d| would) rather (?:ask|not)|rather than guess|could mean|I(?:'ll| will) nudge)\b|\blet me (?:fix|rewrite|try again)\b|^\s*(?:note|rewrite|message)\s*:/im.test(body)) return { ok: false, reason: "that reads like your own notes, not a message to the tenant: write only the message, in one language" };
+  if (/\b(?:the|le|la|this|that) tenant\b|\btenant['’]s\b|\b(?:refHome|tool result|system prompt|the guard)\b|\b(?:I(?:'d| would) rather (?:ask|not)|rather than guess|could mean|I(?:'ll| will) nudge)\b|\blet me (?:fix|rewrite|try again)\b|^\s*(?:note|rewrite|message)\s*:/im.test(body)) return { ok: false, reason: "that reads like your own notes, not a message to the tenant: write only the message, in one language" };
   const plain = asciiDigits(body);
-  for (const n of plain.match(/\d[\d,]*(?:\.\d+)?/g) ?? []) {
-    const v = n.replace(/,/g, "");
-    if (!ctx.allowed.has(v)) return { ok: false, reason: `the number ${n} came from no tool and not from the tenant; remove it or use a tool that returns it` };
+  if (/\bRWF\s*[\d,.]+\s*\/\s*(?:month|mo|ukwezi)/i.test(plain)) return { ok: false, reason: "write a price in words the way people text it (\"150k a month\"); the list from show_homes carries the full price" };
+  for (const m of plain.matchAll(/(\d[\d,]*(?:\.\d+)?)(\s?k\b)?/gi)) {
+    const v = m[1]!.replace(/,/g, "");
+    const thousand = m[2] ? String(Math.round(Number(v) * 1000)) : null;
+    if (!ctx.allowed.has(v) && !(thousand && ctx.allowed.has(thousand))) return { ok: false, reason: `the number ${m[0].trim()} came from no tool and not from the tenant; remove it or use a tool that returns it` };
   }
   if (LINK_RE.test(plain)) return { ok: false, reason: "no links, handles or phone numbers: the list from show_homes carries Mkan's own links" };
   if (!ctx.anyConfirmed && CLAIMS_AVAILABLE_RE.test(plain)) return { ok: false, reason: "no tool says a home is confirmed free: say you are checking with the broker, never that it is available" };
@@ -218,6 +225,17 @@ export function guardDriverText(raw: string, ctx: GuardContext): Guarded {
   if (PERSON_PROMISE_RE.test(body)) return { ok: false, reason: "never promise that a person will reply, call or get back; you answer here. 'Someone from Mkan meets you at the house' is fine" };
   if (CLAIMS_HUMAN_RE.test(body)) return { ok: false, reason: "never claim to be a person" };
   if (ctx.budgetKnown && BUDGET_Q_RE.test(plain) && /[?؟]/.test(plain)) return { ok: false, reason: "the tenant already gave a budget (see the brief and the chat): do not ask for it again" };
+  // A paragraph in another language than the reply's is a note to self that slipped out ("None of these list furnishing, so…").
+  const lang = ctx.replyLanguage;
+  if (lang && lang !== "Arabic") {
+    for (const para of body.split(/\n{2,}/)) {
+      const en = (para.match(EN_STOP_RE) ?? []).length;
+      const fr = (para.match(FR_STOP_RE) ?? []).length;
+      if (lang === "French" && en >= 3 && en > fr) return { ok: false, reason: "a paragraph is in English: the whole message must be in French, and only the message" };
+      if (lang === "English" && fr >= 3 && fr > en) return { ok: false, reason: "a paragraph is in French: the whole message must be in English, and only the message" };
+      if (lang === "Kinyarwanda" && en >= 4 && en >= fr) return { ok: false, reason: "a paragraph is in English: the whole message must be in Kinyarwanda, and only the message" };
+    }
+  }
   const tenantArabic = ARABIC_RE.test(ctx.tenantText);
   if (tenantArabic !== ARABIC_RE.test(body)) return { ok: false, reason: tenantArabic ? "the tenant writes Arabic: reply in Arabic script" : "the tenant does not write Arabic: reply in their language" };
   const key = squash(body);
