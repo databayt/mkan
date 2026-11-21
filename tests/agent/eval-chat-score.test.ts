@@ -52,6 +52,16 @@ describe("reading text", () => {
     expect(offersSlot("Thursday 4pm or Saturday 10am?")).toBe(true);
     expect(offersSlot('Reply with a day and time, like "tomorrow 10am".')).toBe(false);
   });
+
+  // 2026-11-21 (Phase 2): the line's own slot labels in the tenant's language are offers too. A French or
+  // Kinyarwanda tenant offered "samedi 21 nov, 15:00" / "Gatandatu 21 Nov, 15:00" was scored as offered nothing.
+  it("offersSlot reads a time in French and in the line's own Kinyarwanda labels", () => {
+    expect(offersSlot("Quelqu'un de Mkan vous retrouve : samedi 21 nov, 15:00 ou lundi 23 nov, 09:00, lequel vous convient ?")).toBe(true);
+    expect(offersSlot("Gatandatu 21 Nov, 15:00 cyangwa Mbere 23 Nov, 09:00, ni uwuhe ukubereye?")).toBe(true);
+    expect(offersSlot("Demain à 10h, ça vous va ?")).toBe(true);
+    expect(offersSlot("Samedi, c'est possible, dites-moi l'heure")).toBe(false);
+    expect(offersSlot("Mbere yo kugira icyo uhitamo, mbwira ingengo y'imari")).toBe(false);
+  });
 });
 
 describe("the checks", () => {

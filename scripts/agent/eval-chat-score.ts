@@ -199,7 +199,7 @@ const BUDGET_ASK_RE =
   /(?:what(?:'|’)?s|what is|what are|and|tell me)\s+(?:the\s+area,\s+(?:the\s+)?size\s+and\s+)?your\s+budget\b|keep these within a budget|within a budget\?|quel est votre budget|ما هي ميزانيتك|كم ميزانيتك|ingengo y'imari yawe\?|ingengo y'imari$|and your budget,?\s+and i'?ll find|ميزانية\s+تريد|ميزانيتك\?/i;
 const PLURAL_BAD_RE = /\b1 (homes|places|rooms|houses|apartments|studios|listings)\b/i;
 
-const DAYS = "mon(?:day)?|tue(?:s|sday)?|wed(?:nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?|tomorrow|today|tonight|demain|ejo|uyu munsi|غدا|غداً|اليوم|السبت|الأحد|الاثنين|الثلاثاء|الأربعاء|الخميس|الجمعة";
+const DAYS = "mon(?:day)?|tue(?:s|sday)?|wed(?:nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?|tomorrow|today|tonight|demain|aujourd'hui|lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|cyumweru|mbere|kabiri|gatatu|kane|gatanu|gatandatu|ejo|uyu munsi|غدا|غداً|اليوم|السبت|الأحد|الاثنين|الثلاثاء|الأربعاء|الخميس|الجمعة";
 const TIME = String.raw`\d{1,2}(?:[:h.]\d{2})?\s?(?:am|pm|h)\b|\d{1,2}:\d{2}|\d{1,2}\s?(?:صباح|مساء)`;
 const SLOT_RE = new RegExp(String.raw`\b(?:${DAYS})\b[^.?!\n]{0,24}?(?:${TIME})`, "i");
 
