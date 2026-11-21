@@ -6,6 +6,8 @@
  *   --baseline   score what the OLD line actually sent (no network, no database, free). Default.
  *   --replay     feed every fixture's tenant turns through the bot's turn function and score the NEW replies.
  *   --only=<id>  one fixture (a fixture id, or a tag); --verbose prints each failed check's detail.
+ *   --print      (replay) each chat's tenant turns and the new bot replies, interleaved, photos shown as [photo: caption].
+ *   --driver=on|off  sets MKAN_DRIVER for the replay (default: the environment's; the conversational driver, docs/chat-funnel.md).
  *   --json       machine-readable output.
  *
  * --replay writes AgentProfile / AgentTask / AgentEvent rows, so it refuses to run against the production
@@ -33,6 +35,9 @@ const flag = (n: string) => args.includes(`--${n}`);
 const only = args.find((a) => a.startsWith("--only="))?.slice(7);
 const replay = flag("replay");
 const verbose = flag("verbose");
+const print = flag("print");
+const driverArg = args.find((a) => a.startsWith("--driver="))?.slice(9);
+if (driverArg) process.env.MKAN_DRIVER = driverArg;
 
 function loadFixtures(): ChatFixture[] {
   const all = JSON.parse(readFileSync(FIXTURE, "utf8")) as ChatFixture[];
@@ -121,6 +126,8 @@ async function replayAll(fixtures: ChatFixture[]) {
   process.env.DATABASE_URL = url;
   delete process.env.DIRECT_URL;
   process.env.AGENT_TURN_DEADLINE_MS ??= "60000";
+  // The branch's own ledger: the production month cap (15) and daily pacing (2x the month's share) would stop a full replay.
+  process.env.AGENT_API_CAP_USD ??= "300";
   process.env.MKAN_INTRO_CAP = "0";
   if (!process.env.AGENT_ANTHROPIC_API_KEY) {
     try {
@@ -135,6 +142,16 @@ async function replayAll(fixtures: ChatFixture[]) {
   const { handleTenantWhatsApp } = await import("../../src/components/agent/whatsapp-chat");
   console.log(`replay against ${hostOf(url)?.split("/")[0]} (EVAL_DATABASE_URL) · outbox off · sends blocked\n`);
 
+  const spendNow = async () => {
+    const rows = await db.apiSpend.findMany({ where: { lane: { startsWith: "agent-" } }, select: { lane: true, usd: true, calls: true } });
+    const by = new Map<string, { usd: number; calls: number }>();
+    for (const r of rows) {
+      const x = by.get(r.lane) ?? { usd: 0, calls: 0 };
+      by.set(r.lane, { usd: x.usd + Number(r.usd), calls: x.calls + Number(r.calls) });
+    }
+    return by;
+  };
+  const spendBefore = await spendNow().catch(() => new Map<string, { usd: number; calls: number }>());
   const numbers = fixtures.map((_, i) => fakeDigits(i));
   const prior = await testPhones();
   await setTestPhones([...prior, ...numbers]);
@@ -163,6 +180,7 @@ async function replayAll(fixtures: ChatFixture[]) {
       const f = fixtures[i];
       const msgs: Msg[] = [];
       let n = 0;
+      if (print) console.log(`── ${f.id} (${f.lang}) ──────────────────────────────`);
       for (const text of f.tenantTurns) {
         msgs.push({ role: "tenant", text });
         const r = await handleTenantWhatsApp({ phone: numbers[i], text, msgId: `${RUN}-${i}-${++n}` });
@@ -175,11 +193,23 @@ async function replayAll(fixtures: ChatFixture[]) {
           await new Promise((res) => setTimeout(res, 2_000));
         }
         if (r.reply) msgs.push({ role: "bot", text: r.reply });
+        if (print) {
+          console.log(`  [tenant] ${text}`);
+          if (r.reply) console.log(`  [bot]    ${r.reply.replace(/\n/g, "\n           ")}`);
+          else console.log(`  [bot]    (no reply: ${"why" in r ? r.why : "none"})`);
+          for (const m of "media" in r && r.media ? r.media : []) console.log(`           [photo: ${m.caption.replace(/\n/g, " · ")}]`);
+        }
       }
       transcripts.push(msgs);
       process.stdout.write(`  ${f.id.padEnd(14)} ${msgs.filter((m) => m.role === "bot").length} replies\n`);
+      if (print) console.log("");
     }
   } finally {
+    const spendAfter = await spendNow().catch(() => new Map<string, { usd: number; calls: number }>());
+    for (const [lane, v] of spendAfter) {
+      const b = spendBefore.get(lane) ?? { usd: 0, calls: 0 };
+      if (v.calls > b.calls) console.log(`  spend ${lane}: $${(v.usd - b.usd).toFixed(4)} over ${v.calls - b.calls} calls`);
+    }
     if (!flag("keep")) await cleanup();
     await db.$disconnect();
   }
