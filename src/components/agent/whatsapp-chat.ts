@@ -26,10 +26,10 @@ import { startTurn, TURN_DEADLINE_MS } from "./run";
 import { loadTask, STUCK_AFTER_MS } from "./task-view";
 import type { AgentMessage, AgentTaskView } from "./types";
 import { busyText, checkText, formatWhatsApp, homeMedia, isFresh, readPick, readRef, retryPlan, takenIn, waLang, wantsViewing, type CheckOutcome, type HomeMedia, type WaDict, type WaLang } from "./whatsapp-format";
-import { askAroundText, botText, firstMessageKind, isBareYes, isThanks, lastAgent, MAX_HOMES, personAfterHello, personText, asksForHome, readHomeRef, refSourceOf, shownHomes, thanksText, wantsPerson, whichOneText, withoutShareMarker, type RefSource } from "./whatsapp-format";
+import { askAroundText, botText, firstMessageKind, isBareYes, isThanks, lastAgent, MAX_HOMES, personAfterHello, asksForHome, readHomeRef, refSourceOf, shownHomes, thanksText, asksToTalk, talkText, whichOneText, withoutShareMarker, type RefSource } from "./whatsapp-format";
 import { afterHomesKind, chatText, helloText, unsureText, videoNotFoundText, visitText } from "./whatsapp-format";
 import { homeForTikTokLink } from "./tiktok-link";
-import { acceptOffered } from "./viewing-loop";
+import { acceptOffered, offerSlots } from "./viewing-loop";
 import { tiktokLink, withoutTikTokLink } from "./tiktok-link-pure";
 import { EMPTY_REQUIREMENTS } from "./requirements";
 import { canAnswer, noteRwSamples, writeHomeAnswer, writerFacts, type RwSample } from "./writer";
@@ -39,7 +39,7 @@ import { parseBrokerReply } from "./broker-reply";
 import { homeForRef } from "./home-ref";
 import { isPersonal } from "./personal";
 import { afterViewingFor, openViewingAsk, prepareDealSheet, proposeViewing, readViewingAsk, recordAfterViewing } from "./deal";
-import { askTimeMessage, readAfterViewing, readViewingTime } from "./deal-pure";
+import { askTimeMessage, readAfterViewing, readViewingTime, viewingLabel } from "./deal-pure";
 import { introFollowUpFor, introMode, introTenantAnswer, startIntro } from "./deal-intro";
 import { postSlackCard } from "./whatsapp";
 
@@ -196,13 +196,35 @@ export async function handleTenantWhatsApp(input: {
   const d = await waDict(lang);
   if ((row?.turns ?? 0) >= MAX_TURNS_PER_HOUR) return { reply: busyText(d, "rate"), taskId: current?.id ?? null };
 
-  // "Are you a bot?" gets the truth, and "person" gets one; the team hears both in #mkan.
-  if (parseBrokerReply(rest).asksIfBot || wantsPerson(rest)) {
-    const asksBot = !wantsPerson(rest);
-    await noteHandoff(input.msgId, asksBot ? "asked-bot" : "wants-person");
-    await postSlackCard(`${asksBot ? "🤖 A tenant asked if they're talking to a bot" : "🙋 A tenant wants a person"} — ${profile.waPhone ?? "unknown number"}${current ? ` · chat ${current.id}` : ""}\n> ${rest.slice(0, 300)}`).catch(() => {});
+  // "Are you a bot?" gets the truth; the team hears it in #mkan.
+  if (parseBrokerReply(rest).asksIfBot) {
+    await noteHandoff(input.msgId, "asked-bot");
+    await postSlackCard(`🤖 A tenant asked if they're talking to a bot — ${profile.waPhone ?? "unknown number"}${current ? ` · chat ${current.id}` : ""}\n> ${rest.slice(0, 300)}`).catch(() => {});
     if (current) await stampSeen(current.id, input.msgId, 0);
-    return { reply: asksBot ? botText(lang, viewingRep()) : personText(lang, viewingRep()), taskId: current?.id ?? null };
+    return { reply: botText(lang, viewingRep()), taskId: current?.id ?? null };
+  }
+
+  // "Need talk with a human", "can we talk", "can we meet and talk about the house", "call me": the chat stays
+  // autonomous (Abdout, 2026-11-21) — no hand-off, no card, no promise that anyone will reply. It answers the
+  // need behind the ask (talk, see it, trust it) and moves to a viewing of the home they are on, with two
+  // times Mkan's person can be there; a Mkan person attends every viewing, so that is true.
+  if (asksToTalk(rest) && !isFresh(rest)) {
+    await noteHandoff(input.msgId, "asked-to-talk");
+    let title: string | null = null;
+    let slots: string[] = [];
+    if (current) {
+      const view = await loadTask(viewer, current.id);
+      const focus = view?.shortlist[0];
+      if (view && focus) {
+        title = scrubTitle(focus.title) || null;
+        const times = await offerSlots().catch(() => [] as Date[]);
+        slots = times.map((t) => viewingLabel(t, lang));
+        // The tenant's day and time, echoed back, is then read as the viewing's (readViewingAsk / proposeViewing).
+        await openViewingAsk(profile.waPhone ?? `+${digits}`, current.id, focus.id).catch(() => {});
+      }
+      await stampSeen(current.id, input.msgId, focus?.id ?? 0);
+    }
+    return { reply: talkText(lang, { title, slots }), taskId: current?.id ?? null };
   }
 
   // An intro's follow-up ("did you see it? 1 / 2 / 3", "did you take it? and 1–5"): the deal's next step,

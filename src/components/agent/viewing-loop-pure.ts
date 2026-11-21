@@ -14,7 +14,7 @@
  * A person from Mkan still comes to every viewing (Abdout, 2026-11-14) — they are told when it is
  * booked — but no step waits for one to type. Pure: the writes are viewing-loop.ts.
  */
-import { KIGALI_OFFSET_MS } from "../../../scripts/wa/outbox-pure";
+import { firstSendableAt, KIGALI_OFFSET_MS } from "../../../scripts/wa/outbox-pure";
 import { greetName } from "./broker-message";
 import { parseBrokerReply } from "./broker-reply";
 import { readViewingTime, type DealLang } from "./deal-pure";
@@ -109,6 +109,23 @@ export function nextSlot(from: Date, askableAt: Date, busy: readonly Date[], hou
     if (slotVerdict(at, askableAt, busy, hours, opts) === "ok") return at;
   }
   return null;
+}
+
+/**
+ * Up to `n` times to offer, on different days when the diary allows: the nearest free slot, then the next one
+ * at least 20 h later. `askableAt` is when the line could first write to a broker (08:00–20:00 Kigali).
+ */
+export function pickSlots(now: Date, busy: readonly Date[], opts: SlotOpts = {}, n = 2, hours: RepHours = repHours()): Date[] {
+  const askableAt = firstSendableAt({ kind: "BROKER_REQUEST", label: null }, now);
+  const out: Date[] = [];
+  let from = now;
+  for (let i = 0; i < n; i++) {
+    const at = nextSlot(from, askableAt, [...busy, ...out], hours, opts);
+    if (!at) break;
+    out.push(at);
+    from = new Date(at.getTime() + 20 * HOUR_MS);
+  }
+  return out;
 }
 
 // ── the broker's answer ──────────────────────────────────────────────────────────────────────────

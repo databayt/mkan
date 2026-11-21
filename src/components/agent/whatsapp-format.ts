@@ -928,6 +928,46 @@ export function chatText(lang: WaLang): string {
 /** "person" / "human" / "agent": the tenant wants someone from Mkan. */
 export const wantsPerson = (text: string) => /^(?:a )?(?:person|human|real person|agent|someone|staff|شخص|انسان|إنسان|umuntu)[\s.!]*$/i.test(text.trim());
 
+/**
+ * Wants to talk to someone, in any of the ways tenants say it: "need talk with a human", "can we talk",
+ * "can we meet and talk about the house", "call me", "link me with a human" (…114, …099, …466). The chat
+ * stays autonomous (Abdout, 2026-11-21): it answers the need behind the ask — see `talkText` — and does not
+ * hand anyone over.
+ */
+const TALK_RE = new RegExp(
+  [
+    String.raw`\b(?:talk|speak|chat)\s+(?:to|with)\s+(?:a\s+|an\s+|the\s+|real\s+)?(?:human|person|someone|somebody|agent|staff|owner|broker|you|me)\b`,
+    String.raw`\b(?:need|want|like|wish)\s+(?:to\s+)?(?:talk|speak|chat)\b`,
+    String.raw`\b(?:can|could|may)\s+(?:we|i)\s+(?:talk|speak|chat|call)\b`,
+    String.raw`\blet'?s\s+(?:talk|speak|chat|call)\b`,
+    String.raw`\bmeet\b[^.?!]{0,24}\btalk\b|\btalk\b[^.?!]{0,24}\bmeet\b`,
+    String.raw`\b(?:call|phone|ring)\s+me\b|\bgive me (?:a|your) call\b`,
+    String.raw`\b(?:link|connect|put)\s+me\s+(?:with|through|to)\s+(?:a\s+|an\s+|the\s+)?(?:human|person|someone|agent)\b`,
+    String.raw`\b(?:human|real person|live agent)\b`,
+    String.raw`\bparler\s+(?:[àa]|avec)\b|\bappelez[- ]moi\b|\bun humain\b`,
+    String.raw`\bndashaka\s+kuvugana\b|\bnashaka\s+kuvugana\b|\btuvugane\b|\bumpamagare\b`,
+    "أريد التحدث|اريد التحدث|أبغى أتكلم|ابغى اتكلم|ممكن نتكلم|كلمني|اتصل بي|اتصلوا بي|شخص حقيقي|إنسان|انسان",
+  ].join("|"),
+  "i",
+);
+export const asksToTalk = (text: string): boolean => wantsPerson(text) || TALK_RE.test(text.trim());
+
+/** What the tenant who asked to talk to someone is told. */
+export function talkText(lang: WaLang, v: { title?: string | null; slots?: string[] } = {}): string {
+  const slots = (v.slots ?? []).filter(Boolean).slice(0, 2);
+  const title = v.title?.trim() || null;
+  if (lang === "ar") {
+    const ask = title ? (slots.length === 2 ? `هل يناسبك ${slots[0]} أم ${slots[1]}؟` : slots.length === 1 ? `هل يناسبك ${slots[0]}؟` : "أي يوم يناسبك؟") : "عمّ تبحث؟ المنطقة وعدد الغرف والميزانية.";
+    return `أتولى كل شيء هنا، فاسألني عن أي شيء. وحين تكون مستعداً لرؤية ${title ? `«${title}»` : "منزل يعجبك"} يكون معك شخص من مكان عند المنزل. ${ask}`;
+  }
+  if (lang === "rw") {
+    const ask = title ? (slots.length === 2 ? `${slots[0]} cyangwa ${slots[1]}, ni uwuhe ukubereye?` : slots.length === 1 ? `${slots[0]} byakubera byiza?` : "Ni uwuhe munsi ukubereye?") : "Urashaka iki? Agace, ibyumba n'amafaranga.";
+    return `Byose mbikorera hano, nabaza icyo ushaka cyose. Nuba witeguye gusura ${title ? `"${title}"` : "inzu ukunze"}, umuntu wo muri Mkan azahurira nawe ku nzu. ${ask}`;
+  }
+  const ask = title ? (slots.length === 2 ? `Does ${slots[0]} or ${slots[1]} suit you?` : slots.length === 1 ? `Does ${slots[0]} suit you?` : "Which day suits you?") : "What are you looking for? The area, the bedrooms and your budget.";
+  return `I handle everything here, so ask me anything. When you're ready to see ${title ? `"${title}"` : "a home you like"}, someone from Mkan meets you at the house. ${ask}`;
+}
+
 /** The web → WhatsApp hand-off: `/find`'s "Continue on WhatsApp" sends this ref, the chat carries over. */
 export const REF_RE = /\bref[:#]\s*([a-z0-9]{20,32})\b/i;
 export const readRef = (text: string): { ref: string | null; rest: string } => {

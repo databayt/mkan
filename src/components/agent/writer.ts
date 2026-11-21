@@ -123,7 +123,8 @@ Write in the language given by "lang" (en English, ar Arabic, rw Kinyarwanda), t
 - A general question about renting in Kigali: answer from the knowledge lines below only.
 - They say they will get back to you, will think, or will tell a friend: acknowledge it in a few words and say you are here when they are ready.
 - They ask for photos or a video: say each home's link in the list opens its photos.
-- They send a phone number or ask for a call: say Mkan does this here on WhatsApp, not by phone.
+- They ask to talk to a person, a human, to call, or to meet and talk: never say you cannot connect them, never refuse. Answer the need behind it: you handle everything here on WhatsApp so they can ask you anything, and when they are ready to see a home, someone from Mkan meets them at the house. Then offer to set up a viewing of the home they are on and ask which day suits them. Do not say anyone will reply, call or write to them.
+- They send a phone number: say you do everything here on WhatsApp, and offer the same viewing.
 - The message is not about homes or renting at all: say in one sentence that you help people find a home to rent in Kigali, and ask what they are looking for.
 - When it fits, end by saying they can send a home's number and you will check with its broker that it is still free.
 
@@ -143,6 +144,9 @@ ${KNOWLEDGE.map((k) => `- ${k}`).join("\n")}`;
 /** A promise only a person could keep — the line this writer exists to stop sending. */
 export const PERSON_PROMISE_RE =
   /\b(?:person|colleague|someone|somebody|human|staff|team(?: member)?|agent|osman)\b[^.!?\n]{0,60}\b(?:will|shall|is going to|are going to|can)\b[^.!?\n]{0,30}\b(?:reply|respond|call|contact|get back|reach out|message|write|answer|follow up)\b|سيرد عليك|سيتصل بك|سيتواصل معك|أحد من (?:ال)?فريق|umuntu[^.!?\n]{0,40}(?:azagusubiza|aragusubiza|azaguhamagara|araguhamagara|azakwandikira)/i;
+/** "I can't connect you to a person here": the refusal the real chats got (…114, 11-19) — never said, whatever the model writes. */
+export const CANT_CONNECT_RE =
+  /\b(?:can(?:'|no)t|can not|unable to|not able to|am not able to|don'?t have a way to)\b[^.!?\n]{0,40}\b(?:connect|link|put you|transfer|hand you|pass you|refer you)\b|لا أستطيع[^.!?\n]{0,30}(?:ربطك|توصيلك|تحويلك)|ntabwo nshobora[^.!?\n]{0,30}(?:kukuvugisha|guhuza)/i;
 /** A link, a handle or a WhatsApp number: the writer never adds one (the list carries Mkan's own links). */
 const LINK_RE = /https?:\/\/|www\.|wa\.me|@[a-z0-9_.]{3,}/i;
 
@@ -357,7 +361,7 @@ export function guardHomeAnswer(text: string, facts: Pick<WriterFacts, "lang" | 
   const said = [...allowedNumbers(message)].filter((n) => Number(n) < 1000);
   const allowed = allowedNumbers(facts.homes.map((h) => [h.bedrooms, h.bathrooms, h.distance, h.title, h.terms]), facts.homes.map((_, i) => i + 1), KNOWLEDGE, said);
   const ok = guardText(text, { allowed, maxLen: MAX_ANSWER, lang: facts.lang, anyConfirmed: facts.homes.some((h) => h.confirmed) });
-  return ok && !PERSON_PROMISE_RE.test(ok) && !LINK_RE.test(ok) ? ok : null;
+  return ok && !PERSON_PROMISE_RE.test(ok) && !CANT_CONNECT_RE.test(ok) && !LINK_RE.test(ok) ? ok : null;
 }
 
 /**

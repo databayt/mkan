@@ -34,6 +34,7 @@ import {
   counterOfferMessage,
   nextSlot,
   noSlotMessage,
+  pickSlots,
   REP_OFF_PREFIX,
   repGapMs,
   readBrokerViewingReply,
@@ -367,4 +368,21 @@ export async function viewingSweep(now = new Date()): Promise<number> {
     if (next.length !== list.length || next.some((a, i) => a !== list[i])) await savePending(phone, next);
   }
   return n;
+}
+
+/**
+ * Two times Mkan's person can meet a tenant at a home, for the chat to offer (2026-11-21: "can we meet and
+ * talk about the house?" got silence, and not one viewing was ever booked). Inside MKAN_VIEWING_HOURS and
+ * days, clear of their other viewings and days off, on different days when the diary allows. Empty when
+ * nothing is free soon: the chat then asks which day suits.
+ */
+export async function offerSlots(now = new Date(), n = 2): Promise<Date[]> {
+  const [opts, busy] = await Promise.all([
+    slotOpts(),
+    db.listingVisit
+      .findMany({ where: { outcome: "Scheduled", scheduledFor: { gte: new Date(now.getTime() - 86_400_000), lte: new Date(now.getTime() + 15 * 86_400_000) } }, select: { scheduledFor: true } })
+      .then((rows) => rows.map((r) => r.scheduledFor))
+      .catch(() => [] as Date[]),
+  ]);
+  return pickSlots(now, busy, opts, n);
 }
