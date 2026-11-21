@@ -119,6 +119,9 @@ describe("the list reads like WhatsApp (item 3)", () => {
 
 describe("a chat keeps its language (…505)", () => {
   it('"kimironko, remera" after Kinyarwanda is still Kinyarwanda, not an English list', () => {
+    expect(waLang("bite")).toBe("rw");
+    expect(waLang("Amakuru?")).toBe("rw");
+    expect(waLang("a bite to eat")).toBe("en");
     expect(waLang("nkeneye inzu yo gukodesha 100k / month")).toBe("rw");
     expect(waLang("kimironko, remera", "rw")).toBe("rw");
     expect(waLang("hey Ai, stop sending me messages", "rw")).toBe("en");

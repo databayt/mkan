@@ -274,6 +274,8 @@ export function waLang(text: string, prev?: string | null): WaLang {
   if (prev && (prev === "en" || prev === "ar" || prev === "rw") && isLanguageNeutral(text)) return prev;
   if (/[؀-ۿ]/.test(text)) return "ar";
   if (/\b(muraho|mwaramutse|mwiriwe|ndashaka|inzu|icyumba|ibyumba|amafaranga|ukwezi|ibihumbi|murakoze|ese|ibishya|munsi)\b/i.test(text)) return "rw";
+  // "bite" / "amakuru" (how are you) alone: the whole message is Kinyarwanda, and an English "Hi, this is Mkan" answered it (wa-06, 2026-11-21).
+  if (/^\s*(?:bite|amakuru)\s*[?!.]*\s*$/i.test(text)) return "rw";
   // No Kinyarwanda and no English in it either — "kimironko, remera" after a Kinyarwanda chat (…505, 11-17) —
   // keeps the chat's language: a list in two languages is the mix tenants saw.
   if ((prev === "rw" || prev === "ar") && !ENGLISH_WORDS.test(text)) return prev;
