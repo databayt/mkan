@@ -97,6 +97,7 @@
     "mkan:read": "tsx --require ./scripts/agent/no-server-only.js scripts/hermes/read.ts",
     "agent:eval": "tsx --require ./scripts/agent/no-server-only.js scripts/agent/eval-reader.ts",
     "agent:eval-writer": "tsx --require ./scripts/agent/no-server-only.js scripts/agent/eval-writer.ts",
+    "agent:eval-chat": "tsx --require ./scripts/agent/no-server-only.js scripts/agent/eval-chat.ts",
     "agent:rw-samples": "tsx --require ./scripts/agent/no-server-only.js scripts/agent/rw-samples.ts",
     "agent:stranded": "tsx --require ./scripts/agent/no-server-only.js scripts/agent/stranded.ts",
     "crm:claim-token": "tsx scripts/crm/claim-tokens.ts",
