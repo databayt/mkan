@@ -291,7 +291,7 @@ function place(item: ShortlistItem, lang: WaLang): string | null {
 /** Absolute links only: a listing's path is "/en/listings/…", a broker home's is Mkan's own page "/en/k/K…" (home-path.ts). */
 const absolute = (path: string, appUrl: string) => (/^https?:\/\//.test(path) ? path : path ? `${appUrl}${path}` : null);
 
-function homeLines(items: ShortlistItem[], lang: WaLang, appUrl: string): string[] {
+export function homeLines(items: ShortlistItem[], lang: WaLang, appUrl: string): string[] {
   const c = COPY[lang];
   return items.slice(0, MAX_HOMES).map((item, i) => {
     const price = `${money(item.cost.headline)}${item.cost.period === "night" ? c.night : c.month}`;
@@ -302,6 +302,22 @@ function homeLines(items: ShortlistItem[], lang: WaLang, appUrl: string): string
     return link ? `${head}\n${link}` : head;
   });
 }
+
+/**
+ * The shortlist after a broker said `takenId` is gone: the taken home goes last and marked, confirmed homes
+ * first, then the rest in their order. A chat that numbered the homes 1..n then numbers them again from the
+ * top, so "1" is the next best, never the home that is gone.
+ */
+export function reorderAfterTaken(shortlist: ShortlistItem[], takenId: number): ShortlistItem[] {
+  const marked = shortlist.map((s) => (s.id === takenId ? { ...s, availability: "rented" as const } : s));
+  const live = marked.filter((s) => s.availability !== "rented");
+  const gone = marked.filter((s) => s.availability === "rented");
+  return [...live.filter((s) => s.availability === "confirmed"), ...live.filter((s) => s.availability !== "confirmed"), ...gone];
+}
+
+/** The next best homes to offer at once when one is taken: at most MAX_HOMES, never a taken one. */
+export const nextBestAfterTaken = (shortlist: ShortlistItem[], takenId: number): ShortlistItem[] =>
+  reorderAfterTaken(shortlist, takenId).filter((s) => s.availability !== "rented").slice(0, MAX_HOMES);
 
 /** One question with numbered options — the clarify stepper and the stay ask, in text. */
 function numbered(question: string, labels: string[], lang: WaLang): string {

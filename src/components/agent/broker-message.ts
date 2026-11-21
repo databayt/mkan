@@ -263,6 +263,15 @@ export function takenAckMessage(seed: string): string {
   return pickPhrase(seed, ["Thanks for letting us know.", "Okay, thank you.", "Alright, thanks for the update."]);
 }
 
+/** The broker said taken and offered another home: take it warmly and ask for what a tenant needs to see it. */
+export function takenOtherAckMessage(seed: string): string {
+  return pickPhrase(seed, [
+    "Thank you, and yes please! Send the link or photos of the other one with the price, and we'll show it to our tenant.",
+    "Thanks for telling us. Please send the link or the photos of the other home and its price, we have a tenant looking.",
+    "Okay, thank you. We'd like to see the other one: could you send the link or photos, and the rent?",
+  ]);
+}
+
 /** The broker sent photos without a price. */
 export function priceQuestionMessage(seed: string): string {
   return pickPhrase(seed, [
@@ -326,6 +335,21 @@ export function brokerAnswerMessage(lang: string, title: string, available: bool
         link,
       ].join("\n")
     : `Mkan: ${askedOn ? `you asked about "${title}" on ${askedOn}. It's` : `"${title}" is`} taken, sorry. Your other homes are here:\n${link}`;
+}
+
+/**
+ * To a WhatsApp tenant: the home they picked is taken, and the next best homes follow at once — never a
+ * dead end ("is taken, sorry. Your other homes are here: <link>", the reply every November pick got).
+ * `homes` is the list already formatted (whatsapp-format.ts homeLines), numbered from 1: replying with a
+ * number checks that home, because the chat's shortlist was reordered to match (broker.ts applyAnswer).
+ */
+export function takenNextMessage(lang: string, title: string, homes: string, n: number, askedOn: string | null = null): string {
+  const reply = "1";
+  if (lang === "ar")
+    return `مكان: ${askedOn ? `سألت عن «${title}» يوم ${askedOn}، وهو` : `«${title}»`} مؤجَّر للأسف. هذا أقرب بديل لك:\n\n${homes}\n\nأرسل ${n > 1 ? "رقم أحدهما" : reply} وأتأكد أنه ما زال متاحاً وأرتب لك معاينة.`;
+  if (lang === "rw")
+    return `Mkan: ${askedOn ? `wabajije ibya "${title}" ku itariki ya ${askedOn}. Yamaze` : `"${title}" yamaze`} gufatwa. Dore izikurikiraho zikubereye:\n\n${homes}\n\nOhereza ${n > 1 ? "nimero y'imwe" : reply} ndebe niba igihari.`;
+  return `Mkan: ${askedOn ? `you asked about "${title}" on ${askedOn}. It's` : `"${title}" is`} taken, sorry. Next best for you:\n\n${homes}\n\nReply ${n > 1 ? "with a number" : reply} and I'll check it's still free and set up a viewing.`;
 }
 
 /** To a WhatsApp tenant: the broker has not answered in a day, and nobody else is left to ask about the home. */

@@ -211,6 +211,37 @@ export function parseBrokerReply(text: string | null | undefined, opts: { menu?:
   };
 }
 
+const ANOTHER_RE = /\b(?:another|other (?:one|home|house|apartment|room|place)s?|one more|also (?:have|got)|(?:i|we) (?:do )?(?:have|got)|there(?:'s| is) (?:a|an|one)|nfite|dufite|ariko mfite|indi nzu|j'?ai (?:une?|d'autres?)|nous avons)\b/;
+
+/** Another home a broker offers in the same breath as "taken": what the reply says of it. */
+export interface OtherHome {
+  text: string;
+  price: number | null;
+  bedrooms: number | null;
+  place: string | null;
+  furnished: boolean | null;
+}
+
+/**
+ * "Taken, but I have another one in Gikondo, 2 bedrooms 200k" (broker …180, 11-2x: the line said "Okay,
+ * thank you" and dropped it). `taken`: the home itself is gone, even when the reply goes on to offer
+ * something — parseBrokerReply reads that as an offer, not a "taken". `other`: the offer, when the reply
+ * names a place, a size or a rent beside "another / I have". Null when it only says taken.
+ */
+export function readTakenWithOther(text: string | null | undefined): { taken: boolean; other: OtherHome | null } {
+  const raw = (text ?? "").trim();
+  if (!raw) return { taken: false, other: null };
+  const t = fold(raw).replace(/https?:\/\/\S+/g, " ").replace(/[ \t]+/g, " ");
+  const bare = t.replace(/[^a-z ]/g, "").trim();
+  const taken = GONE.test(bare) || GONE_ANYWHERE.test(t);
+  if (!taken || !ANOTHER_RE.test(t)) return { taken, other: null };
+  // What comes after the "taken" part is the other home: "but I have another one in Gikondo, 2 bedrooms 200k".
+  const at = t.search(ANOTHER_RE);
+  const r = parseBrokerReply(raw.slice(Math.max(0, at - 2)));
+  if (r.price == null && r.bedrooms == null && r.place == null) return { taken, other: null };
+  return { taken, other: { text: raw.slice(0, 300), price: r.price, bedrooms: r.bedrooms, place: r.place, furnished: r.furnished } };
+}
+
 /** Enough to show a tenant: a rent plus where or how big. */
 export function isOffer(r: BrokerReply): boolean {
   return (r.price != null || r.priceUsd != null) && (r.place != null || r.bedrooms != null);

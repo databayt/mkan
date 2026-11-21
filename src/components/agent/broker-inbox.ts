@@ -23,10 +23,10 @@ import "server-only";
  * bot?" is never answered here: a person does.
  */
 import { db } from "@/lib/db";
-import { applyAnswer, brokerAnswers } from "./broker";
+import { appendTaskEvent, applyAnswer, brokerAnswers } from "./broker";
 import { createBrokerHome, type AskForHome } from "./broker-home";
-import { aboutMeMessage, availableAckMessage, needReplyMessage, needSummary, offersReplyMenu, priceQuestionMessage, reAskMessage, takenAckMessage } from "./broker-message";
-import { isOffer, parseBrokerReply, repostAnswer, type BrokerReply } from "./broker-reply";
+import { aboutMeMessage, availableAckMessage, needReplyMessage, needSummary, offersReplyMenu, priceQuestionMessage, reAskMessage, takenAckMessage, takenOtherAckMessage } from "./broker-message";
+import { isOffer, parseBrokerReply, readTakenWithOther, repostAnswer, type BrokerReply, type OtherHome } from "./broker-reply";
 import { coerceRequirements, EMPTY_REQUIREMENTS, mergeRequirements } from "./requirements";
 import { answerTerms, introBrokerUpdate, introReplyFor } from "./deal-intro";
 import { brokerViewingReply, noteMeetingPlace, type ViewingReply } from "./viewing-loop";
@@ -115,12 +115,15 @@ export async function readAvailabilityReply(phone: string, text: string, at: Dat
   const homes = await askedHomes(ask.brokerRequestIds);
   // "1" / "2" answer only an ask about one home that offered them (broker-message.ts REPLY_MENU).
   const r = parseBrokerReply(text, { menu: !homes.many && offersReplyMenu(ask.body) });
-  const answer: "AVAILABLE" | "RENTED" | null = r.asksIfBot || homes.home == null ? null : r.gone ? "RENTED" : r.yes ? "AVAILABLE" : null;
+  // "Taken, but I have another one in Gikondo, 2 bedrooms 200k": parseBrokerReply reads that as an offer and
+  // no answer at all, and the line said nothing (…180, 11-2x). The home is taken, and the other is inventory.
+  const tw = r.asksIfBot ? { taken: false, other: null } : readTakenWithOther(text);
+  const answer: "AVAILABLE" | "RENTED" | null = r.asksIfBot || homes.home == null ? null : r.gone ? "RENTED" : r.yes ? "AVAILABLE" : tw.taken && tw.other ? "RENTED" : null;
   // The same answer already on record (the form, another broker who posted it) is not news: tenants heard it.
   const onRecord = answer && homes.home != null ? (await brokerAnswers([homes.home])).get(homes.home)?.status : undefined;
   // A "taken" after another broker's "available" is news too: the home is gone, and the tenants must hear it.
   const takenAfterYes = answer === "RENTED" && onRecord === "AVAILABLE";
-  return { ask, r, answer, ...homes, isNews: (homes.isNews && onRecord !== answer) || takenAfterYes };
+  return { ask, r, answer, other: answer === "RENTED" ? tw.other : null, ...homes, isNews: (homes.isNews && onRecord !== answer) || takenAfterYes };
 }
 
 /**
@@ -141,6 +144,27 @@ export async function recordTypedAnswer(requestIds: string[], listingId: number,
     where: { phones: { hasSome: phoneVariants(phone) } },
     data: { answers: { increment: 1 }, ...(answer === "AVAILABLE" ? { availableAnswers: { increment: 1 } } : {}) },
   });
+}
+
+/**
+ * A home a broker offered while saying another one is taken: one AgentEvent on each chat that asked about the
+ * taken home (`broker_replied`, `offered`), so the tenant's trace and the team's weekly read carry the lead.
+ * The broker's own words are kept (≤ 300 chars); a listing is only made once they send photos and a price
+ * (broker-home.ts), never from a sentence.
+ */
+export async function recordOtherHome(requestIds: string[], takenListingId: number, other: OtherHome, phone: string): Promise<void> {
+  const rows = await db.brokerRequest.findMany({ where: { id: { in: requestIds } }, select: { taskId: true } });
+  const taskIds = [...new Set(rows.map((r) => r.taskId).filter((id): id is string => !!id))];
+  await Promise.all(
+    taskIds.map((taskId) =>
+      appendTaskEvent(taskId, "broker_replied", "done", {
+        listingId: takenListingId,
+        answer: "rented",
+        via: "whatsapp",
+        offered: { place: other.place, bedrooms: other.bedrooms, priceMonth: other.price, furnished: other.furnished, text: other.text, broker: `+${phone.replace(/\D/g, "")}` },
+      }),
+    ),
+  );
 }
 
 /** Write a word back to the broker — once per ask and label — for the caller to send. Null when it already went. */
@@ -234,9 +258,15 @@ async function readReply(
 
 /** The reply to "is this available?". */
 async function answerAvailabilityAsk(read: NonNullable<Awaited<ReturnType<typeof readAvailabilityReply>>>, phone: string, text: string, hasPhotos: boolean): Promise<InboxAction> {
-  const { ask, r, answer, home, isNews, many, need } = read;
+  const { ask, r, answer, home, isNews, many, need, other } = read;
   if (answer && home != null) {
     if (isNews) await recordTypedAnswer(ask.brokerRequestIds, home, answer, phone);
+    // Their other home is kept on every chat that asked, and the broker is asked warmly for what a tenant
+    // needs to see it — never "Okay, thank you".
+    if (other) {
+      await recordOtherHome(ask.brokerRequestIds, home, other, phone).catch((err) => console.warn(`[agent] broker's other home not kept: ${(err as Error).message}`));
+      return { kind: "availability", listingId: home, answer, applied: isNews, reply: await replyOnce(ask, "auto-ack", takenOtherAckMessage(ask.id)) };
+    }
     // A yes that started an intro (deal-intro.ts) is answered with Mkan's terms, or — terms on record —
     // the tenant's number: one message, not a thanks and then another.
     const intro = answer === "AVAILABLE" && isNews ? await introReplyFor(phone, home).catch(() => null) : null;

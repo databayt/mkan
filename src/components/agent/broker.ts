@@ -25,11 +25,12 @@ import { lastTenantAt, reachedAt, REASK_GAP_DAYS, TENANT_REACH, tenantActive, te
 import { askedOnLabel } from "./deal-pure";
 import { ALERT_LABEL, inSendWindow, phoneKey, REST_DAYS, brokerRest, startOfKigaliDay } from "../../../scripts/wa/outbox-pure";
 import { answerStats, dueForNext, MAX_BROKERS_PER_HOME, nudgeDue, rankBrokers, SILENT_LOOKBACK_DAYS, type BrokerSignal } from "./broker-rank";
-import { availabilityMessage, brokerAnswerMessage, brokerNumber, needSummary, noReplyMessage, nudgeMessage, viewingRep, type BrokerHomeLine } from "./broker-message";
+import { availabilityMessage, brokerAnswerMessage, brokerNumber, needSummary, noReplyMessage, nudgeMessage, takenNextMessage, viewingRep, type BrokerHomeLine } from "./broker-message";
 import { brokerSendMode, testPhones } from "./broker-sends";
 import { CONFIRMATION_TTL_DAYS } from "./rank";
 import { coerceRequirements, EMPTY_REQUIREMENTS, mergeRequirements, type Requirements } from "./requirements";
-import type { EventKind, ShortlistItem, StepStatus } from "./types";
+import type { AgentMessage, EventKind, ShortlistItem, StepStatus } from "./types";
+import { homeLines, nextBestAfterTaken, reorderAfterTaken } from "./whatsapp-format";
 import { postSlackCard, sendMessages, sendToBroker } from "./whatsapp";
 import { handOffFailedChat } from "./failed-handoff";
 import { dealEvent } from "./deal-event";
@@ -476,8 +477,15 @@ export async function applyAnswer(listingId: number, answer: Answer, brokerPhone
   const availability = answer === "AVAILABLE" ? "confirmed" : answer === "RENTED" ? "rented" : "no_reply";
   await Promise.all(
     tasks.map(async (t) => {
-      const list = ((t.shortlist as unknown as ShortlistItem[]) ?? []).map((s) => (s.id === listingId ? { ...s, availability: availability as ShortlistItem["availability"] } : s));
+      let list = ((t.shortlist as unknown as ShortlistItem[]) ?? []).map((s) => (s.id === listingId ? { ...s, availability: availability as ShortlistItem["availability"] } : s));
       const item = list.find((s) => s.id === listingId);
+      // "Taken" is never a dead end (2026-11-21): the next best homes come first in this chat's list, so the
+      // number a tenant replies with checks the next one, and the tenant is sent them at once (tellWhatsAppTenants).
+      if (answer === "RENTED" && t.profile?.waPhone && nextBestAfterTaken(list, listingId).length > 0) {
+        list = reorderAfterTaken(list, listingId);
+        const note: AgentMessage = { role: "agent", kind: "shortlist", count: list.length, same: true, at: new Date().toISOString() };
+        await db.$executeRaw`UPDATE "AgentTask" SET "messages" = "messages" || ${JSON.stringify([note])}::jsonb WHERE "id" = ${t.id}`.catch(() => {});
+      }
       await db.agentTask.update({ where: { id: t.id }, data: { shortlist: json(list) } });
       await appendTaskEvent(t.id, "broker_replied", answer === "AVAILABLE" ? "done" : answer === "RENTED" ? "failed" : "uncertain", {
         listingId,
@@ -584,6 +592,15 @@ async function tellWhatsAppTenants(tasks: AnsweredTask[], listingId: number, ans
     if (answer === "NO_REPLY") return tenantActive(t.messages, now) ? [{ kind: "TENANT_ALERT" as const, to, body: noReplyMessage(t.locale, titleIn(t, listingId), link), label: ALERT_LABEL.brokerAnswer }] : [];
     // A day or more after they last wrote: name the day they asked, and ask whether they're still looking.
     const askedOn = askedOnLabel(lastTenantAt(t.messages), now, t.locale === "ar" || t.locale === "rw" ? t.locale : "en");
+    // A pick that is taken goes on at once to the next best homes, never "your other homes are here: <link>".
+    if (answer === "RENTED") {
+      const next = nextBestAfterTaken((t.shortlist as ShortlistItem[] | null) ?? [], listingId);
+      if (next.length > 0) {
+        const lang = (t.locale === "ar" || t.locale === "rw" ? t.locale : "en") as "en" | "ar" | "rw";
+        const homes = homeLines(next, lang, publicAppUrl()).join("\n\n");
+        return [{ kind: "TENANT_ALERT" as const, to, body: `${takenNextMessage(t.locale, titleIn(t, listingId), homes, next.length, askedOn)}\n\n${link}`, label: ALERT_LABEL.brokerAnswer }];
+      }
+    }
     return [{ kind: "TENANT_ALERT" as const, to, body: brokerAnswerMessage(t.locale, titleIn(t, listingId), answer === "AVAILABLE", link, canPick, undefined, askedOn), label: ALERT_LABEL.brokerAnswer }];
   });
   if (messages.length) await sendMessages(messages, `Broker answered home #${listingId}`);
