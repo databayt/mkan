@@ -67,6 +67,8 @@ const COPY: Record<
     checkShort: string;
     /** The budget ask, once, before any homes: the most they can pay a month. */
     askBudget: string;
+    /** A line that asks for the area and the size but never the budget — for a tenant who already gave one. */
+    otherKnownBudget: string;
   }
 > = {
   en: {
@@ -94,6 +96,7 @@ const COPY: Record<
     widened: "Nothing matched every detail, so these are the closest:",
     checkShort: "Which one? Reply with its number.",
     askBudget: "What's the most you can pay a month, in RWF?",
+    otherKnownBudget: "Happy to help. Tell me the area and the size, and I'll find homes.",
   },
   ar: {
     month: "/شهر",
@@ -120,6 +123,7 @@ const COPY: Record<
     widened: "لم يطابق شيء كل التفاصيل، فهذه الأقرب:",
     checkShort: "أيّهما؟ أرسل رقمه.",
     askBudget: "ما أقصى مبلغ تدفعه في الشهر بالفرنك الرواندي؟",
+    otherKnownBudget: "يسعدني مساعدتك. أخبرني بالمنطقة وعدد الغرف وسأبحث لك عن منازل.",
   },
   rw: {
     month: "/ukwezi",
@@ -146,6 +150,7 @@ const COPY: Record<
     widened: "Nta nzu ihuje ibyo wavuze byose, none izi ni zo zegereye:",
     checkShort: "Iyihe? Ohereza nimero yayo.",
     askBudget: "Ni angahe menshi ushobora kwishyura ku kwezi, mu mafaranga y'u Rwanda?",
+    otherKnownBudget: "Nishimiye kugufasha. Mbwira agace n'ingano y'inzu, ngushakire amazu.",
   },
 };
 
@@ -437,9 +442,13 @@ export function formatWhatsApp(view: AgentTaskView, d: WaDict, lang: WaLang, cha
       else if (!m.pin && m.refine === "maxPrice" && !view.requirements?.maxPrice && !askedBudget(view.messages)) parts.push(d.refine.budget ?? "");
       break;
     }
-    case "answer":
-      parts.push(m.text?.trim() || (m.topic === "other" ? d.reply.other : d.reply.answerFallback) || "");
+    case "answer": {
+      // The generic "tell me the area, the size and your budget" asks for what the tenant already gave when they gave a
+      // budget (wa-03, 2026-11-21: "Check K6823 for me" after "120k" got it): the same line without the budget.
+      const known = !!view.requirements?.maxPrice || view.requirements?.cheap || askedBudget(view.messages);
+      parts.push(m.text?.trim() || (m.topic === "other" ? (known ? c.otherKnownBudget : d.reply.other) : d.reply.answerFallback) || "");
       break;
+    }
     case "none":
       if (m.pin) parts.push(fill(c.pinGoneAlone, { ref: `K${m.pin.id}` }));
       if (m.demand) parts.push(m.asked ? fill(d.demand.noneAsked, { count: m.asked }) : d.demand.noneKept ?? "");

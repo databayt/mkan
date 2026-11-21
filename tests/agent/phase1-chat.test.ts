@@ -45,6 +45,21 @@ const view = (messages: AgentMessage[], shortlist: ShortlistItem[], requirements
 const list = (extra: Partial<Extract<AgentMessage, { kind: "shortlist" }>> = {}): AgentMessage => ({ role: "agent", kind: "shortlist", count: 6, at, ...extra });
 const said = (text: string): AgentMessage => ({ role: "user", text, at });
 
+describe("the generic 'tell me the area, the size and your budget' never asks for a budget already given (wa-03)", () => {
+  const other = (): AgentMessage => ({ role: "agent", kind: "answer", topic: "other", at });
+  const reqs = (maxPrice: number | null) => ({ maxPrice } as unknown as AgentTaskView["requirements"]);
+  it("keeps the budget in the line while none is known", () => {
+    expect(formatWhatsApp(view([said("Check K6823 for me"), other()], [], reqs(null)), dict(en), "en", CHAT, APP)).toMatch(/your budget/);
+  });
+  it("drops it once the tenant gave one, or was already asked", () => {
+    for (const v of [view([said("120k"), said("Check K6823 for me"), other()], [], reqs(120_000)), view([said("hi"), { role: "agent", kind: "ask", field: "maxPrice", at }, said("Check K6823"), other()], [], reqs(null))]) {
+      const out = formatWhatsApp(v, dict(en), "en", CHAT, APP);
+      expect(out).toBe("Happy to help. Tell me the area and the size, and I'll find homes.");
+      expect(out).not.toMatch(/budget/i);
+    }
+  });
+});
+
 describe("the list reads like WhatsApp (item 3)", () => {
   const six = [1, 2, 3, 4, 5, 6].map((i) => home(i));
 
