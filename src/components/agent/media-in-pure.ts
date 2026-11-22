@@ -28,8 +28,10 @@ export interface MediaUnderstanding {
   listingHints?: ListingHints;
   /** The language the person spoke or wrote in it, when the media says. */
   lang?: Lang;
-  /** True for speech Google read (it has Kinyarwanda): a rw transcript with this flag is not labelled rough. */
+  /** True for speech Gemini read (it has Kinyarwanda): a rw transcript with this flag is not labelled rough. */
   reliable?: boolean;
+  /** Gemini's English translation of a transcript that is not English. */
+  english?: string;
 }
 
 /** The WhatsApp message as Evolution delivers it (webhook and findMessages). */
@@ -314,69 +316,52 @@ export function transcriptLang(transcript: string, whisperName: string | undefin
   return isLang(chatLang) ? chatLang : undefined;
 }
 
-// ── Google Speech-to-Text (the only reader here with Kinyarwanda) ─────────────
+// ── Gemini (the reader with Kinyarwanda: speech, and a video's sound and picture in one call) ─────────────
 
-/** v1 sync recognize: about 60 s and 10 MB of audio. */
-export const GOOGLE_MAX_BYTES = 10 * 1024 * 1024;
-export const GOOGLE_MAX_SECONDS = 60;
-export const GOOGLE_STT_URL = "https://speech.googleapis.com/v1/speech:recognize";
-export const GOOGLE_LANGUAGE = "rw-RW";
-export const GOOGLE_ALTERNATIVES = ["en-US", "fr-FR", "sw-KE"] as const;
+/** inline_data ceiling: base64 rides in the JSON body, and a bigger clip would not come back in time. */
+export const GEMINI_MAX_BYTES = 18 * 1024 * 1024;
+export const GEMINI_DEFAULT_MODEL = "gemini-2.5-flash";
+export const geminiUrl = (model: string, key: string) => `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
 
-export interface GoogleAudioSpec {
-  encoding: "OGG_OPUS";
-  sampleRateHertz: number;
+export const geminiPrompt = (kind: "audio" | "video") => `Listen to this ${kind === "video" ? "video" : "voice note"} sent to Mkan, a rental service in Kigali, Rwanda, on WhatsApp. People speak Kinyarwanda, English, French, Swahili or Arabic. Transcribe the speech exactly as spoken, in its own language and spelling. Reply with ONLY strict JSON: {"lang": "rw|en|fr|sw|ar|other", "transcript": "...", "english": "a faithful English translation of the transcript", "shows": "video only: one line on what it shows: rooms, rent, area, K-code if visible, else empty"}. No speech: transcript "".`;
+
+/** The mime Gemini is told: a voice note is Ogg/Opus, a video mp4, whatever WhatsApp said first. */
+export function geminiMime(mimetype: string | null | undefined, kind: "audio" | "video"): string {
+  const base = (mimetype ?? "").split(";")[0]!.trim().toLowerCase();
+  if (kind === "video") return base.startsWith("video/") ? base : "video/mp4";
+  return base.startsWith("audio/") ? base : "audio/ogg";
 }
 
-/**
- * What a voice note's mimetype lets Google read: WhatsApp sends Ogg/Opus (`audio/ogg; codecs=opus`, 16 kHz typical;
- * a `rate=` parameter wins when it is one Google takes). Anything else (m4a, mp3, a video's mp4) is not on v1 sync
- * recognize: null, and Whisper keeps it.
- */
-export function googleAudioSpec(mimetype: string | null | undefined): GoogleAudioSpec | null {
-  const t = (mimetype ?? "").toLowerCase();
-  if (!/ogg|opus/.test(t) || /webm|mp4|mpeg/.test(t)) return null;
-  const rate = Number(/rate=(\d+)/.exec(t)?.[1]);
-  return { encoding: "OGG_OPUS", sampleRateHertz: [8000, 12000, 16000, 24000, 48000].includes(rate) ? rate : 16000 };
-}
-
-/** The `speech:recognize` request body for one voice note. */
-export function googleSttBody(base64: string, spec: GoogleAudioSpec) {
+/** The generateContent request body for one clip. */
+export function geminiBody(base64: string, mimeType: string, kind: "audio" | "video") {
   return {
-    config: { languageCode: GOOGLE_LANGUAGE, alternativeLanguageCodes: [...GOOGLE_ALTERNATIVES], encoding: spec.encoding, sampleRateHertz: spec.sampleRateHertz, enableAutomaticPunctuation: true },
-    audio: { content: base64 },
+    contents: [{ role: "user", parts: [{ inline_data: { mime_type: mimeType, data: base64 } }, { text: geminiPrompt(kind) }] }],
+    generationConfig: { responseMimeType: "application/json", temperature: 0 },
   };
 }
 
-export interface GoogleSttReply {
-  text: string;
-  /** The language Google settled on ("rw-rw", "en-us"), lower-cased. */
-  languageCode?: string;
+export interface GeminiReply {
+  lang?: Lang;
+  transcript: string;
+  english?: string;
+  shows?: string;
 }
 
-/** Google's words: every result's best alternative, joined; null when it heard nothing (empty `{}` over silence). */
-export function parseGoogleStt(json: unknown): GoogleSttReply | null {
-  const results = (json as { results?: { alternatives?: { transcript?: string }[]; languageCode?: string }[] } | null)?.results;
-  if (!Array.isArray(results)) return null;
-  const text = results
-    .map((r) => r?.alternatives?.[0]?.transcript ?? "")
-    .join(" ")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (!text) return null;
-  const languageCode = results.find((r) => r?.languageCode)?.languageCode;
-  return { text: text.slice(0, 1_200), ...(languageCode ? { languageCode: languageCode.toLowerCase() } : {}) };
-}
+const oneLine = (v: unknown, max: number): string => (typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, max) : "");
 
-/** Google's language label as one of ours; the transcript's own words decide when the label is none of them. */
-export function googleLang(transcript: string, languageCode: string | undefined, chatLang?: string | null): Lang | undefined {
-  const code = (languageCode ?? "").slice(0, 2);
-  if (isLang(code)) return code;
-  return transcriptLang(transcript, undefined, chatLang);
+/** Gemini's JSON (inside candidates[0].content.parts[].text); null when it is not JSON or heard nothing and saw nothing. */
+export function parseGemini(json: unknown): GeminiReply | null {
+  const parts = (json as { candidates?: { content?: { parts?: { text?: string }[] } }[] } | null)?.candidates?.[0]?.content?.parts;
+  if (!Array.isArray(parts)) return null;
+  const obj = extractJson(parts.map((p) => p?.text ?? "").join(""));
+  if (!obj) return null;
+  const transcript = oneLine(obj.transcript, 1_200);
+  const english = oneLine(obj.english, 600);
+  const shows = oneLine(obj.shows, 240);
+  if (!transcript && !shows) return null;
+  const lang = typeof obj.lang === "string" ? obj.lang.trim().toLowerCase().slice(0, 2) : "";
+  return { transcript, ...(isLang(lang) ? { lang } : {}), ...(english && english !== transcript ? { english } : {}), ...(shows ? { shows } : {}) };
 }
-
-/** True when Whisper is a poor reader for this chat: Kinyarwanda, or a chat whose language is not yet known. */
-export const whisperMayMiss = (chatLang: string | null | undefined) => whisperLanguage(chatLang) === undefined;
 
 // ── what the driver reads ────────────────────────────────────────────────────
 
@@ -389,18 +374,19 @@ export function mediaTurnText(kind: MediaKind, r: MediaUnderstanding | null, cap
   const label = kind === "audio" ? "voice note" : kind === "image" ? "photo" : kind === "video" ? "video" : "file";
   if (!r) return `[${label}: could not be read${caption ? `, caption: "${caption}"` : ""}]`;
   // Whisper has no Kinyarwanda: its rw text is sound-alike guesses (a real line video, 11-22). Say so, so the turn
-  // takes only clear words (places, numbers) from it and asks for the rest. Google's rw (`reliable`) is read as heard.
+  // takes only clear words (places, numbers) from it and asks for the rest. Gemini's rw (`reliable`) is read as heard.
   const rough = r.lang === "rw" && !r.reliable ? ", rough machine transcript, may be wrong" : "";
-  if (kind === "audio" && r.transcript) return `[voice note${r.lang ? `, ${r.lang}` : ""}${rough}: "${r.transcript.replace(/"/g, "'")}"]`;
+  const gist = r.english && r.lang && r.lang !== "en" && r.lang !== "ar" ? ` (in English: "${r.english.replace(/"/g, "'").slice(0, 500)}")` : "";
+  if (kind === "audio" && r.transcript) return `[voice note${r.lang ? `, ${r.lang}` : ""}${rough}: "${r.transcript.replace(/"/g, "'")}"${gist}]`;
   if (kind === "video" && rough && r.transcript) return `[video, rw${rough}: ${r.text}]`;
   return `[${label}${kind === "video" && r.lang ? `, ${r.lang}` : ""}: ${r.text}]`;
 }
 
 /** A video's picture and its speech in one line. */
-export function mergeVideo(picture: string | null, transcript: string | null, caption = ""): string {
+export function mergeVideo(picture: string | null, transcript: string | null, caption = "", gist = ""): string {
   const parts: string[] = [];
   if (picture) parts.push(picture);
-  if (transcript) parts.push(`says: "${transcript.replace(/"/g, "'").slice(0, 400)}"`);
+  if (transcript) parts.push(`says: "${transcript.replace(/"/g, "'").slice(0, 400)}"${gist ? ` (in English: "${gist.replace(/"/g, "'").slice(0, 300)}")` : ""}`);
   if (caption && !picture?.includes(caption)) parts.push(`caption: "${caption}"`);
-  return parts.join("; ").slice(0, 600);
+  return parts.join("; ").slice(0, 900);
 }

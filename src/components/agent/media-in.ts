@@ -12,18 +12,17 @@ import "server-only";
  *
  *   image    bytes via Evolution (mediaBytes) → Claude Haiku vision, one call, spend lane `agent-media` under the
  *            same monthly cap as the rest of the agent (claude.ts canSpend / recordSpend).
- *   audio    Whisper has no Kinyarwanda, Google Speech-to-Text (v1 sync recognize, `rw-RW` with en/fr/sw alternatives)
- *            has. Google first when the chat is rw or its language is not known yet, or when Whisper's result is
- *            labelled rw; its rw transcript is `reliable` (not marked rough). Any failure (403 while the API is
- *            not enabled, 10 s timeout, empty, a format v1 does not take) falls back to Groq Whisper
- *            (whisper-large-v3), whose rw text stays rough.
- *   video    no ffmpeg on a Worker: the poster frame (videoMessage.jpegThumbnail) → vision, and the audio track →
- *            Whisper (it takes mp4; skipped above 25 MB), in parallel, merged into one line. Google sync recognize
- *            takes no mp4: video speech is Whisper only.
+ *   audio    Whisper has no Kinyarwanda, Gemini (generateContent with inline_data, strict JSON {lang, transcript,
+ *            english, shows}) has. Gemini first; its transcript is `reliable` (never labelled rough) and carries an
+ *            English gist for rw/sw/fr. Any failure (429 pause, 20 s timeout, no key, empty, > 18 MB) falls back to
+ *            Groq Whisper (whisper-large-v3), whose rw text stays rough.
+ *   video    Gemini first: sound and picture in one call (40 s timeout, skipped above 18 MB). Then the old path, no
+ *            ffmpeg on a Worker: the poster frame (videoMessage.jpegThumbnail) -> vision, and the audio track ->
+ *            Whisper (it takes mp4; skipped above 25 MB), in parallel, merged into one line.
  *   document an image file → vision; a small PDF → Claude's document block; anything else → its file name.
  *
  * Env: AGENT_ANTHROPIC_API_KEY (vision, through claude.ts), GROQ_API_KEY (Whisper), GROQ_WHISPER_MODEL,
- * GOOGLE_SPEECH_API_KEY (else GOOGLE_TRANSLATE_API_KEY; the Speech-to-Text API must be enabled on its project),
+ * GEMINI_API_KEY + GEMINI_SPEECH_MODEL (default gemini-2.5-flash; free tier, no spend ledger write),
  * AGENT_MEDIA_MODEL (default claude-haiku-5-5). Never logged: phone numbers, bytes, transcripts.
  */
 import { mediaBytes } from "@/lib/whatsapp/evolution";
@@ -34,19 +33,18 @@ import {
   captionOf,
   describeVision,
   fileLengthOf,
-  GOOGLE_MAX_BYTES,
-  GOOGLE_MAX_SECONDS,
-  GOOGLE_STT_URL,
-  googleAudioSpec,
-  googleLang,
-  googleSttBody,
+  GEMINI_DEFAULT_MODEL,
+  GEMINI_MAX_BYTES,
+  geminiBody,
+  geminiMime,
+  geminiUrl,
   GROQ_MAX_BYTES,
   hintsOf,
   mediaKindOf,
   mediaTurnText,
   mergeVideo,
   normalizeKCode,
-  parseGoogleStt,
+  parseGemini,
   parseVision,
   payloadOf,
   PDF_MAX_BYTES,
@@ -57,12 +55,10 @@ import {
   VISION_MAX_BYTES,
   VISION_SYSTEM,
   whisperLanguage,
-  whisperMayMiss,
   WHISPER_PROMPT,
   type MediaKind,
   type MediaMessage,
-  type GoogleAudioSpec,
-  type GoogleSttReply,
+  type GeminiReply,
   type MediaUnderstanding,
   type VisionRead,
   type WhisperReply,
@@ -74,13 +70,12 @@ const MEDIA_MODEL = process.env.AGENT_MEDIA_MODEL?.trim() || "claude-haiku-5-5";
 const GROQ_URL = "https://api.groq.com/openai/v1/audio/transcriptions";
 const WHISPER_MODEL = () => process.env.GROQ_WHISPER_MODEL?.trim() || "whisper-large-v3";
 /** Hard ceilings per step; the turn's own deadline is larger than the longest of these. */
-export const MEDIA_TIMEOUTS = { bytes: 6_000, vision: 7_000, audio: 12_000, google: 10_000 };
+export const MEDIA_TIMEOUTS = { bytes: 6_000, vision: 7_000, audio: 12_000, gemini: 20_000, geminiVideo: 40_000 };
 const PAUSE_AFTER_429_MS = 60_000;
 let groqPausedUntil = 0;
-/** A 400/401/403 from Google (the API not enabled yet, a bad key) will repeat: leave it alone for a while instead of paying its latency on every voice note. */
-const PAUSE_AFTER_GOOGLE_DENIED_MS = 5 * 60_000;
-let googlePausedUntil = 0;
-const googleKey = () => process.env.GOOGLE_SPEECH_API_KEY?.trim() || process.env.GOOGLE_TRANSLATE_API_KEY?.trim() || "";
+let geminiPausedUntil = 0;
+const geminiKey = () => process.env.GEMINI_API_KEY?.trim() || "";
+const geminiModel = () => process.env.GEMINI_SPEECH_MODEL?.trim() || GEMINI_DEFAULT_MODEL;
 
 export interface VisionInput {
   data: Buffer;
@@ -94,17 +89,18 @@ export interface WhisperInput {
   mimetype: string;
   language?: string;
 }
-export interface GoogleInput {
+export interface GeminiInput {
   bytes: Buffer;
-  spec: GoogleAudioSpec;
+  mimetype: string;
+  kind: "audio" | "video";
 }
 export interface MediaDeps {
   bytes: (messageId: string) => Promise<{ bytes: Buffer; mimetype: string } | null>;
   /** The model's raw reply (JSON text), or null. */
   vision: (input: VisionInput, timeoutMs: number) => Promise<string | null>;
   whisper: (input: WhisperInput, timeoutMs: number) => Promise<WhisperReply | null>;
-  /** Google Speech-to-Text on a voice note; null on any failure. */
-  google: (input: GoogleInput, timeoutMs: number) => Promise<GoogleSttReply | null>;
+  /** Gemini on a voice note or a video (speech, and the picture for a video); null on any failure. */
+  gemini: (input: GeminiInput, timeoutMs: number) => Promise<GeminiReply | null>;
 }
 
 export interface UnderstandOptions {
@@ -175,34 +171,34 @@ async function whisperCall({ bytes, fileName, mimetype, language }: WhisperInput
   }
 }
 
-/** Google Speech-to-Text v1 sync recognize. Never throws; logs a status or an error name, never the key, the audio or the words. */
-async function googleCall({ bytes, spec }: GoogleInput, timeoutMs: number): Promise<GoogleSttReply | null> {
-  const key = googleKey();
-  if (!key || Date.now() < googlePausedUntil) return null;
+/** Gemini generateContent on one clip. Never throws; logs a status or an error name, never the key, the audio or the words. */
+async function geminiCall({ bytes, mimetype, kind }: GeminiInput, timeoutMs: number): Promise<GeminiReply | null> {
+  const key = geminiKey();
+  if (!key || Date.now() < geminiPausedUntil) return null;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetch(`${GOOGLE_STT_URL}?key=${encodeURIComponent(key)}`, {
+    const res = await fetch(geminiUrl(geminiModel(), key), {
       method: "POST",
       signal: controller.signal,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(googleSttBody(bytes.toString("base64"), spec)),
+      body: JSON.stringify(geminiBody(bytes.toString("base64"), geminiMime(mimetype, kind), kind)),
     });
     if (!res.ok) {
-      if (res.status === 400 || res.status === 401 || res.status === 403) googlePausedUntil = Date.now() + PAUSE_AFTER_GOOGLE_DENIED_MS;
-      console.warn(`[media] google stt ${res.status}`);
+      if (res.status === 429) geminiPausedUntil = Date.now() + PAUSE_AFTER_429_MS;
+      console.warn(`[media] gemini ${res.status}`);
       return null;
     }
-    return parseGoogleStt(await res.json());
+    return parseGemini(await res.json());
   } catch (err) {
-    console.warn(`[media] google stt failed: ${(err as Error).name}`);
+    console.warn(`[media] gemini failed: ${(err as Error).name}`);
     return null;
   } finally {
     clearTimeout(timer);
   }
 }
 
-const DEFAULT_DEPS: MediaDeps = { bytes: (id) => mediaBytes(id), vision: visionCall, whisper: whisperCall, google: googleCall };
+const DEFAULT_DEPS: MediaDeps = { bytes: (id) => mediaBytes(id), vision: visionCall, whisper: whisperCall, gemini: geminiCall };
 
 /** A promise that gives up: null after `ms`, never a throw. */
 async function within<T>(p: Promise<T>, ms: number): Promise<T | null> {
@@ -279,44 +275,47 @@ async function transcribe(c: Ctx, kind: "audio" | "video", cachedBytes?: { bytes
   return transcript ? { transcript, lang: transcriptLang(transcript, reply?.language, c.lang) } : null;
 }
 
-/** Google's reading of a voice note, as `transcribe` returns Whisper's; null on any failure or silence. */
-async function listenGoogle(c: Ctx, got: { bytes: Buffer; mimetype: string }, spec: GoogleAudioSpec): Promise<{ transcript: string; lang?: Lang; reliable: true } | null> {
-  const reply = await within(c.deps.google({ bytes: got.bytes, spec }, c.t.google), c.t.google + 1_000);
-  const transcript = reply?.text.trim();
-  if (!reply || !transcript) return null;
-  const lang = googleLang(transcript, reply.languageCode, c.lang);
-  return { transcript, ...(lang ? { lang } : {}), reliable: true };
+/** Gemini over a voice note or a video: null when it is off, too big, paused, failed or heard nothing. */
+async function listenGemini(c: Ctx, kind: "audio" | "video", got: { bytes: Buffer; mimetype: string }): Promise<GeminiReply | null> {
+  if (got.bytes.length > GEMINI_MAX_BYTES || got.bytes.length < 200) {
+    if (got.bytes.length > GEMINI_MAX_BYTES) console.log(`[media] ${kind} too large for gemini`);
+    return null;
+  }
+  const mimetype = got.mimetype || payloadOf(c.msg).mimetype || "";
+  const ms = kind === "video" ? c.t.geminiVideo : c.t.gemini;
+  return within(c.deps.gemini({ bytes: got.bytes, mimetype, kind }, ms), ms + 1_000);
 }
+
+/** Is Gemini worth fetching the bytes for: a real key and no pause, or a test double; and the declared size fits. */
+function geminiOn(c: Ctx): boolean {
+  const size = fileLengthOf(c.msg);
+  if (size != null && size > GEMINI_MAX_BYTES) return false;
+  return c.deps.gemini !== geminiCall || (!!geminiKey() && Date.now() >= geminiPausedUntil);
+}
+
+const geminiHeard = (g: GeminiReply, chatLang: string | null) => g.lang ?? transcriptLang(g.transcript, undefined, chatLang);
 
 async function understandAudio(c: Ctx): Promise<MediaUnderstanding | null> {
   const size = fileLengthOf(c.msg);
-  if (size != null && size > GROQ_MAX_BYTES) {
-    console.log("[media] audio too large");
+  const whisperOn = (c.deps.whisper !== whisperCall || !!process.env.GROQ_API_KEY?.trim()) && !(size != null && size > GROQ_MAX_BYTES);
+  const gOn = geminiOn(c);
+  if (!whisperOn && !gOn) {
+    if (size != null && size > GROQ_MAX_BYTES) console.log("[media] audio too large");
     return null;
   }
-  const whisperOn = c.deps.whisper !== whisperCall || !!process.env.GROQ_API_KEY?.trim();
-  const googleOn = c.deps.google !== googleCall || (!!googleKey() && Date.now() >= googlePausedUntil);
-  if (!whisperOn && !googleOn) return null;
   const id = c.msg.key?.id;
   const got = id ? await within(c.deps.bytes(id), c.t.bytes + 4_000) : null;
-  if (!got || got.bytes.length > GROQ_MAX_BYTES || got.bytes.length < 200) return null;
-  const mimetype = got.mimetype || payloadOf(c.msg).mimetype || "";
-  const seconds = payloadOf(c.msg).seconds;
-  // Google's sync limits (~60 s, 10 MB) and its formats (Ogg/Opus): else Whisper alone.
-  const spec = googleOn && got.bytes.length <= GOOGLE_MAX_BYTES && !(typeof seconds === "number" && seconds > GOOGLE_MAX_SECONDS) ? googleAudioSpec(mimetype) : null;
+  if (!got || got.bytes.length < 200) return null;
 
-  let heard: { transcript: string; lang?: Lang; reliable?: boolean } | null = null;
-  let triedGoogle = false;
-  if (spec && whisperMayMiss(c.lang)) {
-    // A Kinyarwanda chat, or one whose language is not known yet: Whisper would guess.
-    triedGoogle = true;
-    heard = await listenGoogle(c, got, spec);
+  let heard: { transcript: string; lang?: Lang; reliable?: boolean; english?: string } | null = null;
+  if (gOn) {
+    const g = await listenGemini(c, "audio", got);
+    if (g?.transcript) {
+      const lang = geminiHeard(g, c.lang);
+      heard = { transcript: g.transcript, ...(lang ? { lang } : {}), reliable: true, ...(g.english ? { english: g.english } : {}) };
+    }
   }
-  if (!heard && whisperOn) {
-    heard = await transcribe(c, "audio", got);
-    // Whisper heard Kinyarwanda in a chat that was not known to be: Google is the better reader of it.
-    if (heard?.lang === "rw" && spec && !triedGoogle) heard = (await listenGoogle(c, got, spec)) ?? heard;
-  }
+  if (!heard && whisperOn) heard = await transcribe(c, "audio", got);
   if (!heard) return null;
   const kCode = normalizeKCode(/\bK\s?-?\d{3,6}\b/i.exec(heard.transcript)?.[0]);
   return {
@@ -326,10 +325,35 @@ async function understandAudio(c: Ctx): Promise<MediaUnderstanding | null> {
     ...(kCode ? { kCode } : {}),
     ...(heard.lang ? { lang: heard.lang } : {}),
     ...(heard.reliable ? { reliable: true } : {}),
+    ...(heard.english ? { english: heard.english } : {}),
+  };
+}
+
+/** Gemini's one-call reading of a video (sound + picture) as an understanding; null when it gave nothing. */
+async function videoViaGemini(c: Ctx): Promise<MediaUnderstanding | null> {
+  const id = c.msg.key?.id;
+  const got = id ? await within(c.deps.bytes(id), c.t.bytes + 8_000) : null;
+  if (!got) return null;
+  const g = await listenGemini(c, "video", got);
+  if (!g) return null;
+  const lang = geminiHeard(g, c.lang);
+  const kCode = normalizeKCode(/\bK\s?-?\d{3,6}\b/i.exec(`${g.shows ?? ""} ${g.transcript} ${c.caption}`)?.[0]) ?? undefined;
+  return {
+    kind: "video",
+    text: mergeVideo(g.shows ?? null, g.transcript || null, c.caption, g.english ?? ""),
+    ...(g.transcript ? { transcript: g.transcript } : {}),
+    ...(kCode ? { kCode } : {}),
+    ...(lang ? { lang } : {}),
+    reliable: true,
+    ...(g.english ? { english: g.english } : {}),
   };
 }
 
 async function understandVideo(c: Ctx): Promise<MediaUnderstanding | null> {
+  if (geminiOn(c)) {
+    const viaGemini = await videoViaGemini(c);
+    if (viaGemini) return viaGemini;
+  }
   const thumb = thumbnailOf(c.msg);
   const [seen, heard] = await Promise.all([
     thumb ? readPicture(c, thumb, sniffImage(thumb) ?? "image/jpeg") : Promise.resolve(null),
