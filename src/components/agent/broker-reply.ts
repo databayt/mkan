@@ -31,6 +31,11 @@ export interface BrokerReply {
   greeting: boolean;
   /** "Are you a bot?", "is this automatic?" — a person answers this one, never the inbox. */
   asksIfBot: boolean;
+  /**
+   * The broker cannot see the link or video we sent, or wants it again: "The video is not available", "Can you
+   * send the link again or take a screenshot". About OUR link, never about the home, so it is never `gone`.
+   */
+  resend: boolean;
 }
 
 const EMPTY_REPLY: BrokerReply = {
@@ -47,6 +52,7 @@ const EMPTY_REPLY: BrokerReply = {
   yes: false,
   greeting: false,
   asksIfBot: false,
+  resend: false,
 };
 
 /** Rents outside this band are fees, deposits or sale prices, not a month's rent. */
@@ -118,6 +124,22 @@ const STUDIO = /\bstudio\b/;
 
 const GONE = /^(?:n|no+|nope|taken|gone|rented|sold|not available|no longer available|already (?:taken|rented)|it(?:'?s| is| has been) taken|byaragiye|yagiye|ntayihari|ntiyihari|oldest post)\b/;
 const GONE_ANYWHERE = /\b(?:already taken|has been taken|was taken|already rented|no longer available|not available anymore|byaragiye|oldest post|ntiyihari|ntayihari|yafashwe)\b|\b(?:it'?s|its|it is|is|was) (?:already )?(?:not available|taken|rented|gone)\b/;
+const LINK_WORD = String.raw`(?:link|links|video|videos|vid|post|posts|reel|tiktok|screenshot|screen shot|photo|photos|picture|pictures|pic|pics|image|images|lien|vid[ée]o|publication|capture|ifoto|amafoto|videwo|linki)`;
+const BROKEN_WORD = String.raw`(?:not available|unavailable|is not available|\w*n'?t available|not working|\w*n'?t work(?:ing)?|broken|expired|removed|deleted|not found|invalid|not open(?:ing)?|\w*n'?t open|\w*n'?t load|not loading|error|pas disponible|ne fonctionne pas|ne marche pas|ne s'ouvre pas|introuvable|ntifunguka|ntibifunguka|ntabwo (?:bifunguka|ikora|iboneka)|ntibonetse|ntikora)`;
+/**
+ * A reply about the link, video or screenshot we sent — not about the home. "The video is not available" is a
+ * dead link (2026-11-20: read as "taken", the home was lost and the tenant told sorry). Kinyarwanda and French too.
+ */
+const RESEND = new RegExp(
+  [
+    `\\b${LINK_WORD}\\b(?:\\W+\\w+){0,4}?\\W+${BROKEN_WORD}`,
+    `\\b(?:can'?t|cannot|can not|unable to|couldn'?t|could not|don'?t|doesn'?t|won'?t|not able to|impossible d'?e?|ntibishoboka|sinshobora)\\s+(?:to\\s+)?(?:(?:open|play|load|ouvrir|gufungura)\\b|(?:see|view|watch|access|voir|kureba)\\s+(?:the |this |your |that |it\\b)?\\s*${LINK_WORD}\\b)`,
+    `\\b(?:send|share|resend|forward|post|renvoy\\w*|envoy\\w*|ohereza|wohereze|ongera wohereze|ongera ohereze)\\b[^.?!\\n]{0,40}\\b(?:again|once more|another time|a nouveau|encore|ukundi|nanone)\\b`,
+    `\\bresend\\b|\\brenvoy(?:ez|er|e)\\b|\\bscreen ?shots?\\b|\\bcapture d'?[ée]cran\\b|\\bsend (?:me )?(?:the |a )?(?:link|video|post)\\b`,
+    `\\bntifunguka\\b|\\bntibifunguka\\b`,
+  ].join("|"),
+);
+
 /** One clause that says yes. Never "I am available" (the broker, not the home). */
 const YES_CLAUSE =
   /^(?:yes|yeah|yep|yah|sure|available|still available|oui|disponible|yego|ndiyo)\b|\b(?:yes|yeah|yep|yego|ndiyo)\b|\b(?:it'?s|its|it is|is|still|ni) (?:still )?available\b|\b(?:iracyahari|irahari|igihari)\b/;
@@ -190,7 +212,9 @@ export function parseBrokerReply(text: string | null | undefined, opts: { menu?:
   const unfurnished = /\bun-?furnished\b|\bempty\b|nta bikoresho/.test(t);
   const furnished = /\b(?:semi-? ?)?furnished\b|\bmeubl[ée]e?\b|ifite ibikoresho/.test(t.replace(/\bun-?furnished\b/g, " "));
   const bare = t.replace(/[^a-z ]/g, "").trim();
-  const gone = GONE.test(bare) || GONE_ANYWHERE.test(t);
+  // A dead link is not a taken home: "The video is not available" is about what we sent.
+  const resend = RESEND.test(t);
+  const gone = !resend && (GONE.test(bare) || GONE_ANYWHERE.test(t));
   const hasOffer = rwf.length > 0 || usd.length > 0 || bed != null;
   const choice = opts.menu ? menuChoice(raw) : null;
   if (choice) return { ...EMPTY_REPLY, yes: choice === 1, gone: choice === 2 };
@@ -205,9 +229,10 @@ export function parseBrokerReply(text: string | null | undefined, opts: { menu?:
     visitFee: fee,
     gone: gone && !hasOffer,
     question: !hasOffer && QUESTION.test(t.trim()),
-    yes: !(gone || GONE_ANYWHERE.test(t)) && saysYes(t),
+    yes: !resend && !(gone || GONE_ANYWHERE.test(t)) && saysYes(t),
     greeting: isGreetingOnly(t),
     asksIfBot: BOT_QUESTION.test(t),
+    resend: resend && !hasOffer,
   };
 }
 
@@ -233,7 +258,7 @@ export function readTakenWithOther(text: string | null | undefined): { taken: bo
   if (!raw) return { taken: false, other: null };
   const t = fold(raw).replace(/https?:\/\/\S+/g, " ").replace(/[ \t]+/g, " ");
   const bare = t.replace(/[^a-z ]/g, "").trim();
-  const taken = GONE.test(bare) || GONE_ANYWHERE.test(t);
+  const taken = !RESEND.test(t) && (GONE.test(bare) || GONE_ANYWHERE.test(t));
   if (!taken || !ANOTHER_RE.test(t)) return { taken, other: null };
   // What comes after the "taken" part is the other home: "but I have another one in Gikondo, 2 bedrooms 200k".
   const at = t.search(ANOTHER_RE);

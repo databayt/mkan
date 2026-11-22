@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isOffer, isRepostAsk, menuChoice, parseBrokerReply, repostAnswer } from "@/components/agent/broker-reply";
+import { isOffer, isRepostAsk, menuChoice, parseBrokerReply, readTakenWithOther, repostAnswer } from "@/components/agent/broker-reply";
 
 // Shapes from real Kigali broker chats (October 2026).
 describe("parseBrokerReply", () => {
@@ -108,6 +108,52 @@ describe("the 1 / 2 answer to a one-home ask", () => {
     for (const s of ["taken", "No", "Byaragiye"]) expect(parseBrokerReply(s, { menu: true }).gone, s).toBe(true);
     expect(parseBrokerReply("How much?", { menu: true }).question).toBe(true);
     expect(parseBrokerReply("Hello", { menu: true }).greeting).toBe(true);
+  });
+});
+
+// 2026-11-20: a broker could not open our TikTok link and the home was marked lost.
+describe("a dead link is not a taken home", () => {
+  const RESEND = [
+    "The video is not available",
+    "Can you send the link again or take a screenshot",
+    "Send the link again",
+    "send again please",
+    "I can't open the link",
+    "link doesn't work",
+    "The post is unavailable",
+    "Please send a screenshot",
+    "Link ntifunguka",
+    "La vidéo n'est pas disponible",
+    "Renvoyez le lien s'il vous plaît",
+  ];
+  it("reads link trouble as resend, never gone, never yes", () => {
+    for (const s of RESEND) {
+      const r = parseBrokerReply(s);
+      expect(r.resend, s).toBe(true);
+      expect(r.gone, s).toBe(false);
+      expect(r.yes, s).toBe(false);
+      expect(readTakenWithOther(s).taken, s).toBe(false);
+    }
+  });
+
+  it("reads the two messages of the incident together as a resend", () => {
+    const r = parseBrokerReply("The video is not available\nCan you send the link again or take a screenshot");
+    expect(r).toMatchObject({ resend: true, gone: false });
+  });
+
+  it("still reads a real taken as taken", () => {
+    for (const s of ["This one is taken", "Yafashwe", "it's not available anymore", "Not available", "It is not available", "Already rented"]) {
+      const r = parseBrokerReply(s);
+      expect(r.gone, s).toBe(true);
+      expect(r.resend, s).toBe(false);
+      expect(readTakenWithOther(s).taken, s).toBe(true);
+    }
+  });
+
+  it("keeps the other home beside a taken", () => {
+    const r = readTakenWithOther("taken, but I have another one in Gikondo 2 bedrooms 200k");
+    expect(r.taken).toBe(true);
+    expect(r.other).toMatchObject({ price: 200_000, bedrooms: 2 });
   });
 });
 

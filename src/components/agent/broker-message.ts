@@ -266,6 +266,24 @@ export function reAskMessage(text: string, seed: string, many = false): string {
   return pickPhrase(seed, [`Hi, ${it} still available?`, `Hello, ${it} still available?`]);
 }
 
+/**
+ * The broker could not open the link or video we sent ("The video is not available", "send the link again"):
+ * the fault is ours, so say so, give Mkan's own page for the home, and ask again. In the broker's language;
+ * Kinyarwanda carries English under it, like the first ask. `link` is the /k/K… page.
+ */
+export function resendMessage(link: string, seed: string, lang?: string | null): string {
+  const l = langOf(lang);
+  const fr = `Désolé, le lien n'a pas fonctionné de notre côté. Voici la page de la maison :\n${link}\nEst-elle toujours disponible ? ${REPLY_MENU.FR}`;
+  if (l === "FR") return fr;
+  const en = pickPhrase(seed, [
+    `Sorry, the link didn't work on our side. Here is the home's page:\n${link}\nIs it still available? ${REPLY_MENU.EN}`,
+    `Sorry about that, the video must have been removed. This is the page for the home:\n${link}\nIs it still available? ${REPLY_MENU.EN}`,
+  ]);
+  if (l === "EN") return en;
+  const rw = `Mutubabarire, link ntiyakoze. Dore urupapuro rw'inzu:\n${link}\nIracyahari? ${REPLY_MENU.RW}`;
+  return `${rw}\n\n${en}`;
+}
+
 /** The broker said it is available: Mkan comes back with the viewing. */
 export function availableAckMessage(seed: string): string {
   return pickPhrase(seed, [

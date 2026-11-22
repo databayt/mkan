@@ -23,9 +23,11 @@ import "server-only";
  * bot?" is never answered here: a person does.
  */
 import { db } from "@/lib/db";
+import { publicAppUrl } from "../../../scripts/crm/public-links";
+import { homePath } from "./home-path";
 import { appendTaskEvent, applyAnswer, brokerAnswers } from "./broker";
 import { createBrokerHome, type AskForHome } from "./broker-home";
-import { aboutMeMessage, availableAckMessage, needReplyMessage, needSummary, offersReplyMenu, priceQuestionMessage, reAskMessage, takenAckMessage, takenOtherAckMessage } from "./broker-message";
+import { aboutMeMessage, availableAckMessage, needReplyMessage, needSummary, offersReplyMenu, priceQuestionMessage, reAskMessage, resendMessage, takenAckMessage, takenOtherAckMessage } from "./broker-message";
 import { isOffer, parseBrokerReply, readTakenWithOther, repostAnswer, type BrokerReply, type OtherHome } from "./broker-reply";
 import { coerceRequirements, EMPTY_REQUIREMENTS, mergeRequirements } from "./requirements";
 import { answerTerms, introBrokerUpdate, introReplyFor } from "./deal-intro";
@@ -41,6 +43,12 @@ export type InboxAction =
   | { kind: "home"; listingId: number; matched: boolean }
   /** Send `text` now; `outboundId` is its row (already SENT) — mark it FAILED if the send fails. */
   | { kind: "reply"; text: string; why: "question" | "photos-need-price" | "about-me" | "greeting"; outboundId: string }
+  /**
+   * The broker could not open our link ("The video is not available"): the home is NOT taken. `text` carries
+   * Mkan's /k/K… page and re-asks; `photoUrl` is the home's first photo for the caller to send as native media
+   * (wa-outbox → sendMedia), when it has one.
+   */
+  | { kind: "resend"; listingId: number; text: string; photoUrl: string | null; outboundId: string }
   /** `applied` — the answer was news to Mkan; `reply` — the thanks to send, as above. */
   | { kind: "availability"; listingId: number; answer: "AVAILABLE" | "RENTED"; applied: boolean; reply: { text: string; outboundId: string } | null }
   /** The answer to the TikTok repost ask (null: unclear, a person reads it). The Mac records it in the CRM. */
@@ -264,9 +272,27 @@ async function readReply(
   return read ? answerAvailabilityAsk(read, phone, text, photoUrls.length > 0) : { kind: "none" };
 }
 
+/** Mkan's page for the home + its first photo, in the broker's language, once per ask. Null when it already went. */
+async function resendReply(ask: Ask, listingId: number, phone: string): Promise<{ text: string; photoUrl: string | null; outboundId: string } | null> {
+  const [home, broker] = await Promise.all([
+    db.listing.findUnique({ where: { id: listingId }, select: { photoUrls: true } }),
+    db.broker.findFirst({ where: { phones: { hasSome: phoneVariants(phone) } }, select: { preferredLanguage: true } }),
+  ]);
+  const link = `${publicAppUrl()}${homePath("en", listingId)}`;
+  const reply = await replyOnce(ask, "auto-resend", resendMessage(link, ask.id, broker?.preferredLanguage));
+  return reply ? { ...reply, photoUrl: home?.photoUrls?.[0] ?? null } : null;
+}
+
 /** The reply to "is this available?". */
 async function answerAvailabilityAsk(read: NonNullable<Awaited<ReturnType<typeof readAvailabilityReply>>>, phone: string, text: string, hasPhotos: boolean): Promise<InboxAction> {
   const { ask, r, answer, home, isNews, many, need, other } = read;
+  // "The video is not available" / "send the link again": our link failed, the broker is willing. Nothing is
+  // marked; they get Mkan's own page and the question again, once per ask.
+  if (r.resend) {
+    if (home == null) return { kind: "none" };
+    const sent = await resendReply(ask, home, phone);
+    return sent ? { kind: "resend", listingId: home, ...sent } : { kind: "none" };
+  }
   if (answer && home != null) {
     if (isNews) await recordTypedAnswer(ask.brokerRequestIds, home, answer, phone);
     // Their other home is kept on every chat that asked, and the broker is asked warmly for what a tenant
