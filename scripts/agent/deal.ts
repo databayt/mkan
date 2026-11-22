@@ -1,6 +1,8 @@
 /**
- * The person from Mkan books the three-party viewing once the broker agreed the
- * time, and records how the deal ended (src/components/agent/deal.ts).
+ * Since 2026-11-22 the line books a viewing itself (viewing-loop.ts settleViewingTime: it asks the broker,
+ * books on their yes, and tells both sides). `deal:book` is the same booking path (deal.ts bookViewing) kept for
+ * the one case the line may not settle (automation off, a team number, a web tenant): the #mkan FYI card
+ * says when. The person from Mkan also records how the deal ended (src/components/agent/deal.ts).
  *
  *   pnpm deal:list                                   viewings asked, booked, and open deals
  *   pnpm deal:terms --broker=<id or phone> --share-pct=50 | --share-rwf=30000 [--note="…"]

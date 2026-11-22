@@ -1,19 +1,53 @@
 import "server-only";
 
 /**
- * The viewing, agreed and booked by the line itself (viewing-loop-pure.ts has the rules and the words):
+ * The viewing, agreed and booked by the line itself (viewing-loop-pure.ts has the rules and the words).
+ * No step waits for a person to type: Mkan's person (Osman, MKAN_VIEWING_REP) only goes to the viewing, and
+ * hears every step as an FYI.
  *
- *   proposeViewingAuto ─ the tenant named a time: can Mkan's person be there? then the broker is asked
- *   brokerViewingReply ─ the broker answered: book it, relay their other time, or ask when
- *   acceptOffered      ─ the tenant said yes to a time on the table
- *   noteMeetingPlace   ─ the broker says where to meet, after it is booked
- *   viewingSweep       ─ hourly: one chase for a silent broker, then the tenant is told
+ * ── THE CALL CONTRACT — `settleViewingTime(event)` (2026-11-22) ─────────────────────────────────────
+ * Both sides of a viewing time call this one function; it knows the state of the ask (WaState
+ * `viewing-time:<broker number>` for the broker's side, `viewing-ask:<tenant number>` for the tenant's) and does
+ * the next thing. It never throws for a rule (a clash, an off day, a taken home): those are results.
  *
- * Booking is deal.ts bookViewing, unchanged: one ListingVisit with all three, a Deal, the tenant's
- * confirmation. A broker with no share on record is still booked while fewer than
- * MKAN_SHARE_REQUIRED_AFTER deals are paid (default 10): the terms are asked in the booking's own
- * message, and Mkan's person settles them at the home. `MKAN_VIEWING_AUTO=off` puts the #mkan card and
- * the one-tap Yes back in charge (deal.ts proposeViewing), as does anything this file cannot do itself.
+ *   TENANT  { by: "tenant", tenant, ask, lang, at }          the tenant named a time ("tomorrow 10am")
+ *           { by: "tenant", tenant, ask, lang, accept: true } the tenant said yes to the time on the table
+ *           `ask` = readViewingAsk(tenant) (deal.ts); `tenant` the WhatsApp number; `lang` en | ar | rw.
+ *           → `reply` is what to answer the tenant (return it as the chat's reply). Nothing is sent to the
+ *             tenant by this function except the booking confirmation itself.
+ *   BROKER  { by: "broker", phone, text, at }                a broker's message (the line's whole inbox text)
+ *           { by: "broker", phone, slot, at }                the broker named a time/slot already read by the
+ *                                                            caller ("2" of the two offered, "Tue 10:00")
+ *           optional `newestAvailabilityAskAt`, `quoted`, `listingId` (the home, when the caller knows it).
+ *           → `reply` is what to answer the broker (send it as the line, label `auto-viewing-<outcome>`).
+ *           → `null` when the message is not about a viewing time: carry on reading it as before.
+ *
+ *   What it does, whichever side speaks first:
+ *     tenant time, broker confirmed the home  → can Mkan's person be there (MKAN_VIEWING_HOURS/DAYS, the
+ *                                               MKAN_VIEWING_GAP_MIN gap — 90 min —, `off` days)? yes: the broker
+ *                                               is asked; no: the nearest free time goes back to the tenant.
+ *     tenant time, home not confirmed         → availability.ts askAvailabilityFor asks the broker if the home is
+ *                                               free, the time is kept (`wanted`), and prepareDealSheet (deal.ts)
+ *                                               asks the broker for it the moment they say yes.
+ *     broker says yes to the time             → BOOKED (deal.ts bookViewing, the one path `deal:book` uses).
+ *     broker names another time (unprompted,
+ *       or in answer to ours)                 → the tenant is asked; their yes books it. A time Mkan's person
+ *                                               can't do goes back to the broker as the nearest one that works.
+ *     broker says no / "taken"                → asked for a time / the home leaves /find and the tenant is told.
+ *   On BOOKED: a ListingVisit (tenant + broker + rep) and a Deal; the tenant and the broker each get a short
+ *   confirmation in their own language (time, where, "Osman from Mkan will meet you there"); Mkan's person gets
+ *   an FYI. Terms the broker did not state are "to confirm at the viewing". Reminders (24 h / 2 h) and "how
+ *   did it go?" are deal.ts viewingReminders, unchanged.
+ *   `fallback` (only for the tenant side): the line may not do it itself — MKAN_VIEWING_AUTO=off, sends
+ *   paused, a team number, a web tenant, a share required and none agreed. deal.ts proposeViewing then posts
+ *   the one FYI card; `reply` is null and the caller must not invent a promise.
+ *
+ * `proposeViewingAuto`, `brokerViewingReply` and `acceptOffered` below are the same code, kept as thin
+ * wrappers for the callers that already use them.
+ *
+ * Booking is deal.ts bookViewing, unchanged. A broker with no share on record is still booked while fewer than
+ * MKAN_SHARE_REQUIRED_AFTER deals are paid (default 10): the terms are asked in the booking's own message.
+ * `MKAN_VIEWING_AUTO=off` puts the FYI card and the one-tap Yes back in charge (deal.ts proposeViewing).
  */
 import { db } from "@/lib/db";
 import { scrubTitle } from "@/lib/redact";
@@ -31,10 +65,17 @@ import type { ShortlistItem } from "./types";
 import {
   bookingNowMessage,
   brokerCannotMessage,
+  checkingHomeFirstMessage,
   counterOfferMessage,
+  homeGoneMessage,
+  meetingSpot,
   nextSlot,
+  noBrokerMessage,
   noSlotMessage,
   pickSlots,
+  type BrokerViewingReply,
+  type FallbackWhy,
+  type PlaceFacts,
   REP_OFF_PREFIX,
   repGapMs,
   readBrokerViewingReply,
@@ -73,6 +114,7 @@ const variants = (phone: string) => [plus(phone), phoneKey(phone)];
 const labels = (at: Date) => ({ en: viewingLabel(at, "en"), rw: viewingLabel(at, "rw") });
 /** The outbox label of every word to a broker about a viewing: the line's own reply, never held for "asked today". */
 const brokerLabel = (what: string, listingId: number) => `auto-viewing-${what}:${listingId}`;
+const langOf = (l: string | null | undefined): DealLang => (l === "ar" || l === "rw" ? l : "en");
 
 /** The rep's gap between viewings and the days they marked off (WaState `rep-off:<date>`, set by the word `off`). */
 async function slotOpts(): Promise<SlotOpts> {
@@ -92,6 +134,16 @@ async function repBusy(at: Date, taskId: string, listingId: number): Promise<Dat
     select: { scheduledFor: true, taskId: true, listingId: true },
   });
   return rows.filter((v) => !(v.taskId === taskId && v.listingId === listingId)).map((v) => v.scheduledFor);
+}
+
+/** The home's pin and area, for "where to meet". Never throws: no place is just no place. */
+async function placeOf(listingId: number): Promise<PlaceFacts> {
+  try {
+    const home = await db.listing.findUnique({ where: { id: listingId }, select: { location: { select: { latitude: true, longitude: true, neighbourhood: true, sector: true } } } });
+    return home?.location ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /** The broker who said this home is free: where to write to them, how, and what Mkan has agreed with them. */
@@ -145,18 +197,80 @@ const titleIn = async (taskId: string, listingId: number): Promise<string> => {
   return scrubTitle(((task?.shortlist as ShortlistItem[] | null) ?? []).find((s) => s.id === listingId)?.title) || `K${listingId}`;
 };
 
-/**
- * The tenant named a time. Returns their reply — or null when the line cannot take it from here (auto is
- * off, sends are paused, a team number, no broker who said yes with a number, or a share is required and
- * none is agreed): the caller then posts the #mkan card, as before.
- */
-export async function proposeViewingAuto(ask: ViewingAsk, at: Date, tenant: string, lang: DealLang, now = new Date()): Promise<string | null> {
-  if (!viewingAuto()) return null;
+// ── the one entry point ──────────────────────────────────────────────────────────────────────────
+
+export type SettleOutcome =
+  /** The broker was asked for the tenant's time. */
+  | "asked-broker"
+  /** The home was not confirmed: the broker was asked if it is free first, the time is kept for after their yes. */
+  | "asked-availability"
+  /** The nearest time Mkan's person can do went to the tenant (their time clashed). */
+  | "rep-busy"
+  /** No time is free in the next fortnight. */
+  | "no-slot"
+  /** No broker the line may write to has this home: the tenant is offered another. */
+  | "no-broker"
+  /** The broker's yes (or the tenant's yes to their time) — it is booked. */
+  | "booked"
+  /** The broker named another time: the tenant is asked. */
+  | "countered"
+  /** The broker's time does not work for Mkan's person: the nearest one went back to the broker. */
+  | "rep-cannot"
+  | "what-time"
+  | "asked-when"
+  | "taken"
+  /** The line may not do it itself (SettleResult.why): deal.ts proposeViewing posts the FYI card. */
+  | "fallback";
+
+export type SettleResult = {
+  outcome: SettleOutcome;
+  listingId: number;
+  /** What to answer whoever just spoke: the tenant's reply, or the text to send the broker. Null: nothing to say. */
+  reply: string | null;
+  why?: FallbackWhy;
+  /** Set when this call booked the viewing. */
+  visitId?: number;
+  dealId?: string;
+};
+
+export type SettleEvent =
+  | { by: "tenant"; tenant: string; ask: ViewingAsk; lang: DealLang; at: Date; now?: Date; skipAvailability?: boolean }
+  | { by: "tenant"; tenant: string; ask: ViewingAsk; lang: DealLang; accept: true; now?: Date }
+  | { by: "broker"; phone: string; text: string; at: Date; newestAvailabilityAskAt?: Date | null; quoted?: boolean; listingId?: number }
+  | { by: "broker"; phone: string; slot: Date; at: Date; listingId?: number };
+
+/** See the contract at the top of this file. Null: the message is not about a viewing time (broker side) or nothing is on the table (tenant yes). */
+export async function settleViewingTime(ev: SettleEvent): Promise<SettleResult | null> {
+  if (ev.by === "tenant") {
+    const now = ev.now ?? new Date();
+    return "accept" in ev ? acceptInner(ev.ask, ev.tenant, ev.lang, now) : proposeInner(ev.ask, ev.at, ev.tenant, ev.lang, now, !ev.skipAvailability);
+  }
+  return brokerInner(ev);
+}
+
+// ── the tenant names a time ──────────────────────────────────────────────────────────────────────
+
+async function proposeInner(ask: ViewingAsk, at: Date, tenant: string, lang: DealLang, now: Date, mayAskAvailability: boolean): Promise<SettleResult> {
+  const out = (outcome: SettleOutcome, reply: string | null, more: Partial<SettleResult> = {}): SettleResult => ({ outcome, listingId: ask.listingId, reply, ...more });
+  if (!viewingAuto()) return out("fallback", null, { why: "auto-off" });
   const gate = await gateForTask(ask.taskId).catch(() => null);
-  if (!gate?.ok) return null;
+  if (!gate?.ok) return out("fallback", null, { why: !gate ? "sends-off" : gate.why === "test-phone" ? "test-number" : gate.why === "not-whatsapp" ? "no-whatsapp" : "sends-off" });
   const broker = await yesBrokerOf(ask.listingId);
-  if (!broker) return null;
-  if (!broker.agreement && (await db.deal.count({ where: { status: "PAID" } })) >= shareRequiredAfter()) return null;
+  if (!broker) {
+    // No broker has said this home is free yet: ask them, and keep the tenant's time for their yes.
+    if (!mayAskAvailability) return out("fallback", null, { why: "sends-off" });
+    const asked = await import("./availability").then((m) => m.askAvailabilityFor(ask.taskId, ask.listingId)).catch(() => null);
+    if (asked?.why === "taken") return out("no-broker", homeGoneMessage(lang));
+    if (asked && (asked.asked || asked.why === "already")) {
+      await setTenantAsk(tenant, { taskId: ask.taskId, listingId: ask.listingId, wanted: at.toISOString() });
+      void dealEvent("TIME_PROPOSED", { listingId: ask.listingId, taskId: ask.taskId, tenantPhone: plus(tenant), viewingAt: at, note: "the tenant's time is kept; the broker is asked if the home is free first" });
+      return out("asked-availability", checkingHomeFirstMessage(lang, viewingLabel(at, lang)));
+    }
+    // Nobody the line may write to: the tenant hears it plainly and is offered another home; Mkan's person is told.
+    await postSlackCard(`📅 FYI — K${ask.listingId}: the tenant asked to see it *${viewingLabel(at, "en")}* but no broker with a number can be asked. The line told them and offered to check another home.`).catch(() => {});
+    return out("no-broker", noBrokerMessage(lang));
+  }
+  if (!broker.agreement && (await db.deal.count({ where: { status: "PAID" } })) >= shareRequiredAfter()) return out("fallback", null, { why: "share-required" });
 
   const rep = viewingRep();
   const askable = firstSendableAt({ kind: "BROKER_REQUEST", label: "auto-viewing" }, now);
@@ -165,10 +279,10 @@ export async function proposeViewingAuto(ask: ViewingAsk, at: Date, tenant: stri
   const opts = await slotOpts();
   if (slotVerdict(at, askable, busy, hours, opts) !== "ok") {
     const alt = nextSlot(at, askable, busy, hours, opts);
-    if (!alt) return noSlotMessage(lang);
+    if (!alt) return out("no-slot", noSlotMessage(lang));
     // The nearest time Mkan's person can be there: the tenant's yes proposes it to the broker.
-    await setTenantAsk(tenant, { taskId: ask.taskId, listingId: ask.listingId, offered: alt.toISOString(), offeredBy: "mkan" });
-    return repBusyMessage(lang, { label: viewingLabel(at, lang), alt: viewingLabel(alt, lang), rep });
+    await setTenantAsk(tenant, { taskId: ask.taskId, listingId: ask.listingId, offered: alt.toISOString(), offeredBy: "mkan", wanted: undefined });
+    return out("rep-busy", repBusyMessage(lang, { label: viewingLabel(at, lang), alt: viewingLabel(alt, lang), rep }));
   }
 
   const iso = at.toISOString();
@@ -178,16 +292,29 @@ export async function proposeViewingAuto(ask: ViewingAsk, at: Date, tenant: stri
     [{ kind: "BROKER_REQUEST", to: broker.phone, body: viewingTimeAskMessage({ name: broker.name, lang: broker.lang, title: broker.title, link: broker.link, ...labels(at), rep }), label: brokerLabel("ask", ask.listingId), brokerId: broker.brokerId }],
     `Viewing time → broker (home #${ask.listingId})`,
   );
-  await setTenantAsk(tenant, { taskId: ask.taskId, listingId: ask.listingId, proposedAt: iso, offered: undefined, offeredBy: undefined });
+  await setTenantAsk(tenant, { taskId: ask.taskId, listingId: ask.listingId, proposedAt: iso, offered: undefined, offeredBy: undefined, wanted: undefined });
   await appendTaskEvent(ask.taskId, "viewing_proposed", "waiting_person", { listingId: ask.listingId, at: iso, auto: true }).catch(() => {});
   void dealEvent("TIME_PROPOSED", { listingId: ask.listingId, taskId: ask.taskId, tenantPhone: plus(tenant), brokerId: broker.brokerId, viewingAt: at, note: "the tenant's time, asked of the broker" });
   await postSlackCard(`📅 *Viewing asked* — ${broker.title} (K${ask.listingId}), *${viewingLabel(at, "en")}*. The line asked the broker to confirm; ${rep} is told when it is booked. Nothing to do.`).catch(() => {});
-  return viewingProposedMessage(lang, viewingLabel(at, lang));
+  return out("asked-broker", viewingProposedMessage(lang, viewingLabel(at, lang)));
 }
 
+/**
+ * The tenant named a time. Returns their reply — or null when the line cannot take it from here (auto is
+ * off, sends are paused, a team number, no broker who said yes with a number, or a share is required and
+ * none is agreed): the caller then posts the #mkan card, as before. Legacy wrapper: new code calls
+ * `settleViewingTime`, which also asks the broker about a home nobody has confirmed yet.
+ */
+export async function proposeViewingAuto(ask: ViewingAsk, at: Date, tenant: string, lang: DealLang, now = new Date()): Promise<string | null> {
+  const r = await proposeInner(ask, at, tenant, lang, now, false);
+  return r.outcome === "fallback" ? null : r.reply;
+}
+
+// ── booking ──────────────────────────────────────────────────────────────────────────────────────
+
 /** Book it, tell Mkan's person, and write what the broker is told. */
-async function book(ask: ViewingTimeAsk, at: Date, brokerPhone: string, place: string | null): Promise<string> {
-  const broker = await yesBrokerOf(ask.listingId);
+async function book(ask: ViewingTimeAsk, at: Date, brokerPhone: string, place: string | null): Promise<{ text: string; visitId: number; dealId: string }> {
+  const [broker, loc] = await Promise.all([yesBrokerOf(ask.listingId), placeOf(ask.listingId)]);
   const rep = viewingRep();
   const booked = await bookViewing({
     taskId: ask.taskId,
@@ -199,14 +326,15 @@ async function book(ask: ViewingTimeAsk, at: Date, brokerPhone: string, place: s
     share: broker?.agreement ? null : { none: true },
   });
   const title = broker?.title ?? (await titleIn(ask.taskId, ask.listingId));
+  const spot = meetingSpot(place, loc, "en");
   const repPhone = process.env.MKAN_REP_WHATSAPP?.trim();
   if (repPhone) {
     await sendMessages(
-      [{ kind: "TENANT_ALERT", to: plus(repPhone), body: viewingRepMessage({ rep, title, ref: `K${ask.listingId}`, en: viewingLabel(at, "en"), place, tenant: ask.tenant, broker: brokerPhone, share: shareLabel(broker?.agreement ?? null) }), label: `rep-viewing:v${booked.visitId}` }],
+      [{ kind: "TENANT_ALERT", to: plus(repPhone), body: viewingRepMessage({ rep, title, ref: `K${ask.listingId}`, en: viewingLabel(at, "en"), place: spot?.text ?? null, tenant: ask.tenant, broker: brokerPhone, share: shareLabel(broker?.agreement ?? null) }), label: `rep-viewing:v${booked.visitId}` }],
       `Viewing booked → ${rep}`,
     ).catch(() => {});
   }
-  let text = viewingBookedBrokerMessage({ en: viewingLabel(at, "en"), rep, askPlace: !place });
+  let text = viewingBookedBrokerMessage({ en: viewingLabel(at, "en"), rw: viewingLabel(at, "rw"), rep, askPlace: !place, lang: broker?.lang, spot });
   if (!broker?.agreement && broker?.brokerId) {
     // Mkan's terms ride on the booking's message. Kept as a terms ask already "handed" (deal-intro.ts
     // answerTerms): their YES records the agreement and prices the open deal; nothing else is sent.
@@ -215,50 +343,41 @@ async function book(ask: ViewingTimeAsk, at: Date, brokerPhone: string, place: s
     await writeState(termsAskKey(brokerPhone), value).catch(() => {});
     text += `\nOne more thing, for the tenants Mkan brings you: we ask ${Math.round(MKAN_TERMS.pct * 100)}% of your commission when they sign, and no viewing fee for them. Reply YES if that works for you.`;
   }
-  return text;
+  return { text, visitId: booked.visitId, dealId: booked.dealId };
 }
+
+// ── the broker speaks ────────────────────────────────────────────────────────────────────────────
 
 export type ViewingReply = { listingId: number; outcome: "booked" | "countered" | "rep-cannot" | "what-time" | "asked-when" | "taken" | "place"; reply: string | null };
 
-/**
- * A broker's message, read as the answer to an open time ask. Null when no ask is waiting on this number,
- * the message is the answer to a newer "is this available?", or it is not an answer the rules can place
- * (a person reads it in #mkan, as before).
- */
-export async function brokerViewingReply(phone: string, text: string, at: Date, opts: { newestAvailabilityAskAt?: Date | null; quoted?: boolean } = {}): Promise<ViewingReply | null> {
-  const pending = await pendingFor(phone, at);
-  // The newest ask still waiting on the broker (one with the tenant is the tenant's to answer).
-  const ask = pending.filter((a) => a.stage !== "tenant").sort((a, b) => Date.parse(b.askedAt) - Date.parse(a.askedAt))[0];
-  if (!ask) return null;
-  // A "yes" to a newer "is this available?" is that ask's answer, not the time's.
-  if (!opts.quoted && opts.newestAvailabilityAskAt && opts.newestAvailabilityAskAt.getTime() > Date.parse(ask.askedAt)) return null;
-  const r = readBrokerViewingReply(text, at);
-  if (!r) return null;
+/** A broker's reading, placed on the ask it answers. */
+async function applyBrokerReading(phone: string, ask: ViewingTimeAsk, pending: ViewingTimeAsk[], r: BrokerViewingReply, at: Date): Promise<SettleResult | null> {
   const rest = without(pending, ask);
   const title = await titleIn(ask.taskId, ask.listingId);
   const tenantLabel = (d: Date) => viewingLabel(d, ask.lang);
+  const out = (outcome: SettleOutcome, reply: string | null, more: Partial<SettleResult> = {}): SettleResult => ({ outcome, listingId: ask.listingId, reply, ...more });
 
   if (r.kind === "taken") {
     await savePending(phone, rest);
     // The home is gone: every tenant waiting on it hears so, and it leaves /find (broker.ts applyAnswer).
     await applyAnswer(ask.listingId, "RENTED", phone, "typed");
     await db.waState.deleteMany({ where: { key: viewingAskKey(ask.tenant) } }).catch(() => {});
-    return { listingId: ask.listingId, outcome: "taken", reply: takenAckMessage(ask.taskId) };
+    return out("taken", takenAckMessage(ask.taskId));
   }
   if (r.kind === "yes" && ask.stage === "time") {
     await savePending(phone, rest);
-    const reply = await book(ask, new Date(ask.at), phone, r.place);
-    return { listingId: ask.listingId, outcome: "booked", reply };
+    const booked = await book(ask, new Date(ask.at), phone, r.place);
+    return out("booked", booked.text, { visitId: booked.visitId, dealId: booked.dealId });
   }
   if (r.kind === "day" || (r.kind === "yes" && ask.stage === "when")) {
     // A day with no hour, or a yes to "which day and time?": the hour is still missing.
     await savePending(phone, withAsk(rest, { ...ask, stage: "when", askedAt: at.toISOString(), chasedAt: undefined }));
-    return { listingId: ask.listingId, outcome: "what-time", reply: viewingWhatTimeBrokerMessage() };
+    return out("what-time", viewingWhatTimeBrokerMessage());
   }
   if (r.kind === "no") {
     await savePending(phone, withAsk(rest, { ...ask, stage: "when", askedAt: at.toISOString(), chasedAt: undefined }));
     await sendMessages([{ kind: "TENANT_ALERT", to: ask.tenant, body: brokerCannotMessage(ask.lang, { title, label: tenantLabel(new Date(ask.at)) }), label: ALERT_LABEL.brokerAnswer }], `Viewing time → tenant (home #${ask.listingId})`);
-    return { listingId: ask.listingId, outcome: "asked-when", reply: viewingWhenBrokerMessage() };
+    return out("asked-when", viewingWhenBrokerMessage());
   }
   if (r.kind === "time") {
     // Their time: can Mkan's person be there? If not, the nearest one that works goes back to them.
@@ -270,34 +389,99 @@ export async function brokerViewingReply(phone: string, text: string, at: Date, 
       const alt = nextSlot(r.at, askable, busy, hours, opts);
       if (!alt) return null;
       await savePending(phone, withAsk(rest, { ...ask, at: alt.toISOString(), stage: "time", askedAt: at.toISOString(), chasedAt: undefined }));
-      return { listingId: ask.listingId, outcome: "rep-cannot", reply: viewingRepCannotMessage({ en: viewingLabel(r.at, "en"), alt: viewingLabel(alt, "en") }) };
+      return out("rep-cannot", viewingRepCannotMessage({ en: viewingLabel(r.at, "en"), alt: viewingLabel(alt, "en") }));
     }
     await savePending(phone, withAsk(rest, { ...ask, at: r.at.toISOString(), stage: "tenant", askedAt: at.toISOString(), chasedAt: undefined }));
     await setTenantAsk(ask.tenant, { taskId: ask.taskId, listingId: ask.listingId, offered: r.at.toISOString(), offeredBy: "broker" });
-    void dealEvent("TIME_PROPOSED", { listingId: ask.listingId, taskId: ask.taskId, tenantPhone: ask.tenant, viewingAt: r.at, note: "the broker's other time, asked of the tenant" });
+    void dealEvent("TIME_PROPOSED", { listingId: ask.listingId, taskId: ask.taskId, tenantPhone: ask.tenant, viewingAt: r.at, note: "the broker's time, asked of the tenant" });
     await sendMessages([{ kind: "TENANT_ALERT", to: ask.tenant, body: counterOfferMessage(ask.lang, { title, label: tenantLabel(r.at) }), label: ALERT_LABEL.brokerAnswer }], `Viewing time → tenant (home #${ask.listingId})`);
-    return { listingId: ask.listingId, outcome: "countered", reply: viewingCounterAckMessage(viewingLabel(r.at, "en")) };
+    return out("countered", viewingCounterAckMessage(viewingLabel(r.at, "en")));
   }
   return null;
 }
 
 /**
- * The tenant said yes to the time on the table. The broker's own time is booked at once (they offered it);
- * the nearest time Mkan could do goes to the broker like any other. Null when nothing was on the table.
+ * The tenant whose viewing of this broker's home is still to be arranged — the broker said yes to a home in
+ * their chat, nothing is booked, and the line may write to them. The broker named a time on their own (after
+ * a yes, or in answer to the two times the ask offered): it is that tenant's to accept.
  */
-export async function acceptOffered(ask: ViewingAsk, tenant: string, lang: DealLang, now = new Date()): Promise<string | null> {
+async function waitingTenantOf(phone: string, listingId: number | undefined, at: Date): Promise<ViewingTimeAsk | null> {
+  const rows = await db.brokerRequest
+    .findMany({
+      where: { status: "AVAILABLE", respondedAt: { gte: new Date(at.getTime() - 14 * 86_400_000) }, taskId: { not: null }, broker: { phoneNumber: { in: variants(phone) } }, ...(listingId ? { listingId } : {}) },
+      orderBy: { respondedAt: "desc" },
+      take: 5,
+      select: { taskId: true, listingId: true },
+    })
+    .catch(() => [] as { taskId: string | null; listingId: number }[]);
+  for (const row of rows) {
+    if (!row.taskId) continue;
+    const task = await db.agentTask.findUnique({ where: { id: row.taskId }, select: { locale: true, profile: { select: { waPhone: true } } } }).catch(() => null);
+    const tenant = task?.profile?.waPhone;
+    if (!tenant) continue;
+    const gate = await gateForTask(row.taskId).catch(() => null);
+    if (!gate?.ok) continue;
+    const booked = await db.listingVisit.findFirst({ where: { taskId: row.taskId, listingId: row.listingId, outcome: "Scheduled" }, select: { id: true } }).catch(() => null);
+    if (booked) continue;
+    return { taskId: row.taskId, listingId: row.listingId, tenant: plus(tenant), lang: langOf(task?.locale), at: at.toISOString(), askedAt: at.toISOString(), stage: "when" };
+  }
+  return null;
+}
+
+async function brokerInner(ev: Extract<SettleEvent, { by: "broker" }>): Promise<SettleResult | null> {
+  const { phone, at } = ev;
+  const reading: BrokerViewingReply | null = "slot" in ev ? { kind: "time", at: ev.slot } : readBrokerViewingReply(ev.text, at);
+  if (!reading) return null;
+  const pending = await pendingFor(phone, at);
+  // The newest ask still waiting on the broker (one with the tenant is the tenant's to answer).
+  let ask = pending.filter((a) => a.stage !== "tenant" && (!ev.listingId || a.listingId === ev.listingId)).sort((a, b) => Date.parse(b.askedAt) - Date.parse(a.askedAt))[0];
+  if (ask) {
+    // A "yes" to a newer "is this available?" is that ask's answer, not the time's.
+    if ("text" in ev && !ev.quoted && ev.newestAvailabilityAskAt && ev.newestAvailabilityAskAt.getTime() > Date.parse(ask.askedAt)) return null;
+    return applyBrokerReading(phone, ask, pending, reading, at);
+  }
+  // No time is on the table: only a time the broker names themselves is placed (a "yes" alone answers something else).
+  if (reading.kind !== "time") return null;
+  const waiting = await waitingTenantOf(phone, ev.listingId, at);
+  if (!waiting) return null;
+  ask = waiting;
+  return applyBrokerReading(phone, ask, withAsk(pending, ask), reading, at);
+}
+
+/**
+ * A broker's message, read as the answer to an open time ask. Null when no ask is waiting on this number,
+ * the message is the answer to a newer "is this available?", or it is not an answer the rules can place
+ * (a person reads it in #mkan, as before). Legacy wrapper over `settleViewingTime`.
+ */
+export async function brokerViewingReply(phone: string, text: string, at: Date, opts: { newestAvailabilityAskAt?: Date | null; quoted?: boolean } = {}): Promise<ViewingReply | null> {
+  const r = await brokerInner({ by: "broker", phone, text, at, ...opts });
+  return r && r.outcome !== "fallback" ? ({ listingId: r.listingId, outcome: r.outcome, reply: r.reply } as ViewingReply) : null;
+}
+
+// ── the tenant says yes ──────────────────────────────────────────────────────────────────────────
+
+async function acceptInner(ask: ViewingAsk, tenant: string, lang: DealLang, now: Date): Promise<SettleResult | null> {
   if (!ask.offered) return null;
   const at = new Date(ask.offered);
   if (Number.isNaN(at.getTime()) || at.getTime() <= now.getTime()) return null;
-  if (ask.offeredBy !== "broker") return proposeViewingAuto({ ...ask, offered: undefined, offeredBy: undefined }, at, tenant, lang, now);
+  if (ask.offeredBy !== "broker") return proposeInner({ ...ask, offered: undefined, offeredBy: undefined }, at, tenant, lang, now, false);
   const broker = await yesBrokerOf(ask.listingId);
   if (!broker) return null;
   const pending = await pendingFor(broker.phone, now);
   const mine: ViewingTimeAsk = pending.find((a) => a.taskId === ask.taskId && a.listingId === ask.listingId) ?? { taskId: ask.taskId, listingId: ask.listingId, tenant: plus(tenant), lang, at: ask.offered, askedAt: now.toISOString(), stage: "tenant" };
   await savePending(broker.phone, without(pending, mine));
-  const text = await book({ ...mine, at: ask.offered }, at, broker.phone, null);
-  await sendMessages([{ kind: "BROKER_REQUEST", to: broker.phone, body: text, label: brokerLabel("booked", ask.listingId), brokerId: broker.brokerId }], `Viewing booked → broker (home #${ask.listingId})`);
-  return bookingNowMessage(lang, viewingLabel(at, lang));
+  const booked = await book({ ...mine, at: ask.offered }, at, broker.phone, null);
+  await sendMessages([{ kind: "BROKER_REQUEST", to: broker.phone, body: booked.text, label: brokerLabel("booked", ask.listingId), brokerId: broker.brokerId }], `Viewing booked → broker (home #${ask.listingId})`);
+  return { outcome: "booked", listingId: ask.listingId, reply: bookingNowMessage(lang, viewingLabel(at, lang)), visitId: booked.visitId, dealId: booked.dealId };
+}
+
+/**
+ * The tenant said yes to the time on the table. The broker's own time is booked at once (they offered it);
+ * the nearest time Mkan could do goes to the broker like any other. Null when nothing was on the table.
+ * Legacy wrapper over `settleViewingTime`.
+ */
+export async function acceptOffered(ask: ViewingAsk, tenant: string, lang: DealLang, now = new Date()): Promise<string | null> {
+  return (await acceptInner(ask, tenant, lang, now))?.reply ?? null;
 }
 
 /**

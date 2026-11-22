@@ -18,6 +18,7 @@
  * records the answers (parseTermFlags), which the tenant's confirmation then
  * restates (confirmedTermsLine).
  */
+import { zoneLabel } from "@/lib/geo/kigali-zones";
 import type { CostEstimate, CostLine } from "./cost";
 
 export type DealLang = "en" | "ar" | "rw";
@@ -66,6 +67,9 @@ const months = (q: number | undefined, lang: DealLang) => {
   if (lang === "rw") return n === 0.5 ? "igice cy'ukwezi" : n === 1 ? "ukwezi kumwe" : `amezi ${n}`;
   return n === 0.5 ? "half a month" : n === 1 ? "1 month" : `${n} months`;
 };
+
+/** The sheet without its last line, "when can you come?": for a tenant who already named a time (deal.ts prepareDealSheet). */
+export const stripTimeAsk = (sheet: string) => sheet.split("\n").slice(0, -1).join("\n");
 
 /** The sheet itself, in the tenant's language; ends by asking when they can come. */
 export function dealSheetMessage(f: DealFacts, lang: DealLang): string {
@@ -513,14 +517,45 @@ export function confirmedTermsLine(lang: DealLang, t: BrokerTerms, moveIn: [numb
   return `Confirmed with the broker: ${parts.join(", ")}.${total ? ` To move in: ${total}.` : ""}`;
 }
 
-export function viewingConfirmedMessage(lang: DealLang, v: { title: string; label: string; place: string | null; rep: string; terms?: string | null }): string {
-  const where = v.place ? ` · ${v.place}` : "";
-  const body =
-    lang === "ar"
-      ? `تم تأكيد المعاينة: «${v.title}»، ${v.label}${where}. ستلتقي الوسيط و${v.rep} من مكان هناك. أحضر هويتك؛ إن أعجبك المنزل نكتب العقد ونوقّعه في اليوم نفسه. أخبرنا هنا إن تغيّر شيء.`
-      : lang === "rw"
-        ? `Gusura byemejwe: "${v.title}", ${v.label}${where}. Uzahura na komisiyoneri na ${v.rep} wo muri Mkan. Uzane indangamuntu; niba uyikunze, amasezerano yandikwa agasinywa uwo munsi. Tubwire hano niba hari icyahindutse.`
-        : `Viewing confirmed: "${v.title}", ${v.label}${where}. You'll meet the broker and ${v.rep} from Mkan there. Bring your ID; if you like it, the lease is written and signed the same day. Tell us here if anything changes.`;
+/** The languages the line writes in (language.ts); a confirmation is worded in each. fr and sw are machine-written (native review sheet). */
+export type ConfirmLang = DealLang | "fr" | "sw";
+
+/**
+ * Where the tenant meets: the place the broker named, else the home's map pin (`pin`, a link), else its
+ * area. Chosen by viewing-loop-pure.ts meetingSpot; here it is only worded.
+ */
+export type MeetingSpot = { kind: "place" | "pin" | "area"; text: string } | null;
+
+/**
+ * The tenant's booking confirmation (2026-11-22): the time, where, who meets them, and what is still open.
+ * "{rep} from Mkan will meet you there" is true: Mkan's person is at every viewing. `toConfirm`: no term was
+ * confirmed with the broker (the booking was settled by the line, not typed with `--advance=…`), so the
+ * months up front, deposit and utilities are settled at the viewing.
+ */
+export function viewingConfirmedMessage(
+  lang: ConfirmLang,
+  v: { title: string; label: string; place: string | null; rep: string; terms?: string | null; spot?: MeetingSpot; toConfirm?: boolean },
+): string {
+  const spot: MeetingSpot = v.spot ?? (v.place ? { kind: "place", text: v.place } : null);
+  const where = spot ? ` · ${spot.text}` : "";
+  const open = !!v.toConfirm && !v.terms;
+  let body: string;
+  switch (lang) {
+    case "ar":
+      body = `تم تأكيد المعاينة: «${v.title}»، ${v.label}${where}. ${v.rep} من مكان سيلتقي بك هناك مع الوسيط. أحضر هويتك؛ إن أعجبك المنزل نكتب العقد ونوقّعه في اليوم نفسه.${open ? " ما لم يؤكده الوسيط بعد (المقدّم والتأمين والخدمات) نحسمه في المعاينة." : ""} أخبرنا هنا إن تغيّر شيء.`;
+      break;
+    case "rw":
+      body = `Gusura byemejwe: "${v.title}", ${v.label}${where}. ${v.rep} wo muri Mkan azakubonera aho hantu hamwe na komisiyoneri. Uzane indangamuntu; niba uyikunze, amasezerano yandikwa agasinywa uwo munsi.${open ? " Ibitaremezwa na komisiyoneri (amafaranga ya mbere, ingwate, amazi n'amashanyarazi) tubyemeza mu gusura." : ""} Tubwire hano niba hari icyahindutse.`;
+      break;
+    case "fr":
+      body = `Visite confirmée : « ${v.title} », ${v.label}${where}. ${v.rep} de Mkan vous y retrouvera avec le courtier. Apportez votre pièce d'identité ; si le logement vous plaît, le bail est rédigé et signé le jour même.${open ? " Ce que le courtier n'a pas encore confirmé (avance, caution, eau et électricité), nous le réglons pendant la visite." : ""} Dites-nous ici si quelque chose change.`;
+      break;
+    case "sw":
+      body = `Ziara imethibitishwa: "${v.title}", ${v.label}${where}. ${v.rep} wa Mkan atakutana nawe hapo pamoja na dalali. Lete kitambulisho; ukipenda nyumba, mkataba huandikwa na kusainiwa siku hiyohiyo.${open ? " Yasiyothibitishwa bado na dalali (kodi ya mbele, amana, maji na umeme) tutayamaliza wakati wa ziara." : ""} Tuambie hapa kama kuna mabadiliko.`;
+      break;
+    default:
+      body = `Viewing confirmed: "${v.title}", ${v.label}${where}. ${v.rep} from Mkan will meet you there, with the broker. Bring your ID; if you like it, the lease is written and signed the same day.${open ? " Whatever the broker hasn't confirmed yet (months up front, deposit, water and electricity) we settle at the viewing." : ""} Tell us here if anything changes.`;
+  }
   return v.terms ? `${body}\n${v.terms}` : body;
 }
 
@@ -612,4 +647,90 @@ export function afterViewingNotText(lang: DealLang): string {
   if (lang === "ar") return "شكراً لإخبارك. ما الذي يجب أن يتغير: المنطقة، الميزانية أم الحجم؟ اكتبه وسأبحث لك عن منازل أخرى.";
   if (lang === "rw") return "Murakoze kumbwira. Ni iki gikwiye guhinduka: agace, amafaranga cyangwa ubunini? Bwandike ngushakire izindi nzu.";
   return "Thanks for telling me. What should change — the area, the budget or the size? Write it and I'll look for other homes.";
+}
+
+/** A home offered in a message (a follow-up, or "not this one" after a viewing): one line each. */
+export type OfferHome = { id: number; bedrooms: number | null; zone: string | null; rent: number | null };
+
+/** "2-bedroom in Kabeza, RWF 350,000 a month (K6711)" — in the tenant's language; fr and sw are machine-written. */
+export function offerHomeLine(lang: ConfirmLang, h: OfferHome): string {
+  const code = `K${h.id}`;
+  const rent = h.rent != null ? rwf(h.rent) : null;
+  const place = (l: "en" | "ar" | "rw") => zoneLabel(h.zone, l);
+  // "2-bedroom in Kimironko, RWF 350,000 a month (K6711)": what it is, where, what it costs.
+  const line = (what: string, where: string | null, price: string | null) => `${what}${where ? ` ${where}` : ""}${price ? `, ${price}` : ""} (${code})`;
+  switch (lang) {
+    case "ar":
+      return line(h.bedrooms ? `${h.bedrooms} غرف نوم` : "منزل", place("ar") ? `في ${place("ar")}` : null, rent ? `${rent} في الشهر` : null);
+    case "rw":
+      return line(h.bedrooms ? `${h.bedrooms} ibyumba` : "inzu", place("rw") ? `muri ${place("rw")}` : null, rent ? `${rent} ku kwezi` : null);
+    case "fr":
+      return line(h.bedrooms ? `${h.bedrooms} chambre${h.bedrooms > 1 ? "s" : ""}` : "logement", place("en") ? `à ${place("en")}` : null, rent ? `${rent} par mois` : null);
+    case "sw":
+      return line(h.bedrooms ? `vyumba ${h.bedrooms}` : "nyumba", place("en") ? `${place("en")}` : null, rent ? `${rent} kwa mwezi` : null);
+    default:
+      return line(h.bedrooms ? `${h.bedrooms}-bedroom` : "home", place("en") ? `in ${place("en")}` : null, rent ? `${rent} a month` : null);
+  }
+}
+
+/**
+ * "Not for me" after the viewing: the line goes on by itself (2026-11-22). Two next-best homes when the brief
+ * finds any (never one already shown or taken), else the question that unblocks the search.
+ */
+export function afterViewingNotHomesText(lang: ConfirmLang, homes: readonly OfferHome[]): string {
+  if (homes.length === 0) return afterViewingNotText(lang === "ar" || lang === "rw" ? lang : "en");
+  const list = homes.map((h) => `• ${offerHomeLine(lang, h)}`).join("\n");
+  const first = homes[0]!;
+  switch (lang) {
+    case "ar":
+      return `شكراً لإخبارك. وجدت لك ${homes.length > 1 ? "منزلين آخرين" : "منزلاً آخر"}:\n${list}\nأرسل رمز المنزل، مثل K${first.id}، وأتأكد من وسيطه أنه متاح، أو أخبرني بما تريد تغييره.`;
+    case "rw":
+      return `Murakoze kumbwira. Nabonye ${homes.length > 1 ? "izindi nzu ebyiri" : "indi nzu"}:\n${list}\nOhereza kode, nka K${first.id}, ndebe na komisiyoneri wayo niba igihari, cyangwa umbwire icyo wahindura.`;
+    case "fr":
+      return `Merci de me le dire. J'ai trouvé ${homes.length > 1 ? "deux autres logements" : "un autre logement"} :\n${list}\nEnvoyez le code, par exemple K${first.id}, et je vérifie auprès de son courtier qu'il est libre, ou dites-moi ce qu'il faut changer.`;
+    case "sw":
+      return `Asante kwa kuniambia. Nimepata ${homes.length > 1 ? "nyumba nyingine mbili" : "nyumba nyingine"}:\n${list}\nTuma nambari, kama K${first.id}, nami nitamuuliza dalali kama bado iko wazi, au niambie cha kubadilisha.`;
+    default:
+      return `Thanks for telling me. I found ${homes.length > 1 ? "two others" : "another one"}:\n${list}\nSend the code, like K${first.id}, and I'll check with its broker that it's free, or tell me what to change.`;
+  }
+}
+
+/**
+ * "I'll take it" after the viewing: the move-in terms and the one question left — which day to sign. Nobody
+ * is promised: the line asks the broker for the day itself (tenantSigningBrokerMessage), Mkan's person is
+ * there for the signing as he was at the viewing. `moveIn`: rent + what is paid at signing, from the Deal.
+ */
+export function afterViewingLikedText(lang: DealLang, v: { title: string; rent: number | null; upfront: number | null; rep: string }): string {
+  const money = v.rent != null ? { rent: rwf(v.rent), up: v.upfront != null ? rwf(v.upfront) : null } : null;
+  if (lang === "ar")
+    return [`رائع! أخبرت الوسيط أنك تريد «${v.title}».`, money ? `الإيجار ${money.rent} في الشهر${money.up ? `، وما يُدفع عند التوقيع نحو ${money.up}` : ""}.` : null, `أي يوم يناسبك للتوقيع؟ أرسل اليوم والوقت، وأتفق عليه مع الوسيط. ${v.rep} من مكان يحضر معك.`].filter(Boolean).join(" ");
+  if (lang === "rw")
+    return [`Ni byiza! Nabwiye komisiyoneri ko ushaka "${v.title}".`, money ? `Ubukode ni ${money.rent} ku kwezi${money.up ? `, kandi mu gusinya wishyura hafi ${money.up}` : ""}.` : null, `Ni uwuhe munsi wasinyaho? Ohereza umunsi n'isaha, ndabyumvikanaho na komisiyoneri. ${v.rep} wo muri Mkan azaba ahari.`].filter(Boolean).join(" ");
+  return [`Great! I've told the broker you want "${v.title}".`, money ? `Rent is ${money.rent} a month${money.up ? `, and about ${money.up} is paid when you sign` : ""}.` : null, `Which day suits you to sign? Send a day and time and I'll fix it with the broker. ${v.rep} from Mkan will be there, as at the viewing.`].filter(Boolean).join(" ");
+}
+
+/** The tenant named a day to sign: noted, and asked of the broker. */
+export function signingNotedText(lang: DealLang, v: { title: string; label: string; rep: string }): string {
+  if (lang === "ar") return `تمام: التوقيع على «${v.title}» ${v.label}. أطلب من الوسيط تأكيده الآن، وسأراسلك هنا فور رده. ${v.rep} من مكان سيحضر.`;
+  if (lang === "rw") return `Yego: gusinya "${v.title}" ${v.label}. Ndimo kubisaba komisiyoneri, nzakwandikira hano akimara gusubiza. ${v.rep} wo muri Mkan azaba ahari.`;
+  return `Got it: signing for "${v.title}" on ${v.label}. I'm asking the broker to confirm it now and I'll message you here as soon as they answer. ${v.rep} from Mkan will be there.`;
+}
+
+/** To the broker: the tenant named a day to sign. */
+export function signingBrokerMessage(v: { title: string; ref: string; label: string; rep: string }): string {
+  return `Mkan here. Our tenant would like to sign for ${v.title} (${v.ref}) on ${v.label}. Does that work? Reply 1 = yes, or send another day and time. ${v.rep} from Mkan will be there.`;
+}
+
+/** After the rep or the lease already closed the deal: the tenant's late "1 / 2" changes nothing. */
+export function afterViewingClosedText(lang: DealLang): string {
+  if (lang === "ar") return "شكراً لك! ما اتفقنا عليه محفوظ، وسنكمل معك من هناك.";
+  if (lang === "rw") return "Murakoze! Ibyo twumvikanyeho birakomeje, tuzakomeza uko byagenze.";
+  return "Thank you! What we agreed stands, and we carry on from there.";
+}
+
+/** The viewing's "which day to sign?" asked again, when the answer was neither a day nor a time. */
+export function signingAskAgainText(lang: DealLang, title: string): string {
+  if (lang === "ar") return `أي يوم ووقت يناسبك لتوقيع «${title}»؟ مثلاً «غداً 10 صباحاً».`;
+  if (lang === "rw") return `Ni uwuhe munsi n'isaha wasinyaho "${title}"? Urugero: "ejo saa yine".`;
+  return `Which day and time suits you to sign for "${title}"? For example "tomorrow 10am".`;
 }

@@ -6,32 +6,39 @@ import "server-only";
  *
  *   broker says available ─► sendDealSheet: the WhatsApp tenant gets the deal
  *                            (deal-pure.ts) and is asked when they can come
- *   tenant names a time    ─► proposeViewing: a #mkan card for the person from
- *                            Mkan, who confirms the time with the broker and
- *                            asks the terms the tenant was shown as usual
- *   that person books it   ─► bookViewing (`pnpm deal:book … --advance=3 …`): a
- *                            three-party ListingVisit + a Deal on the confirmed
- *                            terms, and the tenant's confirmation restating them
- *   the hourly cron        ─► viewingReminders: 24 h and 2 h before, and "how did
- *                            it go?" after
+ *   tenant names a time    ─► proposeViewing → viewing-loop.ts settleViewingTime: the line asks the
+ *                            broker itself, books on their yes, and tells both sides (2026-11-22: no
+ *                            person agrees a time by hand any more). The #mkan card is an FYI left only
+ *                            for what the line may not do (automation off, a team number, a web tenant)
+ *   the line books it      ─► bookViewing — the ONE booking path, also `pnpm deal:book …` for a person
+ *                            who must book by hand: a three-party ListingVisit + a Deal, and the
+ *                            tenant's confirmation (time, where, who meets them)
+ *   the hourly cron        ─► viewingReminders: 24 h and 2 h before, and "how did it go?" after
+ *   "how did it go?"       ─► recordAfterViewing: liked → the terms and the day to sign, the broker told;
+ *                            not → the next best homes. The rep's words (signed / paid / lost) override
  *   the lease is signed    ─► setDealStatus (`pnpm deal:status`)
- *
- * The person confirms with the broker by hand on purpose: a broker hears from
- * a person, not a machine, about the time they show their home.
  */
 import { db } from "@/lib/db";
 import { waLink } from "../../../scripts/crm/public-links";
 import { viewingRep } from "./broker-message";
+import { replyLang } from "./language";
+import { meetingSpot, viewingFallbackCard } from "./viewing-loop-pure";
+import { newHomesFor } from "./follow-homes";
 import { dealEvent } from "./deal-event";
 import { repAfterMessage, repReminderMessage } from "./loop-schedule-pure";
 import { repDigits } from "./rep-word-pure";
 import { longStayCost, type CostEstimate, type ListingTerms } from "./cost";
 import { lastTenantAt, TENANT_REACH, tenantNumber } from "./broker-gate";
 import {
+  afterViewingClosedText,
+  afterViewingLikedText,
   afterViewingMessage,
-  afterViewingNotText,
+  afterViewingNotHomesText,
   afterViewingUnsureText,
-  afterViewingWantText,
+  signingAskAgainText,
+  signingBrokerMessage,
+  signingNotedText,
+  stripTimeAsk,
   askedOnLabel,
   confirmedTermsLine,
   dealCommand,
@@ -49,6 +56,8 @@ import {
   viewingProposedMessage,
   viewingReminderMessage,
   kigaliDayWord,
+  readViewingTime,
+  type ConfirmLang,
   type BrokerTerms,
   type DealLang,
   type ShareAgreement,
@@ -76,7 +85,16 @@ const ASK_TTL_MS = 72 * 3_600_000;
  * tenant's yes — the broker's other time (`offeredBy` "broker"), or the nearest one Mkan's person can be
  * there ("mkan") — viewing-loop.ts.
  */
-export type ViewingAsk = { taskId: string; listingId: number; at: string; proposedAt?: string; offered?: string; offeredBy?: "broker" | "mkan" };
+export type ViewingAsk = {
+  taskId: string;
+  listingId: number;
+  at: string;
+  proposedAt?: string;
+  offered?: string;
+  offeredBy?: "broker" | "mkan";
+  /** A time the tenant named before any broker confirmed the home: asked of the broker the moment they say yes (prepareDealSheet). */
+  wanted?: string;
+};
 
 const langOf = (l: string): DealLang => (l === "ar" || l === "rw" ? l : "en");
 
@@ -138,7 +156,17 @@ export async function prepareDealSheet(task: DealTask, listingId: number): Promi
     },
     lang,
   );
+  const kept = await readViewingAsk(to);
   await openViewingAsk(to, task.id, listingId);
+  // The tenant already named a time (before this yes): the sheet drops its "when can you come?", and the line asks
+  // the broker for that time now, so the one message tells them both things (viewing-loop.ts settleViewingTime).
+  const wanted = kept && kept.taskId === task.id && kept.listingId === listingId && kept.wanted ? new Date(kept.wanted) : null;
+  if (wanted && wanted.getTime() > Date.now()) {
+    const settled = await import("./viewing-loop")
+      .then((m) => m.settleViewingTime({ by: "tenant", tenant: to, ask: { taskId: task.id, listingId, at: new Date().toISOString() }, lang, at: wanted, skipAvailability: true }))
+      .catch(() => null);
+    if (settled && settled.outcome !== "fallback" && settled.reply) return { to, body: `${stripTimeAsk(body)}\n\n${settled.reply}` };
+  }
   return { to, body };
 }
 
@@ -167,20 +195,20 @@ export async function readViewingAsk(address: string | null | undefined): Promis
 }
 
 /**
- * The tenant named a time. Since 2026-11-14 the line asks the broker itself and books on their yes
- * (viewing-loop.ts proposeViewingAuto) — no viewing was ever booked while a person had to phone the broker
- * and type `pnpm deal:book`. Where the line cannot (MKAN_VIEWING_AUTO=off, broker sends paused, a team
- * number, no broker who said yes with a number, a share required and none agreed) the person from Mkan gets
- * it in #mkan with both chats one tap away, as before. Dynamic import: viewing-loop.ts imports this file.
+ * The tenant named a time. The line settles it itself (viewing-loop.ts settleViewingTime): it asks the broker,
+ * books on their yes, and tells both sides — no viewing was ever booked while a person had to phone the broker
+ * and type `pnpm deal:book`. Where it may not (MKAN_VIEWING_AUTO=off, broker sends paused, a team number, a web
+ * tenant, a share required and none agreed) one FYI card goes to #mkan that says why and what to run, with both
+ * chats one tap away. Dynamic import: viewing-loop.ts imports this file.
  */
 export async function proposeViewing(ask: ViewingAsk, at: Date, tenant: string, lang: DealLang): Promise<string> {
-  const auto = await import("./viewing-loop")
-    .then((m) => m.proposeViewingAuto(ask, at, tenant, lang))
+  const settled = await import("./viewing-loop")
+    .then((m) => m.settleViewingTime({ by: "tenant", tenant, ask, lang, at }))
     .catch((err) => {
       console.warn(`[agent] viewing auto: ${(err as Error).message}`);
       return null;
     });
-  if (auto) return auto;
+  if (settled && settled.outcome !== "fallback" && settled.reply) return settled.reply;
   const label = viewingLabel(at, lang);
   const [home, brokers, task] = await Promise.all([
     db.listing.findUnique({ where: { id: ask.listingId }, select: { title: true, location: { select: { address: true, neighbourhood: true, sector: true } } } }),
@@ -198,16 +226,15 @@ export async function proposeViewing(ask: ViewingAsk, at: Date, tenant: string, 
   // says what is on record, or asks for it with the time.
   const agreed = brokers.map((b) => agreementOf(b.broker)).find((a) => a != null) ?? null;
   const share = shareLabel(agreed);
-  // The deal sheet told the tenant the usual and unstated terms get confirmed: the person asks them with the time.
+  const why = settled?.why ?? "sends-off";
+  const command = `\`pnpm deal:book --task=${ask.taskId} --listing=${ask.listingId} --at=${iso} --place="…"\` + what they said, e.g. \`--advance=3 --deposit=1 --commission=10 --water=yes --power=no --lease=12 --move-in=YYYY-MM-DD${share ? "" : " --share-pct=50"}\`; ask: ${termsToAsk(shown).join(" · ")}${share ? "" : " · Mkan's share"}`;
   await postSlackCard(
-    `📅 *Viewing asked* — ${home?.title ?? `#${ask.listingId}`} (K${ask.listingId}), *${viewingLabel(at, "en")}*\n` +
-      `Tenant: <${waLink(tenant, "")}|${tenant}> · Broker: ${broker}\n` +
-      `💵 Mkan's share: ${share ? `${share} (agreed)` : "*none agreed — ask it with the time*"}\n` +
-      `${viewingRep()}: confirm the time with the broker and ask: ${termsToAsk(shown).join(" · ")}${share ? "" : " · Mkan's share"}. Then\n` +
-      `\`pnpm deal:book --task=${ask.taskId} --listing=${ask.listingId} --at=${iso} --place="…"\` + what they said, e.g. \`--advance=3 --deposit=1 --commission=10 --water=yes --power=no --lease=12 --move-in=YYYY-MM-DD${share ? "" : " --share-pct=50"}\``,
+    `${viewingFallbackCard({ title: home?.title ?? `#${ask.listingId}`, ref: `K${ask.listingId}`, label: viewingLabel(at, "en"), why, tenant: `<${waLink(tenant, "")}|${tenant}>`, broker, command, rep: viewingRep() })}\n` +
+      `💵 Mkan's share: ${share ? `${share} (agreed)` : "*none agreed*"}`,
   ).catch(() => {});
-  const decided = await offerViewingDecision(ask, at, agreed, shown?.period === "month" ? Math.round(shown.headline) : null).catch(() => false);
-  await trace(ask.taskId, "viewing_proposed", "waiting_person", { listingId: ask.listingId, at: iso, decision: decided });
+  // The one-tap Yes on /monetize is kept for the two cases where a choice is really his: the automation is off, or no share is agreed.
+  const decided = why === "auto-off" || why === "share-required" ? await offerViewingDecision(ask, at, agreed, shown?.period === "month" ? Math.round(shown.headline) : null).catch(() => false) : false;
+  await trace(ask.taskId, "viewing_proposed", "waiting_person", { listingId: ask.listingId, at: iso, decision: decided, fallback: why });
   const value = { ...ask, proposedAt: iso } satisfies ViewingAsk;
   await db.waState.update({ where: { key: askKey(tenant) }, data: { value } }).catch(() => {});
   return viewingProposedMessage(lang, label);
@@ -292,7 +319,7 @@ export async function bookViewing(input: {
   /** Mkan's share as the broker agreed it now (`--share-pct=` / `--share-rwf=`), or `none` (`--no-share`). */
   share?: (ShareAgreement & { none?: boolean }) | null;
 }): Promise<{ visitId: number; dealId: string; share: number | null; economics: string }> {
-  const task = await db.agentTask.findUnique({ where: { id: input.taskId }, select: { id: true, locale: true, shortlist: true, ...TENANT_REACH } });
+  const task = await db.agentTask.findUnique({ where: { id: input.taskId }, select: { id: true, locale: true, shortlist: true, messages: true, ...TENANT_REACH } });
   if (!task) throw new Error(`no task ${input.taskId}`);
   const item = ((task.shortlist as ShortlistItem[] | null) ?? []).find((s) => s.id === input.listingId);
   // The broker who said yes earns the deal — after a hand-on that is not the first poster (2026-11-06).
@@ -404,13 +431,21 @@ export async function bookViewing(input: {
     share,
   });
   if (tenant) {
-    const lang = langOf(task.locale);
-    const body = viewingConfirmedMessage(lang, {
+    // The tenant's language, as they write it (language.ts: en, rw, fr, ar, sw), else the chat's stored one.
+    const chatLang: ConfirmLang = replyLang(((task.messages as { text?: string | null; role?: string }[] | null) ?? []).filter((m) => m && typeof m === "object"), (["en", "rw", "fr", "ar", "sw"] as const).find((l) => l === task.locale) ?? "en");
+    const labelLang = langOf(chatLang);
+    const where = await db.listing
+      .findUnique({ where: { id: input.listingId }, select: { location: { select: { latitude: true, longitude: true, neighbourhood: true, sector: true } } } })
+      .catch(() => null);
+    const body = viewingConfirmedMessage(chatLang, {
       title: item?.title?.trim() || `#${input.listingId}`,
-      label: viewingLabel(input.at, lang),
+      label: viewingLabel(input.at, labelLang),
       place: input.place?.trim() || null,
+      // The broker's spot, else the home's map pin, else its area.
+      spot: meetingSpot(input.place, where?.location ?? null, chatLang),
       rep,
-      terms: terms ? confirmedTermsLine(lang, terms, moveIn) : null,
+      terms: terms ? confirmedTermsLine(labelLang, terms, moveIn) : null,
+      toConfirm: true,
     });
     await sendMessages([{ kind: "TENANT_ALERT", to: tenant, body, label: ALERT_LABEL.viewingConfirmed }], `Viewing confirmed → tenant (home #${input.listingId})`);
     await db.waState.delete({ where: { key: askKey(tenant) } }).catch(() => {});
@@ -609,13 +644,29 @@ export async function afterViewingFor(address: string | null | undefined, now = 
       scheduledFor: { gte: new Date(now.getTime() - 75 * 3_600_000), lte: now },
     },
     orderBy: { scheduledFor: "desc" },
-    select: { id: true, listingId: true, taskId: true, listing: { select: { title: true } }, deal: { select: { id: true, status: true } } },
+    select: { id: true, listingId: true, taskId: true, scheduledFor: true, listing: { select: { title: true } }, deal: { select: { id: true, status: true, rentMonthly: true, upfront: true } } },
   });
 }
 
+/** The broker of the deal and where to write to them, or null (no number, or they opted out). */
+async function dealBroker(dealId: string | undefined): Promise<{ id: string; phone: string } | null> {
+  if (!dealId) return null;
+  const broker = await db.deal
+    .findUnique({ where: { id: dealId }, select: { broker: { select: { id: true, phones: true, whatsapp: true, optOut: true } } } })
+    .then((d) => d?.broker ?? null)
+    .catch(() => null);
+  const phone = broker && !broker.optOut ? (broker.whatsapp ?? broker.phones[0] ?? null) : null;
+  return broker && phone ? { id: broker.id, phone: `+${phone.replace(/\D/g, "")}` } : null;
+}
+
 /**
- * Write the answer to "how did the viewing go?": want → the deal stays VIEWED and the person who closes
- * deals hears it now; not → the deal is LOST; anything else → a person reads it. Returns the reply.
+ * Write the answer to "how did the viewing go?" and drive the deal forward by itself (2026-11-22):
+ *   liked → the deal goes VIEWED, the broker is told, and the tenant gets the move-in terms and is asked which
+ *           day to sign; the day they name is asked of the broker (the same answer, a message later);
+ *   not   → the deal is LOST and the line offers the next best homes from the tenant's brief, or asks what to change;
+ *   other → the question again, plainly (or "which day to sign?" once they said they want it).
+ * Mkan's person is told each step as an FYI — nothing waits for him. His words override: a deal he already
+ * closed (signed / paid / lost) is never moved back by a late "1" or "2". Returns the reply.
  */
 export async function recordAfterViewing(
   v: NonNullable<Awaited<ReturnType<typeof afterViewingFor>>>,
@@ -623,52 +674,78 @@ export async function recordAfterViewing(
   text: string,
   phone: string,
   lang: DealLang,
+  now = new Date(),
 ): Promise<string> {
   const title = scrubTitle(v.listing.title) || `#${v.listingId}`;
-  const stamp = new Date().toISOString().slice(0, 16).replace("T", " ");
+  const stamp = now.toISOString().slice(0, 16).replace("T", " ");
+  const rep = viewingRep();
+  const repPhone = process.env.MKAN_REP_WHATSAPP?.trim();
+  const fyi = (body: string, what: string) => (repPhone ? sendMessages([{ kind: "TENANT_ALERT", to: `+${repPhone.replace(/\D/g, "")}`, body, label: `rep-${what}:v${v.id}` }], `${what} → ${rep}`).catch(() => {}) : Promise.resolve());
   await db.listingVisit.update({ where: { id: v.id }, data: { outcome: "Completed" } }).catch(() => {});
+  const status = v.deal?.status;
+  // His words (signed / paid / lost K…) win: the deal is closed, the tenant's late answer changes nothing.
+  if (status === "SIGNED" || status === "PAID" || status === "LOST") {
+    await postSlackCard(`💬 FYI — ${phone} answered the viewing question for *K${v.listingId}* (${title}) after you closed it (${status}); the line left the deal as it is.\n> ${text.slice(0, 300)}`).catch(() => {});
+    return afterViewingClosedText(lang);
+  }
+
+  // The tenant already said they want it: what they write now is read as the day to sign.
+  if (status === "VIEWED" && verdict !== "not") {
+    const when = readViewingTime(text, now);
+    if (when && "at" in when && when.at.getTime() > now.getTime()) {
+      const label = viewingLabel(when.at, lang);
+      const broker = await dealBroker(v.deal?.id);
+      if (broker) {
+        await sendMessages(
+          [{ kind: "BROKER_REQUEST", to: broker.phone, body: signingBrokerMessage({ title, ref: `K${v.listingId}`, label: viewingLabel(when.at, "en"), rep }), label: `auto-signing:v${v.id}`, brokerId: broker.id }],
+          `Signing day → broker (K${v.listingId})`,
+        ).catch(() => {});
+      }
+      if (v.deal) await db.deal.update({ where: { id: v.deal.id }, data: { notes: `tenant wants it; signing asked for ${viewingLabel(when.at, "en")} (WhatsApp ${stamp})` } }).catch(() => {});
+      await fyi(`FYI ${rep}: ${phone} would sign for ${title} (K${v.listingId}) on ${viewingLabel(when.at, "en")}. The line asked the broker${broker ? "" : " — no number on file, it could not"}; you are there.`, "signing");
+      await postSlackCard(`✍️ FYI — signing for *K${v.listingId}* (${title}) asked for ${viewingLabel(when.at, "en")}; ${broker ? "the line asked the broker to confirm" : "no broker number on file, nothing sent"}.`).catch(() => {});
+      return signingNotedText(lang, { title, label, rep });
+    }
+    if (verdict === "want") return afterViewingLikedText(lang, { title, rent: v.deal?.rentMonthly ?? null, upfront: v.deal?.upfront ?? null, rep });
+    await postSlackCard(`💬 FYI — ${phone} wrote about signing *K${v.listingId}* (${title}); the line asked them for a day:\n> ${text.slice(0, 400)}`).catch(() => {});
+    return signingAskAgainText(lang, title);
+  }
+
   if (verdict === "want") {
-    if (v.deal && v.deal.status === "VIEWING_BOOKED") {
+    const first = !v.deal || v.deal.status === "VIEWING_BOOKED";
+    if (v.deal && first) {
       await db.deal.update({ where: { id: v.deal.id }, data: { status: "VIEWED", notes: `tenant wants it (WhatsApp ${stamp})` } });
       void dealEvent("VIEWED", { listingId: v.listingId, taskId: v.taskId, dealId: v.deal.id, tenantPhone: phone, note: "the tenant wants it" });
     }
-    // The broker hears it now, from the line; the person who was at the viewing arranges the signing.
-    const rep = viewingRep();
-    const broker = v.deal
-      ? await db.deal
-          .findUnique({ where: { id: v.deal.id }, select: { broker: { select: { id: true, phones: true, whatsapp: true, optOut: true } } } })
-          .then((d) => d?.broker ?? null)
-          .catch(() => null)
-      : null;
-    const brokerPhone = broker && !broker.optOut ? (broker.whatsapp ?? broker.phones[0] ?? null) : null;
-    if (brokerPhone && broker) {
+    // The broker hears it now, from the line, once.
+    const broker = await dealBroker(v.deal?.id);
+    if (first && broker) {
       await sendMessages(
-        [{ kind: "BROKER_REQUEST", to: `+${brokerPhone.replace(/\D/g, "")}`, body: tenantWantsBrokerMessage({ title, ref: `K${v.listingId}`, rep }), label: "auto-tenant-wants", brokerId: broker.id }],
+        [{ kind: "BROKER_REQUEST", to: broker.phone, body: tenantWantsBrokerMessage({ title, ref: `K${v.listingId}`, rep }), label: "auto-tenant-wants", brokerId: broker.id }],
         `Tenant wants the home → broker (K${v.listingId})`,
       ).catch(() => {});
     }
-    const repPhone = process.env.MKAN_REP_WHATSAPP?.trim();
-    if (repPhone) {
-      await sendMessages(
-        [{ kind: "TENANT_ALERT", to: `+${repPhone.replace(/\D/g, "")}`, body: `${rep}, the tenant ${phone} wants to take ${title} (K${v.listingId}) after the viewing. Arrange the signing with the broker${brokerPhone ? ` (${brokerPhone})` : ""}.`, label: `rep-wants:v${v.id}` }],
-        `Tenant wants the home → ${rep}`,
-      ).catch(() => {});
+    if (first) {
+      await fyi(`FYI ${rep}: the tenant ${phone} wants to take ${title} (K${v.listingId}) after the viewing. The line sent them the move-in terms and asked for a signing day, and told the broker${broker ? ` (${broker.phone})` : " (no number on file: the line could not)"}. Say \`signed K${v.listingId}\` when it is signed.`, "wants");
+      await postSlackCard(`🎉 FYI — ${phone} wants to take *K${v.listingId}* (${title}) after the viewing. The line told the ${broker ? "broker" : "broker? no number on file — nothing sent"}, sent the tenant the terms and asked which day to sign.${v.deal ? `\nWhen it is signed: \`${dealCommand(v.deal.id, "signed")}\`` : ""}\n> ${text.slice(0, 300)}`).catch(() => {});
     }
-    await postSlackCard(
-      `🎉 ${phone} wants to take *K${v.listingId}* (${title}) after the viewing — ${brokerPhone ? "the line told the broker" : "no broker number on file, so call them"}; ${rep} arranges the signing.${v.deal ? `\nThen: \`${dealCommand(v.deal.id, "signed")}\`` : ""}\n> ${text.slice(0, 300)}`,
-    ).catch(() => {});
-    return afterViewingWantText(lang, title, rep);
+    return afterViewingLikedText(lang, { title, rent: v.deal?.rentMonthly ?? null, upfront: v.deal?.upfront ?? null, rep });
   }
+
   if (verdict === "not") {
     if (v.deal && (v.deal.status === "VIEWING_BOOKED" || v.deal.status === "VIEWED")) {
       await db.deal.update({ where: { id: v.deal.id }, data: { status: "LOST", notes: `not for the tenant (WhatsApp ${stamp})` } });
       void dealEvent("LOST", { listingId: v.listingId, taskId: v.taskId, dealId: v.deal.id, tenantPhone: phone, note: "the tenant passed on it after the viewing" });
     }
-    await postSlackCard(`👎 ${phone} passed on *K${v.listingId}* (${title}) after the viewing.\n> ${text.slice(0, 300)}`).catch(() => {});
-    return afterViewingNotText(lang);
+    // The line goes on by itself: the next best homes from their brief, never one already shown or taken.
+    const task = v.taskId ? await db.agentTask.findUnique({ where: { id: v.taskId }, select: { id: true, profileId: true, requirements: true, shortlist: true } }).catch(() => null) : null;
+    const homes = task ? await newHomesFor(task, 2) : [];
+    await postSlackCard(`👎 FYI — ${phone} passed on *K${v.listingId}* (${title}) after the viewing. ${homes.length ? `The line offered ${homes.length} other home${homes.length > 1 ? "s" : ""} (${homes.map((h) => `K${h.id}`).join(", ")}).` : "No other home fits their brief: the line asked what to change."}\n> ${text.slice(0, 300)}`).catch(() => {});
+    return afterViewingNotHomesText(lang, homes);
   }
+
   // Neither a yes nor a no: the question again, plainly — never "someone from Mkan will answer you here"
-  // (nobody did). #mkan gets what they wrote, for the person who was at the viewing.
-  await postSlackCard(`💬 ${phone} wrote about the viewing of *K${v.listingId}* (${title}); the line asked them again whether they want it:\n> ${text.slice(0, 400)}`).catch(() => {});
+  // (nobody did). #mkan gets what they wrote, as an FYI.
+  await postSlackCard(`💬 FYI — ${phone} wrote about the viewing of *K${v.listingId}* (${title}); the line asked them again whether they want it:\n> ${text.slice(0, 400)}`).catch(() => {});
   return afterViewingUnsureText(lang, title);
 }

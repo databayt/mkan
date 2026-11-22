@@ -40,7 +40,7 @@ export async function feedStep(step: DealStep, ctx: DealEventCtx, key: string): 
   // Dynamic: deal-intro.ts imports deal.ts, which calls dealEvent.
   const paid = env === "live" || env === "digest" || env === "off" ? 0 : await import("./deal-intro").then((m) => m.introCounts()).then((c) => c.paid).catch(() => 0);
   if (feedMode(paid) !== "live") return;
-  const label = feedLabel(key, step, ctx.viewingAt);
+  const label = feedLabel(key, step, ctx.viewingAt, ctx.n);
   // Never the same line twice: a step can be reported by two paths (a pick by digit and by K-code), a retry, a re-run.
   const sent = await db.outboundMessage.findFirst({ where: { label }, select: { id: true } });
   if (sent) return;

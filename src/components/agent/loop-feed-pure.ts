@@ -27,8 +27,8 @@ export function feedMode(paid: number, env: string | undefined = process.env.MKA
 export const FEED_SKIPS: readonly DealStep[] = ["VIEWING_BOOKED"];
 
 /** The outbox label of a feed line: one per deal and step (a new proposed time is a new step). Never sent twice. */
-export function feedLabel(key: string, step: DealStep, viewingAt?: Date | null): string {
-  return `loop:${key}:${step}${step === "TIME_PROPOSED" && viewingAt ? `:${Math.round(viewingAt.getTime() / 60_000)}` : ""}`;
+export function feedLabel(key: string, step: DealStep, viewingAt?: Date | null, n?: number | null): string {
+  return `loop:${key}:${step}${step === "TIME_PROPOSED" && viewingAt ? `:${Math.round(viewingAt.getTime() / 60_000)}` : ""}${step === "STALLED" && n && n > 1 ? `:${n}` : ""}`;
 }
 
 /** What the line knows about the home and the tenant, looked up by loop-feed.ts. */
@@ -83,8 +83,12 @@ function describe(step: DealStep, ctx: DealEventCtx, ref: string): { what: strin
       return { what: `PAID${ctx.share ? ` — Mkan's share ${shortRwf(ctx.share)} is in` : ""}`, next: "nothing: the deal is done" };
     case "LOST":
       return { what: `lost${ctx.note?.trim() ? `: ${ctx.note.trim().slice(0, 120)}` : ""}`, next: "the tenant is offered another home" };
-    case "STALLED":
-      return { what: `stalled${note}`, next: `your call: write to them yourself (take ${ref} pauses the line in that chat)` };
+    case "STALLED": {
+      // An FYI of what the line did, never a task (2026-11-22): a quiet tenant is followed up by the line itself, twice at most.
+      const own = ctx.note?.trim() ? ctx.note.trim().slice(0, 140) : null;
+      if (ctx.n) return { what: `quiet${own ? ` — ${own}` : ""}`, next: `nothing to do, the line is on it (write to them yourself any time; ${ref} taken pauses the line in that chat)` };
+      return { what: `stalled${note}`, next: `the line picks it up on their next message (write to them yourself any time; ${ref} taken pauses the line in that chat)` };
+    }
   }
 }
 

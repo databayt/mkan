@@ -38,6 +38,27 @@
     - a first-contact classifier;
     - takeover context.
 
+## 2026-11-22 (b) — Autonomous booking, stalls, and the after-viewing step (plan step 3)
+
+- **Why:** 0 viewings booked in 60 days; the loop still ended at a person (a 📅 card to agree a time by hand, "your call:
+  write to them yourself" on a stall). Abdout: the loop finishes the work by itself, never tells a tenant a person will
+  speak to them, he attends every viewing, no approvals.
+- **Built (not committed, not deployed):**
+  - `viewing-loop.ts settleViewingTime` — one function both sides call (contract at the top of the file). Tenant names
+    a time / says yes; broker answers, names a time unprompted, or picks a slot. Rep hours, 90 min gap, off days; a clash
+    offers the next free time to whoever waits. A home no broker confirmed is asked "is it free?" first and the tenant's
+    time is kept (`ViewingAsk.wanted`) until their yes (deal.ts prepareDealSheet).
+  - Booking confirmations in the tenant's language (en/rw/fr/ar/sw) and the broker's (EN/FR/RW): time, the home's pin
+    (never the Kigali-centre default) or area, "Osman from Mkan will meet you there"; terms the broker did not state are
+    "settled at the viewing". The 📅 card is an FYI left for what the line may not do.
+  - Stalls: up to two follow-ups the line sends itself (≈20 h: a new matching home, else one question; ≈3 days: a soft
+    close); never after STOP, within 12 h of Abdout typing, in a personal chat, or to a team number. The feed line is an FYI.
+  - After the viewing: liked → terms + "which day to sign?" and the broker is told; the day they name is asked of the
+    broker; not → the next best homes. His words (signed / paid / lost) still override.
+- **Owed:** the broker agent calls `settleViewingTime({by:"broker", …})` after recording an availability yes with a time;
+  the driver agent's `book_viewing` already goes through `proposeViewing` (now `settleViewingTime`); fr/sw native review of
+  the new strings; deploy.
+
 ## 2026-11-21 — The chat funnel: sell a viewing, not a list
 
 - **Why:** Abdout: "The chat block is the bottleneck. It's not intuitive, not smart, doesn't sound human,

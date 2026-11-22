@@ -1,34 +1,35 @@
 import "server-only";
 
 /**
- * The quiet-tenant sweep (quiet-nudge-pure.ts has the rule), run hourly with the broker loop. Real WhatsApp
- * tenants only: never the team's numbers, Abdout's own contacts, a tenant who said STOP, or a chat a person
- * is typing in. The chat is touched when the nudge goes, so the tenant's answer ("2") continues it instead
- * of opening a new one (a WhatsApp chat is one search for 24 h, whatsapp-chat.ts).
+ * The quiet-tenant sweep (quiet-nudge-pure.ts has the rules), run hourly with the broker loop. The line follows
+ * up a tenant who went quiet under the homes by itself — at most twice, spaced, each useful (a new matching home
+ * from their brief, else one question; then a soft close). Real WhatsApp tenants only: never the team's numbers,
+ * Abdout's own contacts, a tenant who said STOP, or a chat a person typed in within HUMAN_HOLD_MS. The chat is
+ * touched when a follow-up goes, so the tenant's answer ("K6711", "2") continues it instead of opening a new one
+ * (a WhatsApp chat is one search for 24 h, whatsapp-chat.ts). Mkan's person gets an FYI per follow-up.
  */
 import { db } from "@/lib/db";
-import { HUMAN_HOLD_MS } from "../../../scripts/wa/tenant-pure";
-import { inSendWindow, phoneKey } from "../../../scripts/wa/outbox-pure";
+import { phoneKey, inSendWindow } from "../../../scripts/wa/outbox-pure";
 import { lastTenantAt } from "./broker-gate";
-import { awakeMs } from "./broker-rank";
 import { testPhones } from "./broker-sends";
 import { dealEvent } from "./deal-event";
-import type { DealLang } from "./deal-pure";
+import { newHomesFor } from "./follow-homes";
+import { replyLang, type Lang } from "./language";
 import { isPersonal } from "./personal";
-import { QUIET_LABEL, QUIET_MAX_MS, quietKey, quietNudgeMessage, quietNudgeOn, quietVerdict } from "./quiet-nudge-pure";
+import { followUpBlock, followUpMessage, followUpNote, planFollowUp, QUIET_LABEL, QUIET_MAX_MS, quietKey, quietNudgeOn, quietVerdict, sentCount, type QuietState } from "./quiet-nudge-pure";
+import { coerceRequirements } from "./requirements";
 import type { AgentMessage, ShortlistItem } from "./types";
 import { readState, writeState } from "./wa-state";
-import { MAX_HOMES } from "./whatsapp-format";
 import { sendMessages } from "./whatsapp";
 
-/** The nudges sent this pass. */
+/** The follow-ups sent this pass. */
 export async function quietSweep(now = new Date()): Promise<number> {
   if (!quietNudgeOn() || !inSendWindow(now)) return 0;
   const tasks = await db.agentTask.findMany({
     where: { status: "DONE", updatedAt: { gte: new Date(now.getTime() - QUIET_MAX_MS) }, profile: { waPhone: { not: null } } },
     orderBy: { updatedAt: "desc" },
     take: 100,
-    select: { id: true, locale: true, messages: true, shortlist: true, profileId: true, profile: { select: { waPhone: true } } },
+    select: { id: true, locale: true, messages: true, shortlist: true, requirements: true, profileId: true, profile: { select: { waPhone: true } } },
   });
   if (tasks.length === 0) return 0;
   const [tests, stopped, human] = await Promise.all([
@@ -50,27 +51,33 @@ export async function quietSweep(now = new Date()): Promise<number> {
     const to = t.profile?.waPhone;
     if (!to || !newest.has(t.id)) continue;
     const digits = phoneKey(to);
-    if (tests.has(digits) || stoppedSet.has(digits)) continue;
     const typed = human[digits] ? Date.parse(human[digits]!) : 0;
-    if (typed && now.getTime() - typed < HUMAN_HOLD_MS) continue;
-    if (await isPersonal(digits).catch(() => true)) continue;
+    // The cheap holds first; the personal list is a database read, so it comes only for a chat that could be sent to.
+    if (followUpBlock({ test: tests.has(digits), stopped: stoppedSet.has(digits), humanAt: typed ? new Date(typed) : null, personal: false, now })) continue;
     const messages = (t.messages as unknown as AgentMessage[] | null) ?? [];
     const shortlist = (t.shortlist as unknown as ShortlistItem[] | null) ?? [];
     // A message answered under the homes leaves only a trace row: the tenant's last word may be newer than the chat's.
     const trace = await db.agentEvent.findFirst({ where: { taskId: t.id }, orderBy: { seq: "desc" }, select: { createdAt: true } });
     const wrote = lastTenantAt(messages);
     const lastActivity = wrote && trace ? new Date(Math.max(wrote.getTime(), trace.createdAt.getTime())) : (wrote ?? null);
-    const done = await readState<{ at?: string }>(quietKey(t.id), {}).catch(() => ({}) as { at?: string });
-    const verdict = quietVerdict({ messages, shortlist, lastActivity, now, awakeMs: lastActivity ? awakeMs(lastActivity, now) : 0, nudged: !!done.at, inWindow: true });
-    if (verdict !== "nudge") continue;
-    // Recorded first: a failed send is not retried, the nudge is never sent twice.
-    await writeState(quietKey(t.id), { at: now.toISOString() });
-    const lang: DealLang = t.locale === "ar" || t.locale === "rw" ? t.locale : "en";
-    await sendMessages([{ kind: "TENANT_ALERT", to, body: quietNudgeMessage(lang, Math.min(MAX_HOMES, shortlist.length)), label: QUIET_LABEL }], "Quiet tenant nudge");
+    const state = await readState<QuietState>(quietKey(t.id), {}).catch(() => ({}) as QuietState);
+    const verdict = quietVerdict({ messages, shortlist, lastActivity, now, sent: sentCount(state), lastSentAt: state.at ? new Date(state.at) : null, inWindow: true });
+    if (verdict !== "first" && verdict !== "second") continue;
+    if (followUpBlock({ test: false, stopped: false, humanAt: null, personal: await isPersonal(digits).catch(() => true), now })) continue;
+
+    // The tenant's own language: what they write (language.ts), else the chat's stored one.
+    const lang: Lang = replyLang(messages as { text?: string | null; role?: string }[], (["en", "rw", "fr", "ar", "sw"] as const).find((l) => l === t.locale) ?? "en");
+    const brief = coerceRequirements(t.requirements);
+    const homes = verdict === "first" ? await newHomesFor({ id: t.id, profileId: t.profileId, requirements: t.requirements, shortlist: t.shortlist }, 2) : [];
+    const plan = planFollowUp(verdict, homes, { maxPrice: brief.maxPrice ?? null, area: !!(brief.neighbourhood || brief.neighbourhoods?.length || brief.district || brief.area) });
+    // Recorded first: a failed send is not retried, a follow-up is never sent twice.
+    const count = sentCount(state) + 1;
+    await writeState(quietKey(t.id), { at: now.toISOString(), n: count } satisfies QuietState);
+    await sendMessages([{ kind: "TENANT_ALERT", to, body: followUpMessage(lang, plan), label: count === 1 ? QUIET_LABEL : `${QUIET_LABEL}-2` }], `Quiet tenant follow-up ${count} of 2`);
     await db.agentTask.update({ where: { id: t.id }, data: { updatedAt: now } }).catch(() => {});
-    // A tenant gone quiet is a stalled deal: Mkan's person hears it with the home they last looked at.
+    // An FYI for Mkan's person, never a task: what the line did, and that it is still on it.
     const home = shortlist.find((s) => s.availability === "confirmed" || s.availability === "asked") ?? shortlist[0];
-    if (home) void dealEvent("STALLED", { listingId: home.id, taskId: t.id, tenantPhone: to, note: "tenant went quiet, the line nudged them once" });
+    if (home) void dealEvent("STALLED", { listingId: home.id, taskId: t.id, tenantPhone: to, note: followUpNote(verdict, plan), n: count });
     n += 1;
   }
   return n;

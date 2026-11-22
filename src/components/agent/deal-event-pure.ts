@@ -36,6 +36,8 @@ export interface DealEventCtx {
   note?: string | null;
   /** How long the step took, in hours (a broker's answer). */
   hours?: number | null;
+  /** Which time this step is reported (a stall the line followed up twice): each one is its own feed line. */
+  n?: number | null;
   /** Money on SIGNED / PAID, RWF. */
   rent?: number | null;
   share?: number | null;

@@ -42,7 +42,12 @@ describe("a feed line", () => {
     expect(feedLine("SIGNED", { listingId: 5811, share: 9000 }, facts)).toContain("Mkan's share 9k");
     expect(feedLine("SIGNED", { listingId: 5811, share: 9000 }, facts)).toContain("paid K5811");
     expect(feedLine("LOST", { listingId: 5811, note: "taken" }, facts)).toContain("lost: taken");
-    expect(feedLine("STALLED", { listingId: 5811, note: "tenant went quiet" }, facts)).toContain("take K5811");
+    // A stall is an FYI of what the line did — never a task for Abdout (2026-11-22).
+    const stalled = feedLine("STALLED", { listingId: 5811, note: "first follow-up sent: 2 new Kabeza homes (K6711, K6720), no reply yet", n: 1 }, facts)!;
+    expect(stalled).toContain("quiet — first follow-up sent: 2 new Kabeza homes");
+    expect(stalled).toContain("nothing to do, the line is on it");
+    expect(stalled).not.toMatch(/your call/);
+    expect(feedLine("STALLED", { listingId: 5811, note: "the agent could not answer (timeout)" }, facts)).not.toMatch(/your call/);
   });
 
   it("works with nothing known about the home", () => {
@@ -53,6 +58,9 @@ describe("a feed line", () => {
 describe("the label that stops a second send", () => {
   it("is one per deal and step, and a new time is a new step", () => {
     expect(feedLabel("t1:5811", "PICKED")).toBe("loop:t1:5811:PICKED");
+    // Two follow-ups to one quiet tenant are two lines, not one swallowed as a repeat.
+    expect(feedLabel("t1:5811", "STALLED", null, 1)).toBe("loop:t1:5811:STALLED");
+    expect(feedLabel("t1:5811", "STALLED", null, 2)).toBe("loop:t1:5811:STALLED:2");
     const a = feedLabel("t1:5811", "TIME_PROPOSED", new Date("2026-11-17T08:00:00Z"));
     const b = feedLabel("t1:5811", "TIME_PROPOSED", new Date("2026-11-17T09:00:00Z"));
     expect(a).not.toBe(b);

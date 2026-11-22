@@ -15,9 +15,11 @@
  * booked — but no step waits for one to type. Pure: the writes are viewing-loop.ts.
  */
 import { firstSendableAt, KIGALI_OFFSET_MS } from "../../../scripts/wa/outbox-pure";
+import { KIGALI, haversineKm } from "@/lib/geo/rwanda-places";
+import { zoneLabel } from "@/lib/geo/kigali-zones";
 import { greetName } from "./broker-message";
 import { parseBrokerReply } from "./broker-reply";
-import { readViewingTime, type DealLang } from "./deal-pure";
+import { readViewingTime, type ConfirmLang, type DealLang, type MeetingSpot } from "./deal-pure";
 import { readTermsReply } from "./intro-pure";
 
 const HOUR_MS = 3_600_000;
@@ -199,9 +201,57 @@ export function viewingChaseMessage(v: { name?: string | null; lang?: string | n
   return `${hi(v.name, "Muraho")}, ni Mkan nanone: gusura ${v.rw} birashoboka? Subiza 1 = yego, cyangwa wohereze ikindi gihe.\n\n${hi(v.name, "Hi")}, a quick reminder from Mkan: can you do the viewing on ${v.en}? Reply 1 = yes, or send another time.`;
 }
 
-/** Their yes: it is booked. `askPlace` when they did not say where to meet. */
-export function viewingBookedBrokerMessage(v: { en: string; rep: string; askPlace: boolean }): string {
-  return `Confirmed, thank you: ${v.en}. ${v.rep} from Mkan will be there with the tenant.${v.askPlace ? " Where should they meet you?" : ""} Murakoze!`;
+// ── where to meet ────────────────────────────────────────────────────────────────────────────────
+
+/** What a home's Location row says about where it is (the columns, as the select reads them). */
+export type PlaceFacts = { latitude: number | null; longitude: number | null; neighbourhood?: string | null; sector?: string | null } | null | undefined;
+
+/**
+ * Is the pin a real one? A broker lead with no pin is stored at the centre of Kigali (tiktok-mirror.ts), and
+ * (0, 0) is "unset": neither tells a tenant where to go, so neither is ever sent as a map pin.
+ */
+export function realPin(lat: number | null | undefined, lng: number | null | undefined): boolean {
+  if (lat == null || lng == null || !Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+  if (Math.abs(lat) < 1e-6 && Math.abs(lng) < 1e-6) return false;
+  return haversineKm(lat, lng, KIGALI.lat, KIGALI.lng) > 0.15;
+}
+
+/** A link that opens the pin in any maps app. */
+export const mapLink = (lat: number, lng: number) => `https://maps.google.com/?q=${lat.toFixed(6)},${lng.toFixed(6)}`;
+
+/**
+ * Where the tenant is told to meet: the place the broker named, else the home's own pin (a link), else its
+ * area ("Kabeza"). Null when none is known — the broker is then asked where.
+ */
+export function meetingSpot(place: string | null | undefined, loc: PlaceFacts, lang: ConfirmLang = "en"): MeetingSpot {
+  const named = place?.trim();
+  if (named) return { kind: "place", text: named };
+  if (loc && realPin(loc.latitude, loc.longitude)) return { kind: "pin", text: `📍 ${mapLink(loc.latitude!, loc.longitude!)}` };
+  const area = zoneLabel(loc?.neighbourhood ?? loc?.sector ?? null, lang === "ar" || lang === "rw" ? lang : "en");
+  return area ? { kind: "area", text: area } : null;
+}
+
+// ── the booking, to the broker and to Mkan's person ──────────────────────────────────────────────
+
+/**
+ * Their yes: it is booked — in the broker's language (EN / FR / RW, Broker.preferredLanguage), with the time,
+ * where Mkan's person will be (the pin or area of the home when they did not name a spot) and who comes.
+ * `askPlace`: they did not say where to meet, so the message asks. Kinyarwanda goes first with English
+ * under it, as every message to a broker does (broker-message.ts).
+ */
+export function viewingBookedBrokerMessage(v: { en: string; rep: string; askPlace: boolean; lang?: string | null; rw?: string; spot?: MeetingSpot }): string {
+  const spot = v.spot ?? null;
+  const spotEn = !v.askPlace && !spot ? "" : spot?.kind === "place" ? ` Meeting at: ${spot.text}.` : spot?.kind === "pin" ? ` We'll come to the home's pin: ${spot.text}. Tell us if another spot is better.` : spot?.kind === "area" ? ` We'll come to ${spot.text}: where exactly should they meet you?` : " Where should they meet you?";
+  const en = `Confirmed, thank you: ${v.en}. ${v.rep} from Mkan will be there with the tenant.${v.askPlace || spot?.kind === "place" ? spotEn : ""} Murakoze!`;
+  if (isFrench(v.lang)) {
+    const spotFr = !v.askPlace && !spot ? "" : spot?.kind === "place" ? ` Rendez-vous : ${spot.text}.` : spot?.kind === "pin" ? ` Nous viendrons à l'emplacement du logement : ${spot.text}. Dites-nous si un autre endroit est mieux.` : spot?.kind === "area" ? ` Nous viendrons à ${spot.text} : où exactement doivent-ils vous retrouver ?` : " Où doivent-ils vous retrouver ?";
+    return `Confirmé, merci : ${v.en}. ${v.rep} de Mkan sera là avec le locataire.${v.askPlace || spot?.kind === "place" ? spotFr : ""} Merci !`;
+  }
+  if ((v.lang ?? "").toUpperCase() === "RW") {
+    const spotRw = !v.askPlace && !spot ? "" : spot?.kind === "place" ? ` Duhurira: ${spot.text}.` : spot?.kind === "pin" ? ` Tuzaza kuri iyi nzu: ${spot.text}. Mutubwire niba hari ahandi heza.` : spot?.kind === "area" ? ` Tuzaza ${spot.text}: ni hehe neza bagomba kubahurira?` : " Bagomba kubahurira he?";
+    return `Byemejwe, murakoze: ${v.rw ?? v.en}. ${v.rep} wo muri Mkan azaba ahari hamwe n'umukiriya.${v.askPlace || spot?.kind === "place" ? spotRw : ""} Murakoze!\n\n${en}`;
+  }
+  return en;
 }
 
 /** They named another time: it goes to the tenant first. */
@@ -213,13 +263,17 @@ export const viewingWhatTimeBrokerMessage = () => "Thank you. What time on that 
 /** They said no to the time: when, then? */
 export const viewingWhenBrokerMessage = () => "No problem. Which day and time would work for you this week?";
 
-/** To Mkan's person, when a viewing is booked: everything they need to be there. */
+/**
+ * To Mkan's person, when a viewing is booked: everything they need to be there. An FYI — the line settled the
+ * time with both sides and both have their confirmation; nothing waits for him but the walk.
+ */
 export function viewingRepMessage(v: { rep: string; title: string; ref: string; en: string; place: string | null; tenant: string; broker: string | null; share: string | null }): string {
   return [
     `${v.rep}, a viewing is booked: ${v.title} (${v.ref}), ${v.en}${v.place ? `, ${v.place}` : ""}.`,
     `Tenant ${v.tenant}${v.broker ? ` · broker ${v.broker}` : ""}.`,
     v.share ? `Mkan's share: ${v.share} (agreed).` : "No share agreed with this broker yet: settle it at the home (10% of their commission, free viewing).",
     "Confirm the terms there: months up front, deposit, commission, water and electricity.",
+    "FYI: the line agreed this with the tenant and the broker; both have their confirmation. You just go.",
   ].join("\n");
 }
 
@@ -276,3 +330,49 @@ export const sweepPlan = (i: { askedAt: Date; chased: boolean; tenantTold: boole
   if (i.chased && !i.tenantTold && i.awakeMs >= TELL_TENANT_AWAKE_HOURS * HOUR_MS) return "tell-tenant";
   return "wait";
 };
+
+// ── when the home is not yet confirmed, or cannot be settled ─────────────────────────────────────
+
+/** The tenant named a time for a home no broker has confirmed yet: the line checks the home first, then the time. */
+export function checkingHomeFirstMessage(lang: DealLang, label: string): string {
+  if (lang === "ar") return `تمام: ${label}. أتأكد أولاً من الوسيط أن المنزل ما زال متاحاً، ثم أثبّت الموعد وأراسلك هنا.`;
+  if (lang === "rw") return `Yego: ${label}. Ndabanza kubaza komisiyoneri niba inzu igihari, hanyuma nemeze igihe, nzakwandikira hano.`;
+  return `Got it: ${label}. I'm first checking with the broker that the home is still free, then I'll lock the time and message you here.`;
+}
+
+/** No broker the line may write to has this home: it says so and moves to the next one. */
+export function noBrokerMessage(lang: DealLang): string {
+  if (lang === "ar") return "لم أستطع الوصول إلى وسيط هذا المنزل الآن. هل أتحقق من منزل آخر لك؟ أرسل رقمه أو رمزه.";
+  if (lang === "rw") return "Sinabashije kubona komisiyoneri w'iyi nzu ubu. Ushaka ko ndeba indi? Ohereza nimero cyangwa kode yayo.";
+  return "I can't reach the broker of this home right now. Want me to check another one for you? Send its number or code.";
+}
+
+/** The home was taken while the time was being arranged. */
+export function homeGoneMessage(lang: DealLang): string {
+  if (lang === "ar") return "للأسف هذا المنزل أُخذ قبل أن نثبّت الموعد. سأبحث لك عن بديل، أو أخبرني بما تريد تغييره.";
+  if (lang === "rw") return "Birambabaje, iyi nzu yafashwe mbere yo kwemeza igihe. Ndagushakira indi, cyangwa umbwire icyo wahindura.";
+  return "Sorry, that home was taken before the time could be locked. I'll look for a replacement, or tell me what to change.";
+}
+
+/** Why the line did not settle a time itself (settleViewingTime's `fallback`). */
+export type FallbackWhy = "auto-off" | "sends-off" | "test-number" | "no-whatsapp" | "share-required";
+
+/**
+ * The one #mkan card left for a viewing: an FYI that says why the line stopped and what it is doing next, plus the
+ * hand-booking command for the cases where only a person can move it. Never "agree it by hand" as the first word.
+ */
+export function viewingFallbackCard(v: { title: string; ref: string; label: string; why: FallbackWhy; tenant: string; broker: string; command: string; rep: string }): string {
+  const head = `📅 *FYI — viewing asked* — ${v.title} (${v.ref}), *${v.label}*\nTenant: ${v.tenant} · Broker: ${v.broker}`;
+  switch (v.why) {
+    case "auto-off":
+      return `${head}\nThe line's own booking is switched off (MKAN_VIEWING_AUTO=off), so it told the tenant it is confirming and sent the broker nothing. Turn it on and the next time asked is settled by itself; for this one: ${v.command}`;
+    case "sends-off":
+      return `${head}\nBroker sends are paused, so nothing went to the broker. The tenant was told the time is being confirmed. The line settles times by itself again as soon as sends are on; for this one: ${v.command}`;
+    case "test-number":
+      return `${head}\nA team number: a rehearsal, so the line did not message the broker. For a real booking: ${v.command}`;
+    case "no-whatsapp":
+      return `${head}\nA web tenant with no WhatsApp number: the line can't message them, so nothing went to the broker. Their time is on their card in /find. For this one: ${v.command}`;
+    case "share-required":
+      return `${head}\nThe line did not book: enough deals are paid that a share is now required, and this broker has agreed none. It is asking the tenant nothing more. Record the share and the line books the next ask by itself: \`pnpm deal:terms --broker=<id> --share-pct=50\`. For this one: ${v.command}`;
+  }
+}

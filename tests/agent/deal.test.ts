@@ -99,7 +99,7 @@ describe("viewing times in a tenant's words", () => {
 describe("the viewing messages", () => {
   it("confirm, remind and never leave out who comes from Mkan", () => {
     const label = "Mon 2 Nov, 10:00";
-    expect(viewingConfirmedMessage("en", { title: "Flat", label, place: "Kibagabaga, near the market", rep: "Osman" })).toMatch(/You'll meet the broker and Osman from Mkan there/);
+    expect(viewingConfirmedMessage("en", { title: "Flat", label, place: "Kibagabaga, near the market", rep: "Osman" })).toMatch(/Osman from Mkan will meet you there, with the broker/);
     expect(viewingReminderMessage("en", { title: "Flat", label, rep: "Osman" }, "24h")).toMatch(/tomorrow/);
     expect(viewingReminderMessage("rw", { title: "Flat", label, rep: "Osman" }, "2h")).toMatch(/uyu munsi/);
   });

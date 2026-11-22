@@ -118,6 +118,15 @@ Phase 1, inside the existing pipeline (live with the next deploy):
   72 h, at most three asks a week.
 - **Personal chats.** A chat where a person talked long ago and the agent never did is marked personal and left
   alone (STOP and START still work). Mkan's own person writing from their phone is never taken for a tenant.
+- **First contact (2026-11-22).** The line is also Abdout's own phone, so the bot speaks only to someone about housing.
+  `contact-kind.ts` labels each new writer — tenant, broker, landlord, personal, vendor or unknown — from the new lines
+  and the chat's earlier lines on both addresses (Abdout's own typing included), rules first (`contact-kind-pure.ts`),
+  then one Haiku call (lane `agent-classify`) for what is ambiguous. Tenant and landlord get the normal turn; broker goes
+  to the broker path; personal, vendor and unknown get silence (no reply, no "please type", no card). A bare greeting
+  is unknown and is read again when they write more. Our own surfaces (a K-code, `ref:`, ` s:`, mkan.sd) are always
+  tenant. The label is kept in WaState `kind:<address>` as `{kind, why, at, source}` (never message words). Hand
+  controls: `pnpm wa:personal set <address> <kind|clear>` (wins over everything), `list-kinds`; the personal list and
+  `Broker.phones` still win over a guess. Proof: `pnpm wa:classify-backtest --dry` (masked, no text, no sends).
 
 Proof: `pnpm agent:eval-chat` (`scripts/agent/eval-chat*.ts`, `tests/agent/eval-chat-score.test.ts`). The masked real
 chats (18 WhatsApp with both sides, 28 web) are scored on eleven checks: budget, commercial homes, repeated lists,
@@ -198,11 +207,14 @@ broker types "yes" / "taken" (broker-inbox.ts) — or, for asks sent before 10-2
                 move-in total, commission, viewing free because Mkan pays it, water and
                 electricity, next steps) and is asked when they can come; MKAN_VIEWING_REP
                 (Osman) gets a 🔑 #mkan card with both chats
-WhatsApp tenant names a time ("tomorrow 10am", "ejo saa yine") ─► proposeViewing: a 📅 #mkan
-                card — the person agrees the time with the broker by hand and asks what the
-                tenant was shown as usual or unstated (termsToAsk: months up front, deposit,
-                commission, water, electricity, lease length, move-in date)
-person books it ─► `pnpm deal:book --task … --listing … --at … [--advance=3 --deposit=1
+WhatsApp tenant names a time ("tomorrow 10am", "ejo saa yine") ─► viewing-loop.ts settleViewingTime (2026-11-22):
+                the line settles it itself — Mkan's person must be free (MKAN_VIEWING_HOURS/DAYS, the 90 min gap,
+                `off` days), else the nearest free time goes back; the broker is asked (a home nobody confirmed
+                yet is asked "is it free?" first and the time kept); their yes books it, another time goes to the
+                tenant. Both get a short confirmation in their language (time, pin or area, "Osman from Mkan will
+                meet you there"); Abdout gets an FYI. The 📅 #mkan card remains only as an FYI when the line may not
+                (MKAN_VIEWING_AUTO=off, sends paused, a team number, a web tenant, a share required, none agreed)
+(only for those fallbacks) a person books it ─► `pnpm deal:book --task … --listing … --at … [--advance=3 --deposit=1
                 --commission=10 --water=yes --power=no --lease=12 --move-in=YYYY-MM-DD]`:
                 ListingVisit (tenant + broker + rep) and a Deal priced on what the broker
                 said; the terms go on BrokerRequest.terms and on the home (termsSource
@@ -224,6 +236,8 @@ cron /api/cron/broker-requests (hourly) ─► unanswered after 24 h = NO_REPLY 
 | --- | --- |
 | `broker.ts` | request creation + dedup (batched), `pickBroker` (14-day gap), answer fan-out, expiry → a different broker, the 🔑 viewing card, stuck-turn sweep |
 | `broker-message.ts` | the exact words a broker receives, as Mkan (tested): intro once, then short asks; EN/FR/RW |
+| `viewing-loop.ts` | `settleViewingTime`: the one call both sides of a viewing time make (the call contract is at the top of the file); `follow-homes.ts` finds the next best homes from a chat's brief |
+| `quiet-nudge.ts` · `quiet-nudge-pure.ts` | the line's own follow-ups to a quiet tenant: a new home or one question after ~20 h, a soft close after ~3 days, never more than 2, never after STOP / a human hold / personal |
 | `deal.ts` · `deal-pure.ts` · `scripts/agent/deal.ts` | from a yes to a signed lease: the deal sheet, viewing times in the tenant's words, the 📅 card with the terms to ask, `deal:book` / `deal:status` / `deal:list`, reminders; the words are pure and tested (EN/AR/RW) |
 | `broker-sends.ts` · `broker-gate.ts` | the `broker-sends` switch and the team's numbers (WaState); the pure gate: WhatsApp tenant, not a team number, sends `gated` |
 | `home-ref.ts` | a TikTok post's code ("K5808") → that home's exact search; the turn pins it first (`pin`) |
