@@ -11,6 +11,7 @@
 import { districtName } from "@/lib/geo/rwanda-places";
 import { KIGALI_ZONE_BY_SLUG, zoneLabel, zoneNamed } from "@/lib/geo/kigali-zones";
 import { forTenant } from "./home-path";
+import { detectLang } from "./language";
 import { EMPTY_REQUIREMENTS, editDistance, parseAdjustments, parseRequirements } from "./requirements";
 import { asksForToday } from "./today-pure";
 import type { AgentMessage, AgentTaskView, ShortlistItem } from "./types";
@@ -271,20 +272,17 @@ export function isLanguageNeutral(text: string): boolean {
   return NEUTRAL_WORDS.test(words);
 }
 
-/** Words that say a message is English: place names and numbers alone are not. */
-const ENGLISH_WORDS = /\b(?:the|an?|is|are|am|i|you|my|me|for|in|with|and|to|of|need|want|looking|please|hello|hi|hey|how|what|can|do|does|home|house|room|rooms|rent|budget|bedroom|bedrooms|apartment|price|month|furnished|thanks|thank|yes|no)\b/i;
-
-/** The language of a WhatsApp message: Arabic script, a few Kinyarwanda words, else English — or the chat's own when the message says nothing. */
+/**
+ * The language of a WhatsApp message: Arabic script, Kinyarwanda words, else English — or the chat's own when the message
+ * says nothing. Reads through language.ts (rules for en / rw / fr / ar / sw); French and Swahili map to "en" here until
+ * the callers have strings for them — use detectLang() where the caller can answer in them.
+ */
 export function waLang(text: string, prev?: string | null): WaLang {
   if (prev && (prev === "en" || prev === "ar" || prev === "rw") && isLanguageNeutral(text)) return prev;
-  if (/[؀-ۿ]/.test(text)) return "ar";
-  if (/\b(muraho|mwaramutse|mwiriwe|ndashaka|inzu|icyumba|ibyumba|amafaranga|ukwezi|ibihumbi|murakoze|ese|ibishya|munsi)\b/i.test(text)) return "rw";
   // "bite" / "amakuru" (how are you) alone: the whole message is Kinyarwanda, and an English "Hi, this is Mkan" answered it (wa-06, 2026-11-21).
   if (/^\s*(?:bite|amakuru)\s*[?!.]*\s*$/i.test(text)) return "rw";
-  // No Kinyarwanda and no English in it either — "kimironko, remera" after a Kinyarwanda chat (…505, 11-17) —
-  // keeps the chat's language: a list in two languages is the mix tenants saw.
-  if ((prev === "rw" || prev === "ar") && !ENGLISH_WORDS.test(text)) return prev;
-  return "en";
+  const read = detectLang(text, prev === "en" || prev === "ar" || prev === "rw" ? prev : null);
+  return read.lang === "ar" || read.lang === "rw" ? read.lang : "en";
 }
 
 const money = (n: number) => `RWF ${Math.round(n).toLocaleString("en-US")}`;

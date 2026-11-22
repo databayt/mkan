@@ -57,6 +57,7 @@ import { EvolutionError, connectionState, findMessages, isBridgeDown, mediaBytes
 import { handleBrokerReply, repostAskKey, askMsgKey } from "./broker-inbox";
 import { clearBurst, heardIds, mutateState, phonesOfLids, pruneMessageClaims, readState, releaseLease, rememberAlias, takeLease, writeState } from "./wa-state";
 import { answerTenantBurst, noteFromMe, recordSent } from "./wa-tenant";
+import { mediaAsText } from "./media-in";
 import { postSlackCard } from "./whatsapp";
 
 const LEASE = "outbox-lease";
@@ -385,6 +386,7 @@ async function replies(dry: boolean, log: Log, sendsOff: boolean): Promise<numbe
     known.set(a.lid, a.phone);
     await rememberAlias(a.lid, a.phone);
   }
+  const rawById = new Map(records.map((m) => [m.key?.id ?? m.id ?? "", m] as const));
   const all = records
     .map((m, i) => ({
       id: m.key?.id ?? m.id ?? "",
@@ -571,6 +573,16 @@ async function replies(dry: boolean, log: Log, sendsOff: boolean): Promise<numbe
         continue;
       }
       const lid = lines.find((l) => l.lid)?.lid ?? null;
+      // Media the webhook did not get to: read it now (media-in.ts), once, just before the turn.
+      for (const l of seg) {
+        if (!l.media) continue;
+        const raw = rawById.get(l.id);
+        const seen = raw ? await mediaAsText(raw) : null;
+        if (seen) {
+          l.text = [l.text.trim(), seen].filter(Boolean).join(" ");
+          l.media = false;
+        }
+      }
       const outcome = await answerTenantBurst(phone, seg, { lid });
       if (outcome === "busy" || outcome === "held" || outcome === "error") for (const l of seg) unfinished.add(l.id);
     }

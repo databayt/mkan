@@ -37,7 +37,7 @@ const PRICE_PER_MTOK = { input: 0.1, output: 0.5, cacheRead: 0.01, cacheWrite: 0
 const SONNET_PRICE_PER_MTOK = { input: 2, output: 10, cacheRead: 0.1, cacheWrite: 2.5 };
 const priceTable = (model?: string) => (model && /sonnet/i.test(model) ? SONNET_PRICE_PER_MTOK : PRICE_PER_MTOK);
 
-export type SpendLane = "agent-read" | "agent-write" | "agent-eval" | "agent-drive";
+export type SpendLane = "agent-read" | "agent-write" | "agent-eval" | "agent-drive" | "agent-media";
 const CAPPED_LANE = "capped";
 const LEDGER_TTL_MS = 60_000;
 

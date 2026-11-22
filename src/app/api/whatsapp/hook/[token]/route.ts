@@ -4,6 +4,7 @@ import { burstQuietLeft, isDirectChat, isImmediateLine, resolveAddresses, TENANT
 import { isMedia, messageText, phoneKey } from "../../../../../../scripts/wa/outbox-pure";
 import { answerTenant, answerTenantBurst, noteFromMe } from "@/components/agent/wa-tenant";
 import { kickOutbox } from "@/components/agent/wa-outbox";
+import { mediaAsText } from "@/components/agent/media-in";
 import { addBurstLine, burstTail, claimMessage, markHeard, phoneOfLid, rememberAlias, settleMessage, takeBurst } from "@/components/agent/wa-state";
 import { postSlackCard } from "@/components/agent/whatsapp";
 import { db } from "@/lib/db";
@@ -98,8 +99,16 @@ async function handle(m: EvoMessage) {
   // finds it answered — and one the webhook could not finish (a busy turn, an error) it answers itself.
   // The mark first: the poll counts a tenant message without one as missed by the hook (2026-11-08).
   await markHeard(key.id);
-  const text = messageText(m.message);
-  const media = isMedia(m.message, m.messageType);
+  let text = messageText(m.message);
+  let media = isMedia(m.message, m.messageType);
+  // A photo, screenshot, voice note or video is read (media-in.ts) and joins the burst as words.
+  if (media) {
+    const seen = await mediaAsText(m);
+    if (seen) {
+      text = [text.trim(), seen].filter(Boolean).join(" ");
+      media = false;
+    }
+  }
   // A digit pick, STOP and START never wait (STOP above all): they are a turn of their own, as before.
   if (isImmediateLine(text) && !media) {
     await answerTenant({ phone, text, msgId: key.id, sentAt, media, lid: seen.lid });
