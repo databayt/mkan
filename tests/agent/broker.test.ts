@@ -32,90 +32,84 @@ describe("broker message", () => {
     expect(needSummary({ ...EMPTY_REQUIREMENTS, bedrooms: 2, purpose: "family" }).they).toBe("They're looking for a 2-bedroom in Kigali. It's for a family.");
   });
 
-  it("introduces Mkan in a broker's first message: who we are, the ad, the ask, how to stop", () => {
+  it("introduces Mkan in a broker's first message: who we are, the home, the ask, how to stop", () => {
     for (const k of seeds) {
       const t = availabilityMessage([{ title: "3-bed in Kagarama", link: ad(k) }], k, { introduce: true, name: "Eric", need: need.they });
-      expect(t).toMatch(/^Muraho Eric, ni Mkan\./);
-      expect(t).toMatch(/\n\nHi Eric, this is Mkan\./);
+      expect(t).toMatch(/^Hi Eric, this is Mkan\./);
       expect(t).toContain(ad(k));
       expect(t).toContain(need.they);
-      expect(t).toMatch(/Is it still available\? Reply 1 = still available, 2 = taken\./);
+      expect(t).toMatch(/Is it still free\?/);
       expect(t).toMatch(/just reply stop\.$/);
       expect(t).not.toContain("3-bed in Kagarama");
+      expect(t).not.toMatch(/Muraho/); // one language, never a Kinyarwanda + English wall
       expect(t).not.toMatch(POSING);
     }
-    expect(availabilityMessage([{ title: "A", link: ad("1") }], "s", { introduce: true, bilingual: false })).toMatch(/^Hi there, this is Mkan\./);
+    expect(availabilityMessage([{ title: "A", link: ad("1") }], "s", { introduce: true })).toMatch(/^Hi there, this is Mkan\./);
   });
 
-  it("keeps later asks short, as Mkan, with the tenant's need", () => {
+  it("keeps later asks short, as Mkan, with the tenant's need and the one-digit answer as a soft hint", () => {
     const texts = seeds.map((k) => availabilityMessage([{ title: "A", link: ad(k) }], k, { introduce: false, name: "Eric", need: need.they }));
     texts.forEach((t, i) => {
       expect(t).toMatch(/Mkan/);
       expect(t).toContain(ad(seeds[i]!));
       expect(t).toContain(need.they);
-      expect(t).toMatch(/available\? Reply 1 = still available, 2 = taken\.$/);
+      expect(t).toMatch(/\(Or just reply 1 = free, 2 = taken\.\)$/);
       expect(t).not.toMatch(/reply stop/);
       expect(t).not.toMatch(POSING);
+      expect(t.length).toBeLessThan(330);
     });
     expect(new Set(texts.map((t) => t.replace(/https:\S+/, ""))).size).toBeGreaterThan(1);
   });
 
   it("asks about several ads in one message, links only", () => {
     const text = availabilityMessage([{ title: "A", link: ad("1") }, { title: "B", link: ad("2") }, { title: "A again", link: ad("1") }], "s", { introduce: false });
-    expect(text).toMatch(/Are they still available\?$/);
-    // "1" could mean either home: several homes get no digit menu, and no ref.
+    expect(text).toMatch(/(Are any of them still free\?|Still free\?)/);
+    // "1" could mean either home: several homes get no digit menu.
     expect(offersReplyMenu(text)).toBe(false);
     expect(text).not.toMatch(/ref /);
     expect(text.match(/https:/g)).toHaveLength(2);
     expect(text).not.toMatch(/\+?\d{9,}|A again/);
   });
 
-  it("writes in the broker's language when their ads use French or Kinyarwanda", () => {
+  it("writes one message in the broker's language: French, Kinyarwanda, else English", () => {
     const fr = availabilityMessage([{ title: "A", link: ad("1") }], "s", { introduce: true, lang: "FR" });
     expect(fr).toMatch(/^Bonjour, ici Mkan\./);
-    expect(fr).toMatch(/répondez simplement stop\.$/);
-    const rw = availabilityMessage([{ title: "A", link: ad("1") }], "s", { introduce: true, lang: "RW", bilingual: false });
+    expect(fr).toMatch(/répondez stop\.$/);
+    expect(fr).not.toMatch(/Muraho|Hi /);
+    const rw = availabilityMessage([{ title: "A", link: ad("1") }], "s", { introduce: true, lang: "RW" });
     expect(rw).toMatch(/^Muraho, ni Mkan\./);
     expect(rw).toMatch(/subiza stop\.$/);
-    expect(availabilityMessage([{ title: "A", link: ad("1") }], "s", { introduce: true, lang: "SW", bilingual: false })).toMatch(/^Hi there, this is Mkan/);
-    // The one-digit answer, in their language.
-    expect(rw).toContain("Iracyahari? Subiza 1 = iracyahari, 2 = yafashwe.");
-    expect(fr).toContain("Est-elle toujours disponible ? Répondez 1 = disponible, 2 = déjà prise.");
+    expect(rw).not.toMatch(/Hi |Is it/);
+    expect(availabilityMessage([{ title: "A", link: ad("1") }], "s", { introduce: true, lang: "SW" })).toMatch(/^Hi there, this is Mkan/);
+    expect(rw).toContain("Iracyahari?");
+    expect(fr).toContain("Est-elle toujours libre ?");
+    // The one-digit answer stays readable in each language, and asks sent before 11-22 still read.
     for (const lang of ["EN", "FR", "RW"]) for (const k of seeds) expect(offersReplyMenu(availabilityMessage([{ title: "A", link: ad(k) }], k, { introduce: false, lang }))).toBe(true);
+    expect(offersReplyMenu("Is it still available? Reply 1 = still available, 2 = taken.")).toBe(true);
   });
 
-  it("writes Kinyarwanda first with English under it, the link once", () => {
-    for (const lang of [undefined, "EN", "RW"]) {
-      const t = availabilityMessage([{ title: "A", link: ad("1") }], "s", { introduce: false, lang, need: "They're looking for a studio." });
-      const [rw, en, ...rest] = t.split("\n\n");
-      expect(rest).toHaveLength(0);
-      expect(rw).toMatch(/^Muraho/);
-      expect(en).toMatch(/^(Hi|Hello)/);
-      expect(t.split(ad("1"))).toHaveLength(2); // the link appears once, in the Kinyarwanda half
-      expect(en).toContain("They're looking for a studio.");
-      expect(offersReplyMenu(t)).toBe(true);
+  it("never sends a broker the wording they already had", () => {
+    const first = availabilityMessage([{ title: "A", link: ad("1") }], "x", { introduce: false });
+    for (const k of seeds) {
+      const next = availabilityMessage([{ title: "A", link: ad("2") }], k, { introduce: false, previous: [first] });
+      expect(next.replace(/https:\S+/, "")).not.toBe(first.replace(/https:\S+/, ""));
     }
-    // French brokers keep French only.
-    expect(availabilityMessage([{ title: "A", link: ad("1") }], "s", { introduce: false, lang: "FR" })).not.toMatch(/Muraho|Hi /);
+    // After all four, the seeded one is used again rather than nothing.
+    const all = ["Mkan here", "it's Mkan", "Mkan again", "quick one"];
+    expect(availabilityMessage([{ title: "A", link: ad("2") }], "x", { introduce: false, previous: all })).toMatch(/Mkan/);
   });
 
-  it("nudges in Kinyarwanda first with English under it, never naming a person", () => {
+  it("nudges in the broker's language, one language, never naming a person", () => {
     const one = nudgeMessage([ad("1"), ad("1")], "RW", "Eric");
     expect(one).toMatch(/^Muraho Eric, ni Mkan nanone: iracyahari\?/);
-    expect(one).toMatch(/\n\nHi Eric, a quick reminder from Mkan: is this still available\?/);
+    expect(one).not.toMatch(/Hi /);
     expect(one.split(ad("1"))).toHaveLength(2);
     expect(offersReplyMenu(one)).toBe(true);
     const many = nudgeMessage([ad("1"), ad("2")], null);
-    expect(many).toContain("ziracyahari");
+    expect(many).toContain("are these still free");
     expect(offersReplyMenu(many)).toBe(false);
     expect(nudgeMessage([ad("1")], "FR")).toMatch(/^Bonjour/);
     expect(one + many).not.toMatch(/\p{Extended_Pictographic}/u);
-  });
-
-  it("puts the home's Mkan ref beside its link, when it has one", () => {
-    const t = availabilityMessage([{ title: "A", link: ad("1"), code: "0002-05" }], "s", { introduce: false });
-    expect(t).toContain(`${ad("1")} (ref 0002-05)`);
-    expect(availabilityMessage([{ title: "A", link: ad("1"), code: null }], "s", { introduce: false })).not.toMatch(/ref/);
   });
 
   it("greets a person by name, never an agency, a handle or a flag", () => {

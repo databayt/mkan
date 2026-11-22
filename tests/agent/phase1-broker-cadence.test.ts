@@ -18,28 +18,31 @@ const slots = [
 ];
 
 describe("the ask carries two viewing times", () => {
-  it("English: 'Could we view it A or B?', beside the one-tap answer", () => {
-    const text = availabilityMessage(homes, "seed", { introduce: false, bilingual: false, slots });
-    expect(text).toContain("Is it still available? Reply 1 = still available, 2 = taken. Could we view it Mon 23 Nov, 09:00 or Tue 24 Nov, 09:00?");
+  it("English: 'Could we come A or B?' in the same breath as 'Is it still free?'", () => {
+    const text = availabilityMessage(homes, "seed", { introduce: false, slots });
+    expect(text).toMatch(/(Is it still free\? Could we come|Is it still free\? Would|Still free\? We could come|Is it still free\? Can we visit) ?Mon 23 Nov, 09:00 or Tue 24 Nov, 09:00/);
+    expect(text).toContain("(Or just reply 1 = free, 2 = taken.)");
   });
-  it("bilingual: Kinyarwanda carries its own times, English its own", () => {
-    const text = availabilityMessage(homes, "seed", { introduce: true, slots });
-    expect(text).toContain("Niba ihari, twayisura Mbere 23 Nov, 09:00 cyangwa Kabiri 24 Nov, 09:00?");
-    expect(text).toContain("Could we view it Mon 23 Nov, 09:00 or Tue 24 Nov, 09:00?");
+  it("Kinyarwanda carries its own times, one language only", () => {
+    const text = availabilityMessage(homes, "seed", { introduce: true, lang: "RW", slots });
+    expect(text).toContain("Twayisura Mbere 23 Nov, 09:00 cyangwa Kabiri 24 Nov, 09:00?");
+    expect(text).not.toContain("Could we");
   });
   it("French broker, and a batched ask for several homes", () => {
-    expect(availabilityMessage(homes, "seed", { introduce: false, lang: "FR", slots })).toContain("pourrait-on la visiter le Mon 23 Nov, 09:00 ou le Tue 24 Nov, 09:00 ?");
+    expect(availabilityMessage(homes, "seed", { introduce: false, lang: "FR", slots })).toContain("le Mon 23 Nov, 09:00 ou le Tue 24 Nov, 09:00");
     const two = [...homes, { title: "Room", link: "https://www.mkan.sd/en/k/K6587" }];
-    expect(availabilityMessage(two, "seed", { introduce: false, bilingual: false, slots })).toContain("If one is free, could we view it Mon 23 Nov, 09:00 or Tue 24 Nov, 09:00?");
+    expect(availabilityMessage(two, "seed", { introduce: false, slots })).toContain("Mon 23 Nov, 09:00 or Tue 24 Nov, 09:00");
   });
-  it("no free time, no change: the ask is what it was", () => {
-    const plain = availabilityMessage(homes, "seed", { introduce: false, bilingual: false });
-    expect(availabilityMessage(homes, "seed", { introduce: false, bilingual: false, slots: [] })).toBe(plain);
-    expect(plain).not.toMatch(/Could we view/);
+  it("no free time: the ask lets the broker name the day", () => {
+    const plain = availabilityMessage(homes, "seed", { introduce: false });
+    expect(availabilityMessage(homes, "seed", { introduce: false, slots: [] })).toBe(plain);
+    expect(plain).not.toMatch(/Mon 23/);
+    expect(plain).toMatch(/when could we come|What day suits you|Tell us a day|When can we visit/i);
     expect(viewingSlotLine("EN", false, undefined)).toBe("");
   });
   it("one time reads as one", () => {
     expect(viewingSlotLine("EN", false, [slots[0]!])).toBe(" Could we view it Mon 23 Nov, 09:00?");
+    expect(availabilityMessage(homes, "seed", { introduce: false, slots: [slots[0]!] })).toContain("Mon 23 Nov, 09:00");
   });
 });
 

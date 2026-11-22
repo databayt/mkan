@@ -58,6 +58,8 @@ import { handleBrokerReply, repostAskKey, askMsgKey } from "./broker-inbox";
 import { clearBurst, heardIds, mutateState, phonesOfLids, pruneMessageClaims, readState, releaseLease, rememberAlias, takeLease, writeState } from "./wa-state";
 import { answerTenantBurst, noteFromMe, recordSent } from "./wa-tenant";
 import { mediaAsText } from "./media-in";
+import { mediaKindOf } from "./media-in-pure";
+import { viewingLabel } from "./deal-pure";
 import { postSlackCard } from "./whatsapp";
 
 const LEASE = "outbox-lease";
@@ -227,6 +229,8 @@ async function drain(dry: boolean, log: Log, sendsOff: boolean): Promise<{ sent:
   let sent = 0;
   for (const row of toSend) {
     let body = row.body;
+    // The home's first photo rides with the ask as its caption: one message, not two.
+    let askPhoto: string | null = null;
     if (row.kind === "BROKER_REQUEST" && row.brokerRequestIds.length) {
       const worded = await askBodyNow(row.brokerRequestIds.join(), row.brokerRequestIds, row.to);
       if (worded === "answered" || worded === "expired") {
@@ -235,7 +239,10 @@ async function drain(dry: boolean, log: Log, sendsOff: boolean): Promise<{ sent:
         if (!dry) await db.outboundMessage.update({ where: { id: row.id }, data: { status: "SKIPPED", error: why } });
         continue;
       }
-      if (worded) body = worded.body;
+      if (worded) {
+        body = worded.body;
+        askPhoto = worded.photoUrl;
+      }
     }
     // A demand ask whose tenant request closed while it waited is about nothing any more.
     if (row.kind === "BROKER_ASK" && row.tenantRequestId) {
@@ -255,7 +262,11 @@ async function drain(dry: boolean, log: Log, sendsOff: boolean): Promise<{ sent:
       // Brokers see "typing…" first, as from a person; tenant alerts go straight out.
       if (row.kind !== "TENANT_ALERT") await sendPresence(row.to, typingMs(body));
       if (row.kind === "TENANT_ALERT") await recordSent(phoneKey(row.to), undefined, body);
-      const out = await sendText(row.to, body);
+      const withPhoto = askPhoto ? await sendMedia(row.to, { url: askPhoto, caption: body }).catch((err) => {
+        log(`photo with the ask ${row.id} failed, sending text: ${(err as Error).message}`);
+        return null;
+      }) : null;
+      const out = withPhoto ?? (await sendText(row.to, body));
       if (row.kind === "TENANT_ALERT") await recordSent(phoneKey(row.to), out?.key?.id, body);
       // A broker who replies to this very message (WhatsApp's quote) answers this ask, not their newest one.
       else if (out?.key?.id) await writeState(askMsgKey(out.key.id), { outboundId: row.id }).catch(() => {});
@@ -465,20 +476,37 @@ async function replies(dry: boolean, log: Log, sendsOff: boolean): Promise<numbe
     const photoUrls = [...held, ...stored].slice(0, MAX_PHOTOS);
     const at = g.items[g.items.length - 1]?.sentAt ?? now;
     const quoted = [...g.items].reverse().find((m) => m.quoted)?.quoted ?? null;
-    const action = await handleBrokerReply({ brokerId: broker.id, phone: g.phone, text: g.text, photoUrls, at, quotedId: quoted }).catch((err) => {
+    // Their voice notes, videos and a lone screenshot are read as words first (media-in.ts), so "Tomorrow 10am
+    // we can see it" said aloud is an answer like a typed one. An album of photos is the home itself, not words.
+    const spoken: string[] = [];
+    let imagesRead = 0;
+    for (const m of g.items) {
+      if (!m.media || spoken.length >= 2) continue;
+      const raw = rawById.get(m.id);
+      const kind = raw ? mediaKindOf(raw) : null;
+      if (!raw || !kind) continue;
+      if (kind === "image" && (g.text.trim() || g.imageIds.length > 1 || imagesRead++ > 0)) continue;
+      const w = await mediaAsText(raw).catch(() => null);
+      if (w) spoken.push(w);
+    }
+    const heard = [g.text, ...spoken].filter(Boolean).join("\n");
+    const action = await handleBrokerReply({ brokerId: broker.id, phone: g.phone, text: heard, photoUrls, at, quotedId: quoted }).catch((err) => {
       log(`inbox failed for ${broker.name}: ${(err as Error).message}`);
       return { kind: "none" } as const;
     });
     if (action.kind === "home") {
       delete pending[broker.id];
       await postSlackCard(
-        `🏠 *${broker.name}* (+${g.phone}) sent a home on WhatsApp → lead #${action.listingId}${photoUrls.length ? ` with ${photoUrls.length} photo(s)` : ""}${action.matched ? ", now in the tenant's chat" : ""}.\n> ${g.text.replace(/\n/g, "\n> ").slice(0, 600)}`,
+        `🏠 *${broker.name}* (+${g.phone}) sent a home on WhatsApp → lead #${action.listingId}${photoUrls.length ? ` with ${photoUrls.length} photo(s)` : ""}${action.matched ? ", now in the tenant's chat" : ""}.\n> ${heard.replace(/\n/g, "\n> ").slice(0, 600)}`,
       );
     } else if (action.kind === "reply") {
       if (action.why === "photos-need-price" && photoUrls.length) pending[broker.id] = { urls: photoUrls, at: now.toISOString() };
-      if (!(await sendReply(g.phone, action, broker.name, log, sendsOff)) && sendsOff) {
+      const answered = await sendReply(g.phone, action, broker.name, log, sendsOff);
+      // The line answered on its own: #mkan hears it as news, with nothing to do.
+      if (answered && action.read) await postSlackCard(`🤖 *${broker.name}* (+${g.phone}) — read as *${action.read}*, the line said: "${action.text.slice(0, 300)}" · nothing to do\n> ${(heard || words).replace(/\n/g, "\n> ").slice(0, 400)}`).catch(() => {});
+      if (!answered && sendsOff) {
         await postSlackCard(
-          `💬 *${broker.name}* (+${g.phone}) replied — broker sends are off, so the line said nothing. It would have said "${action.text}".\n> ${words.replace(/\n/g, "\n> ").slice(0, 600)}\n<${waLink(g.phone, "")}|Answer by hand>`,
+          `💬 *${broker.name}* (+${g.phone}) replied — broker sends are off, so the line said nothing. It would have said "${action.text}".\n> ${(heard || words).replace(/\n/g, "\n> ").slice(0, 600)}\n<${waLink(g.phone, "")}|Answer by hand>`,
         );
       }
     } else if (action.kind === "repost") {
@@ -488,7 +516,7 @@ async function replies(dry: boolean, log: Log, sendsOff: boolean): Promise<numbe
           : action.answer === "NO"
             ? "The 07:00 run records it on their CRM host; their videos stay off the page."
             : "Not a plain yes or no — read it. If it is a yes, tell Hermes: `these brokers said yes: <handle>`.";
-      await postSlackCard(`📣 *${broker.name}* (+${g.phone}) answered the TikTok repost ask: *${action.answer ?? "unclear"}*\n> ${g.text.replace(/\n/g, "\n> ").slice(0, 400)}\n${next}`);
+      await postSlackCard(`📣 *${broker.name}* (+${g.phone}) answered the TikTok repost ask: *${action.answer ?? "unclear"}*\n> ${heard.replace(/\n/g, "\n> ").slice(0, 400)}\n${next}`);
     } else if (action.kind === "viewing") {
       // The line agreed the viewing itself (viewing-loop.ts): #mkan hears what happened, with nothing to do.
       const said = action.reply ? await sendReply(g.phone, action.reply, broker.name, log, sendsOff) : false;
@@ -501,7 +529,7 @@ async function replies(dry: boolean, log: Log, sendsOff: boolean): Promise<numbe
         taken: "says the home is taken → the tenant was told",
         place: "said where to meet → sent to the tenant",
       };
-      await postSlackCard(`📅 *${broker.name}* (+${g.phone}) ${what[action.outcome]} · K${action.listingId}${action.reply && !said ? ` · the line's reply did not go — <${waLink(g.phone, action.reply.text)}|send it by hand>` : ""}\n> ${g.text.replace(/\n/g, "\n> ").slice(0, 400)}`);
+      await postSlackCard(`📅 *${broker.name}* (+${g.phone}) ${what[action.outcome]} · K${action.listingId}${action.reply && !said ? ` · the line's reply did not go — <${waLink(g.phone, action.reply.text)}|send it by hand>` : ""}\n> ${heard.replace(/\n/g, "\n> ").slice(0, 400)}`);
     } else if (action.kind === "terms") {
       const said = action.reply ? await sendReply(g.phone, action.reply, broker.name, log, sendsOff) : false;
       const what =
@@ -510,27 +538,28 @@ async function replies(dry: boolean, log: Log, sendsOff: boolean): Promise<numbe
           : action.answer === "no"
             ? "declined Mkan's terms → the tenant got the deal sheet; a person takes it"
             : "answered the terms ask — not a plain yes or no, read it and answer by hand";
-      await postSlackCard(`🤝 *${broker.name}* (+${g.phone}) ${what} · K${action.listingId}${action.reply && !said ? ` · not sent — <${waLink(g.phone, "")}|answer by hand>` : ""}\n> ${g.text.replace(/\n/g, "\n> ").slice(0, 400)}`);
+      await postSlackCard(`🤝 *${broker.name}* (+${g.phone}) ${what} · K${action.listingId}${action.reply && !said ? ` · not sent — <${waLink(g.phone, "")}|answer by hand>` : ""}\n> ${heard.replace(/\n/g, "\n> ").slice(0, 400)}`);
     } else if (action.kind === "intro") {
       if (action.reply) await sendReply(g.phone, action.reply, broker.name, log, sendsOff);
-      await postSlackCard(`🤝 *${broker.name}* (+${g.phone}) on the intro for K${action.listingId}: ${action.outcome ?? "no outcome"}${action.rating != null ? ` · rated the tenant ${action.rating}/5` : ""}\n> ${g.text.replace(/\n/g, "\n> ").slice(0, 400)}`);
+      await postSlackCard(`🤝 *${broker.name}* (+${g.phone}) on the intro for K${action.listingId}: ${action.outcome ?? "no outcome"}${action.rating != null ? ` · rated the tenant ${action.rating}/5` : ""}\n> ${heard.replace(/\n/g, "\n> ").slice(0, 400)}`);
     } else if (action.kind === "availability") {
       const said = action.reply ? await sendReply(g.phone, action.reply, broker.name, log, sendsOff) : false;
       // The terms ask rode on this reply: if it did not go, #mkan hears which tenant waits, now (deal-intro.ts).
       if (action.reply && !said) await reconcileTermsAsk(g.phone).catch((err) => log(`terms ask reconcile failed: ${(err as Error).message}`));
       const marked = `${action.applied ? "marked" : "already"} ${action.answer === "RENTED" ? "rented" : "available"}`;
-      const note = action.reply ? (said ? ` · we said "${action.reply.text}"` : sendsOff ? ` · not answered (broker sends off) — <${waLink(g.phone, "")}|answer by hand>` : "") : "";
-      await postSlackCard(`✅ *${broker.name}* (+${g.phone}) answered → home #${action.listingId} ${marked}${note}\n> ${g.text.replace(/\n/g, "\n> ").slice(0, 600)}`);
+      const extra = `${action.time ? ` · viewing time ${viewingLabel(action.time, "en")} handed on` : ""}${action.otherHome ? ` · their other home kept${action.otherHome.listingId ? ` as lead #${action.otherHome.listingId}` : ""}` : ""}`;
+      const note = (action.reply ? (said ? ` · we said "${action.reply.text}"` : sendsOff ? ` · not answered (broker sends off) — <${waLink(g.phone, "")}|answer by hand>` : "") : "") + extra;
+      await postSlackCard(`✅ *${broker.name}* (+${g.phone}) answered → home #${action.listingId} ${marked}${note}\n> ${heard.replace(/\n/g, "\n> ").slice(0, 600)}`);
     } else if (action.kind === "resend") {
       // Our link was dead for them ("The video is not available"): the home's own page, its photo, the same ask.
       const said = await sendReply(g.phone, { text: action.text, outboundId: action.outboundId }, broker.name, log, sendsOff);
       if (said && action.photoUrl) await sendMedia(g.phone, { url: action.photoUrl }).catch((err) => log(`resend photo to ${broker.name} failed: ${(err as Error).message}`));
-      await postSlackCard(`🔁 *${broker.name}* (+${g.phone}) couldn't open our link for home #${action.listingId}${said ? " · sent the Mkan page" + (action.photoUrl ? " + photo" : "") : " · not sent"}\n> ${g.text.replace(/\n/g, "\n> ").slice(0, 600)}`);
+      await postSlackCard(`🔁 *${broker.name}* (+${g.phone}) couldn't open our link for home #${action.listingId}${said ? " · sent the Mkan page" + (action.photoUrl ? " + photo" : "") : " · not sent"}\n> ${heard.replace(/\n/g, "\n> ").slice(0, 600)}`);
     } else {
       if (stored.length) pending[broker.id] = { urls: photoUrls, at: now.toISOString() };
-      const botAsk = parseBrokerReply(g.text).asksIfBot ? "🤖 asks if they're talking to a bot — answer this one yourself.\n" : "";
+      const botAsk = parseBrokerReply(heard).asksIfBot ? "🤖 asks if they're talking to a bot — answer this one yourself.\n" : "";
       await postSlackCard(
-        `${botAsk}💬 *${broker.name}* (+${g.phone}) replied on WhatsApp${stored.length ? ` (${stored.length} photo(s) kept)` : ""}:\n> ${words.replace(/\n/g, "\n> ")}\n<${waLink(g.phone, "")}|Open the chat> — turn it into a home in this thread.`,
+        `${botAsk}💬 *${broker.name}* (+${g.phone}) replied on WhatsApp${stored.length ? ` (${stored.length} photo(s) kept)` : ""}:\n> ${(heard || words).replace(/\n/g, "\n> ")}\n<${waLink(g.phone, "")}|Open the chat> — turn it into a home in this thread.`,
       );
     }
   }

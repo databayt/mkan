@@ -25,7 +25,10 @@ import { lastTenantAt, reachedAt, REASK_GAP_DAYS, TENANT_REACH, tenantActive, te
 import { askedOnLabel, viewingLabel } from "./deal-pure";
 import { ALERT_LABEL, inSendWindow, phoneKey, REST_DAYS, brokerRest, startOfKigaliDay } from "../../../scripts/wa/outbox-pure";
 import { answerStats, dueForNext, MAX_BROKERS_PER_HOME, nudgeDue, rankBrokers, SILENT_LOOKBACK_DAYS, type BrokerSignal } from "./broker-rank";
-import { availabilityMessage, brokerAnswerMessage, brokerNumber, needSummary, noReplyMessage, nudgeMessage, takenNextMessage, viewingRep, type BrokerHomeLine, type BrokerVoice } from "./broker-message";
+import { availabilityMessage, brokerAnswerMessage, brokerNumber, needLines, needSummary, noReplyMessage, nudgeMessage, takenNextMessage, tenantStatedBudget, viewingRep, type BrokerHomeLine, type BrokerVoice } from "./broker-message";
+import { storedLang } from "./broker-read-pure";
+import { detectLang } from "./language";
+import { homePath } from "./home-path";
 import { brokerSendMode, testPhones } from "./broker-sends";
 import { CONFIRMATION_TTL_DAYS } from "./rank";
 import { coerceRequirements, EMPTY_REQUIREMENTS, mergeRequirements, type Requirements } from "./requirements";
@@ -126,10 +129,10 @@ export async function markIntroduced(phone: string, at = new Date()): Promise<vo
  * its answer; `expired` — every request on it timed out while it waited;
  * null — keep the stored text.
  */
-export async function askBodyNow(seed: string, requestIds: string[], to?: string): Promise<{ body: string; intro: boolean } | "answered" | "expired" | null> {
+export async function askBodyNow(seed: string, requestIds: string[], to?: string): Promise<{ body: string; intro: boolean; photoUrl: string | null } | "answered" | "expired" | null> {
   const requests = await db.brokerRequest.findMany({
     where: { id: { in: requestIds } },
-    select: { listingId: true, brokerUserId: true, status: true, expiresAt: true, need: true, listing: { select: { title: true, ...HOME_FOR_LINK } } },
+    select: { listingId: true, brokerUserId: true, taskId: true, status: true, expiresAt: true, need: true, listing: { select: { title: true, description: true, photoUrls: true, ...HOME_FOR_LINK } } },
   });
   if (requests.length === 0) return null;
   const open = requests.filter((q) => q.status !== "AVAILABLE" && q.status !== "RENTED");
@@ -140,22 +143,41 @@ export async function askBodyNow(seed: string, requestIds: string[], to?: string
     where: { OR: open.map((q) => ({ listingId: q.listingId, userId: q.brokerUserId })) },
     select: { listingId: true, sourceUrl: true, broker: { select: { contactName: true, preferredLanguage: true } } },
   });
-  const adOf = new Map(ads.map((a) => [a.listingId, a]));
+  // The home is Mkan's own page (/en/k/K…), never the TikTok post: ads die ("The video is not available") and
+  // the page carries the photos and facts a broker recognises at a glance.
   const homes: BrokerHomeLine[] = [];
   const seen = new Set<number>();
   for (const q of open) {
     if (seen.has(q.listingId)) continue;
     seen.add(q.listingId);
-    const link = homeLink(adOf.get(q.listingId)?.sourceUrl, q.listing);
-    if (!link) return null;
-    homes.push({ title: q.listing.title ?? "", link, code: q.listing.code });
+    homes.push({ title: q.listing.title ?? "", link: `${publicAppUrl()}${homePath("en", q.listingId)}`, code: q.listing.code });
   }
   const broker = ads.find((a) => a.broker)?.broker ?? null;
   const wanted = mergeRequirements(EMPTY_REQUIREMENTS, coerceRequirements((open[0]?.need as { requirements?: unknown } | null)?.requirements));
+  // Only a budget the tenant said themselves goes into the ask.
+  const task = open[0]?.taskId ? await db.agentTask.findUnique({ where: { id: open[0].taskId }, select: { messages: true } }).catch(() => null) : null;
+  const stated = tenantStatedBudget(task?.messages, wanted.maxPrice);
+  const told: Requirements = stated ? wanted : { ...wanted, maxPrice: null, pricePeriod: wanted.maxPrice ? null : wanted.pricePeriod };
   const intro = to ? !(await wasIntroduced(to)) : true;
-  const need = hasNeed(wanted) ? needSummary(wanted).they : null;
-  const body = availabilityMessage(homes, seed, { introduce: intro, name: broker?.contactName, lang: broker?.preferredLanguage, need });
-  return { body, intro };
+  const need = hasNeed(told) ? needLines(told) : null;
+  // Their language: what they last wrote in (stored when they reply), else the language their ad is written in.
+  const ad = open.map((q) => `${q.listing.title ?? ""} ${q.listing.description ?? ""}`).join(" ").slice(0, 600);
+  const lang = broker?.preferredLanguage ?? (() => { const d = detectLang(ad); return d.neutral ? null : storedLang(d.lang); })();
+  const [slots, previous] = await Promise.all([
+    import("./viewing-loop")
+      .then(({ offerSlots }) => offerSlots())
+      .then((times) => times.map((t) => ({ en: viewingLabel(t, "en"), rw: viewingLabel(t, "rw") })))
+      .catch(() => []),
+    to
+      ? db.outboundMessage
+          .findMany({ where: { to: { in: [to, to.startsWith("+") ? to.slice(1) : `+${to}`] }, kind: { in: ["BROKER_REQUEST", "BROKER_ASK"] }, status: "SENT" }, orderBy: { sentAt: "desc" }, take: 6, select: { body: true } })
+          .then((rows) => rows.map((r) => r.body))
+          .catch(() => [] as string[])
+      : [],
+  ]);
+  const body = availabilityMessage(homes, seed, { introduce: intro, name: broker?.contactName, lang, need, slots, previous });
+  const photoUrl = open.map((q) => q.listing.photoUrls?.[0]).find((u): u is string => !!u && /^https?:\/\//.test(u)) ?? null;
+  return { body, intro, photoUrl };
 }
 
 /** Enough of a need to tell a broker: a size, a type, a place or a budget. */

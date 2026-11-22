@@ -26,12 +26,15 @@ import { db } from "@/lib/db";
 import { publicAppUrl } from "../../../scripts/crm/public-links";
 import { homePath } from "./home-path";
 import { appendTaskEvent, applyAnswer, brokerAnswers } from "./broker";
-import { createBrokerHome, type AskForHome } from "./broker-home";
-import { aboutMeMessage, availableAckMessage, needReplyMessage, needSummary, offersReplyMenu, priceQuestionMessage, reAskMessage, resendMessage, takenAckMessage, takenOtherAckMessage } from "./broker-message";
+import { createBrokerHome, keepOtherHome, type AskForHome } from "./broker-home";
+import { aboutMeMessage, availableAckMessage, clarifyMessage, needLines, needReplyMessage, needSummary, offersReplyMenu, otherHomeKeptMessage, priceNotedMessage, priceQuestionMessage, questionReplyMessage, reAskMessage, resendMessage, takenAckMessage, takenOtherAckMessage, tenantStatedBudget, timeAckMessage } from "./broker-message";
+import { needsClassifier, storedLang, type BrokerRead } from "./broker-read-pure";
+import { readBrokerMessage } from "./broker-read";
+import { detectLang } from "./language";
 import { isOffer, parseBrokerReply, readTakenWithOther, repostAnswer, type BrokerReply, type OtherHome } from "./broker-reply";
 import { coerceRequirements, EMPTY_REQUIREMENTS, mergeRequirements } from "./requirements";
 import { answerTerms, introBrokerUpdate, introReplyFor } from "./deal-intro";
-import { readViewingTime } from "./deal-pure";
+import { readViewingTime, viewingLabel } from "./deal-pure";
 import { brokerViewingReply, noteMeetingPlace, type ViewingReply } from "./viewing-loop";
 import { readState, writeState } from "./wa-state";
 
@@ -42,7 +45,7 @@ const REQUEST_WINDOW_MS = 48 * 3_600_000;
 export type InboxAction =
   | { kind: "home"; listingId: number; matched: boolean }
   /** Send `text` now; `outboundId` is its row (already SENT) — mark it FAILED if the send fails. */
-  | { kind: "reply"; text: string; why: "question" | "photos-need-price" | "about-me" | "greeting"; outboundId: string }
+  | { kind: "reply"; text: string; why: "question" | "photos-need-price" | "about-me" | "greeting" | "answered" | "clarify"; outboundId: string; /** What Claude read, for the FYI card. */ read?: string }
   /**
    * The broker could not open our link ("The video is not available"): the home is NOT taken. `text` carries
    * Mkan's /k/K… page and re-asks; `photoUrl` is the home's first photo for the caller to send as native media
@@ -50,7 +53,7 @@ export type InboxAction =
    */
   | { kind: "resend"; listingId: number; text: string; photoUrl: string | null; outboundId: string }
   /** `applied` — the answer was news to Mkan; `reply` — the thanks to send, as above. */
-  | { kind: "availability"; listingId: number; answer: "AVAILABLE" | "RENTED"; applied: boolean; reply: { text: string; outboundId: string } | null }
+  | { kind: "availability"; listingId: number; answer: "AVAILABLE" | "RENTED"; applied: boolean; reply: { text: string; outboundId: string } | null; /** The viewing time they named, kept for the booking. */ time?: Date | null; /** Another home they offered, kept as a lead. */ otherHome?: { listingId: number | null } | null }
   /** The answer to the TikTok repost ask (null: unclear, a person reads it). The Mac records it in the CRM. */
   | { kind: "repost"; answer: "YES" | "NO" | null }
   /** The answer to Mkan's terms before an intro (deal-intro.ts); null: unclear, a person reads it. */
@@ -105,12 +108,17 @@ async function lastAsk(phone: string, at: Date): Promise<Ask | null> {
  * which one the broker means.
  */
 async function askedHomes(requestIds: string[]) {
-  const requests = await db.brokerRequest.findMany({ where: { id: { in: requestIds } }, select: { listingId: true, status: true, need: true } });
+  const requests = await db.brokerRequest.findMany({ where: { id: { in: requestIds } }, select: { listingId: true, status: true, need: true, taskId: true } });
   const all = [...new Set(requests.map((q) => q.listingId))];
   const open = [...new Set(requests.filter((q) => q.status === "PENDING" || q.status === "NO_REPLY").map((q) => q.listingId))];
   const home = open.length === 1 ? open[0]! : open.length === 0 && all.length === 1 ? all[0]! : null;
   const wanted = mergeRequirements(EMPTY_REQUIREMENTS, coerceRequirements((requests[0]?.need as { requirements?: unknown } | null)?.requirements));
-  return { home, isNews: open.length === 1, many: all.length > 1, need: needSummary(wanted) };
+  // The tenant's own words, so a budget they never said is never repeated to a broker (broker-message.ts tenantStatedBudget).
+  const taskId = requests.find((q) => q.taskId)?.taskId;
+  const task = taskId ? await db.agentTask.findUnique({ where: { id: taskId }, select: { messages: true } }).catch(() => null) : null;
+  const stated = tenantStatedBudget(task?.messages, wanted.maxPrice);
+  const told = stated ? wanted : { ...wanted, maxPrice: null };
+  return { home, isNews: open.length === 1, many: all.length > 1, need: needSummary(told), wanted: told, messages: task?.messages ?? [] };
 }
 
 /**
@@ -216,6 +224,7 @@ async function stampReply(brokerId: string, at: Date) {
 export async function handleBrokerReply(input: { brokerId: string; phone: string; text: string; photoUrls: string[]; at: Date; quotedId?: string | null }): Promise<InboxAction> {
   const { brokerId, phone, text, photoUrls, at } = input;
   await stampReply(brokerId, at);
+  await learnLanguage(brokerId, text);
   // A person answers "are you a bot?" (wa-outbox flags it in #mkan); the inbox stays quiet.
   if (parseBrokerReply(text).asksIfBot) return { kind: "none" };
   // The broker answers the ask they quoted (2026-11-06: a reply to Monday's ask used to mark Tuesday's
@@ -269,7 +278,11 @@ async function readReply(
   if (intro) return { kind: "intro", listingId: intro.listingId, outcome: intro.outcome, rating: intro.rating, reply: await replyTo(phone, "auto-intro-thanks", intro.reply, brokerId) };
   if (last?.kind !== "BROKER_REQUEST") return answerDemandAsk(brokerId, text, photoUrls, at);
   const read = await readAvailabilityReply(phone, text, at, last);
-  return read ? answerAvailabilityAsk(read, phone, text, photoUrls.length > 0) : { kind: "none" };
+  if (!read) return { kind: "none" };
+  // Anything wordier than a digit, a plain yes or a plain "taken" is read by Claude (broker-read.ts); null is the rules.
+  const smart = await classify(read, text, at);
+  if (smart?.lang && detectLang(text).neutral) await learnLanguage(brokerId, text, smart.lang);
+  return answerAvailabilityAsk(read, phone, text, photoUrls.length > 0, { brokerId, lang: await replyLanguage(brokerId, text, smart?.lang), smart, now: at });
 }
 
 /** Mkan's page for the home + its first photo, in the broker's language, once per ask. Null when it already went. */
@@ -283,46 +296,154 @@ async function resendReply(ask: Ask, listingId: number, phone: string): Promise<
   return reply ? { ...reply, photoUrl: home?.photoUrls?.[0] ?? null } : null;
 }
 
+type Read = NonNullable<Awaited<ReturnType<typeof readAvailabilityReply>>>;
+type Voice = { brokerId: string; lang: "EN" | "FR" | "RW"; smart: BrokerRead | null; now: Date };
+
+/** The viewing labels an ask offered ("Mon 23 Nov, 09:00"), so the classifier can tell which one "the second" is. */
+const SLOT_LABEL = /(?:Sun|Mon|Tue|Wed|Thu|Fri|Sat|Cyumweru|Mbere|Kabiri|Gatatu|Kane|Gatanu|Gatandatu) \d{1,2} [A-Z][a-z]{2}, \d{2}:\d{2}/g;
+
+/** The language to answer in: what they just wrote in, else what we know they read. EN when nothing says. */
+async function replyLanguage(brokerId: string, text: string, smartLang?: string | null): Promise<"EN" | "FR" | "RW"> {
+  const now = detectLang(text);
+  const fromText = now.neutral ? null : storedLang(now.lang);
+  if (fromText) return fromText;
+  const known = (await db.broker.findUnique({ where: { id: brokerId }, select: { preferredLanguage: true } }).catch(() => null))?.preferredLanguage;
+  const stored = known === "FR" || known === "RW" || known === "EN" ? known : null;
+  return stored ?? storedLang(smartLang === "en" || smartLang === "fr" || smartLang === "rw" ? smartLang : null) ?? "EN";
+}
+
+/** A clear language in their own words becomes what we write to them in (Broker.preferredLanguage). */
+async function learnLanguage(brokerId: string, text: string, smartLang?: string | null): Promise<void> {
+  const d = detectLang(text);
+  const l = !d.neutral && !d.mixed ? storedLang(d.lang) : storedLang(smartLang === "en" || smartLang === "fr" || smartLang === "rw" ? smartLang : null);
+  if (!l) return;
+  await db.broker.updateMany({ where: { id: brokerId, OR: [{ preferredLanguage: null }, { preferredLanguage: { not: l } }] }, data: { preferredLanguage: l } }).catch(() => {});
+}
+
+/** Claude's read of a reply the rules cannot settle, with the home's facts and the times we offered. Null: use the rules. */
+async function classify(read: Read, text: string, now: Date): Promise<BrokerRead | null> {
+  if (!needsClassifier(text, read.r, now)) return null;
+  const home = read.home != null ? await db.listing.findUnique({ where: { id: read.home }, select: { bedrooms: true, priceMonth: true, location: { select: { neighbourhood: true, address: true } } } }).catch(() => null) : null;
+  return readBrokerMessage({
+    text,
+    now,
+    home: home ? { area: home.location?.neighbourhood ?? home.location?.address ?? null, bedrooms: home.bedrooms, rent: home.priceMonth != null ? Number(home.priceMonth) : null } : null,
+    offeredSlots: read.ask.body ? [...new Set(read.ask.body.match(SLOT_LABEL) ?? [])].slice(0, 2) : [],
+  });
+}
+
+/**
+ * A viewing time a broker named, kept for the tenant's chats and handed to the viewing loop (viewing-loop.ts
+ * settleViewingTime), which books it when a tenant is waiting on that home and the slot fits. Its reply, when it
+ * has one ("booked for Thu 16:00…"), is the broker's answer; null leaves the caller's own acknowledgement.
+ */
+async function handTime(requestIds: string[], listingId: number, at: Date, phone: string): Promise<string | null> {
+  await recordBrokerTime(requestIds, listingId, at, phone).catch(() => {});
+  const { settleViewingTime } = await import("./viewing-loop");
+  const res = await settleViewingTime({ by: "broker", phone, slot: at, at: new Date(), listingId }).catch((err: unknown) => {
+    console.warn(`[agent] viewing settle: ${(err as Error).message}`);
+    return null;
+  });
+  return res?.reply ?? null;
+}
+
+/** What a broker offered while the asked home is gone or beside it: kept as an event on the asking chats and as a lead. */
+async function keepOffered(read: Read, voice: Voice, other: { area: string | null; bedrooms: number | null; rent: number | null; furnished: boolean | null; text: string }, phone: string, home: number) {
+  await recordOtherHome(read.ask.brokerRequestIds, home, { text: other.text, price: other.rent, bedrooms: other.bedrooms, place: other.area, furnished: other.furnished }, phone).catch((err) => console.warn(`[agent] broker's other home not kept: ${(err as Error).message}`));
+  return keepOtherHome(voice.brokerId, { area: other.area, bedrooms: other.bedrooms, rent: other.rent, furnished: other.furnished, note: other.text }).catch((err) => {
+    console.warn(`[agent] broker's other home lead: ${(err as Error).message}`);
+    return null;
+  });
+}
+
 /** The reply to "is this available?". */
-async function answerAvailabilityAsk(read: NonNullable<Awaited<ReturnType<typeof readAvailabilityReply>>>, phone: string, text: string, hasPhotos: boolean): Promise<InboxAction> {
-  const { ask, r, answer, home, isNews, many, need, other } = read;
+async function answerAvailabilityAsk(read: Read, phone: string, text: string, hasPhotos: boolean, voice: Voice): Promise<InboxAction> {
+  const { ask, r, home, isNews, many, need, other } = read;
+  const { smart, lang } = voice;
+  // Claude's read, folded into the answer the rules would have given; the rules stand when it says nothing new.
+  let answer = read.answer;
+  let time: Date | null = null;
+  let offered = other ? { area: other.place, bedrooms: other.bedrooms, rent: other.price, furnished: other.furnished, text: other.text } : null;
+  if (smart && !r.asksIfBot) {
+    if (smart.answer === "available" || smart.answer === "time") answer = home == null ? null : "AVAILABLE";
+    else if (smart.answer === "taken") answer = home == null ? null : "RENTED";
+    else if (smart.answer === "other_home") answer = null;
+    if (smart.time && (smart.answer === "available" || smart.answer === "time")) time = smart.time;
+    if (smart.otherHome && (smart.answer === "taken" || smart.answer === "other_home")) offered = { ...smart.otherHome, text: text.slice(0, 300) };
+  }
+  const resend = r.resend || smart?.answer === "resend";
+  const seed = ask.id;
   // "The video is not available" / "send the link again": our link failed, the broker is willing. Nothing is
   // marked; they get Mkan's own page and the question again, once per ask.
-  if (r.resend) {
+  if (resend) {
     if (home == null) return { kind: "none" };
     const sent = await resendReply(ask, home, phone);
     return sent ? { kind: "resend", listingId: home, ...sent } : { kind: "none" };
   }
+  const say = (label: string, body: string) => replyOnce(ask, label, body);
+  const fyi = smart ? smart.answer : undefined;
+
+  // Another home beside "taken", or on its own: kept on every chat that asked and as a lead of its own, and the
+  // broker is thanked in their language — never "Okay, thank you".
+  if (offered && home != null && (answer === "RENTED" || smart?.answer === "other_home")) {
+    if (answer === "RENTED" && isNews) await recordTypedAnswer(ask.brokerRequestIds, home, "RENTED", phone);
+    const kept = await keepOffered(read, voice, offered, phone, home);
+    const complete = kept?.ok === true;
+    const body = complete ? otherHomeKeptMessage(seed, lang, answer === "RENTED") : takenOtherAckMessage(seed, lang);
+    const reply = await say("auto-ack", body);
+    if (answer === "RENTED") return { kind: "availability", listingId: home, answer: "RENTED", applied: isNews, reply, otherHome: { listingId: kept?.ok ? kept.listingId : null } };
+    return reply ? { kind: "reply", ...reply, why: "answered", read: fyi } : { kind: "none" };
+  }
+
   if (answer && home != null) {
     if (isNews) await recordTypedAnswer(ask.brokerRequestIds, home, answer, phone);
-    // Their other home is kept on every chat that asked, and the broker is asked warmly for what a tenant
-    // needs to see it — never "Okay, thank you".
-    if (other) {
-      await recordOtherHome(ask.brokerRequestIds, home, other, phone).catch((err) => console.warn(`[agent] broker's other home not kept: ${(err as Error).message}`));
-      return { kind: "availability", listingId: home, answer, applied: isNews, reply: await replyOnce(ask, "auto-ack", takenOtherAckMessage(ask.id)) };
-    }
     // A yes that started an intro (deal-intro.ts) is answered with Mkan's terms, or — terms on record —
     // the tenant's number: one message, not a thanks and then another.
     const intro = answer === "AVAILABLE" && isNews ? await introReplyFor(phone, home).catch(() => null) : null;
-    if (intro) return { kind: "availability", listingId: home, answer, applied: isNews, reply: await replyOnce(ask, "auto-terms", intro) };
     // A yes that carries a time ("yes, Thursday 10am works" to an ask that proposed two): kept on the chats that
-    // asked, so the viewing is offered at that time instead of a blank "when can you come?".
-    if (answer === "AVAILABLE" && isNews) {
-      const when = readViewingTime(text, new Date());
-      if (when && "at" in when) await recordBrokerTime(ask.brokerRequestIds, home, when.at, phone).catch(() => {});
+    // asked and handed to the viewing loop, so the viewing is offered at that time instead of a blank "when can you come?".
+    if (answer === "AVAILABLE") {
+      let when = time;
+      if (!when && isNews) {
+        const rule = readViewingTime(text, new Date());
+        if (rule && "at" in rule) when = rule.at;
+      }
+      if (when) {
+        const settled = await handTime(ask.brokerRequestIds, home, when, phone);
+        if (intro) return { kind: "availability", listingId: home, answer, applied: isNews, time: when, reply: await say("auto-terms", intro) };
+        const label = when.toISOString();
+        return { kind: "availability", listingId: home, answer, applied: isNews, time: when, reply: await say(`auto-time:${label}`, settled ?? timeAckMessage(seed, lang, viewingLabel(when, lang === "RW" ? "rw" : "en"))) };
+      }
     }
+    if (intro) return { kind: "availability", listingId: home, answer, applied: isNews, reply: await say("auto-terms", intro) };
     // "Budget?" next to the yes gets its answer in the same message; "when do you want to visit?" waits for the tenant.
     const aboutTenant = r.question && !/visit|view|come|see/i.test(text);
-    const body = answer === "RENTED" ? takenAckMessage(ask.id) : aboutTenant ? `${availableAckMessage(ask.id)} ${need.they}` : availableAckMessage(ask.id);
-    return { kind: "availability", listingId: home, answer, applied: isNews, reply: await replyOnce(ask, "auto-ack", body) };
+    const needText = needLines(read.wanted)[lang] || need.they;
+    const ack = answer === "RENTED" ? takenAckMessage(seed, lang) : availableAckMessage(seed, lang);
+    return { kind: "availability", listingId: home, answer, applied: isNews, reply: await say("auto-ack", aboutTenant && answer === "AVAILABLE" ? `${ack} ${needText}` : ack) };
   }
-  if (r.question) {
-    const reply = await replyOnce(ask, "auto-about", aboutMeMessage(need, ask.id, many));
-    return reply ? { kind: "reply", ...reply, why: "about-me" } : { kind: "none" };
+
+  // The classifier read a question or a price with no answer in it, or the rules found a question.
+  const asked = smart?.answer === "question" || (!smart && r.question);
+  if (asked) {
+    const stated = tenantStatedBudget(read.messages, read.wanted.maxPrice);
+    const told = stated ? read.wanted : { ...read.wanted, maxPrice: null };
+    const line = needLines(told)[lang] || (lang === "EN" ? need.they : "");
+    const reply = await say("auto-about", smart ? questionReplyMessage(seed, lang, line, many) : aboutMeMessage(need, seed, many));
+    return reply ? { kind: "reply", ...reply, why: "about-me", read: fyi } : { kind: "none" };
+  }
+  if (smart?.answer === "price") {
+    const reply = await say("auto-price", priceNotedMessage(seed, lang, home != null && read.isNews));
+    return reply ? { kind: "reply", ...reply, why: "answered", read: fyi } : { kind: "none" };
   }
   if (r.greeting && !hasPhotos) {
-    const reply = await replyOnce(ask, "auto-greet", reAskMessage(text, ask.id, many));
+    const reply = await say("auto-greet", reAskMessage(text, seed, many));
     return reply ? { kind: "reply", ...reply, why: "greeting" } : { kind: "none" };
+  }
+  // Nothing the line can place, and the home still open: one short question, never silence.
+  if (smart?.answer === "unclear" && home != null && read.isNews && !hasPhotos) {
+    const reply = await say("auto-clarify", clarifyMessage(seed, lang, many));
+    return reply ? { kind: "reply", ...reply, why: "clarify", read: fyi } : { kind: "none" };
   }
   return { kind: "none" };
 }

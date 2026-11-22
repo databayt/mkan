@@ -144,3 +144,98 @@ export async function createBrokerHome(ask: AskForHome, offer: BrokerOffer): Pro
   const ids = await matchRequest(ask.tenantRequest as Parameters<typeof matchRequest>[0], new Date(listing.createdAt.getTime() - 1000));
   return { ok: true, listingId: listing.id, matched: ids.includes(listing.id) };
 }
+
+// ── a home offered in words ─────────────────────────────────────────────────
+
+/** Other homes a broker may leave with us in words, in all (a guard, not a target). */
+export const MAX_OTHER_HOMES = 12;
+
+export interface OtherHomeOffer {
+  area: string | null;
+  bedrooms: number | null;
+  /** RWF a month. */
+  rent: number | null;
+  furnished: boolean | null;
+  /** The broker's own words, kept on the lead. */
+  note?: string | null;
+}
+
+export type OtherHomeResult = { ok: true; listingId: number; created: boolean } | { ok: false; reason: "thin" | "no-broker" | "limit" };
+
+/**
+ * "Taken, but I have another one in Gikondo, 2 bed 200k": the other home becomes a lead of its own — a
+ * draft, unpublished listing tied to that broker (ListingBroker), shaped like the TikTok mirror's leads and
+ * createBrokerHome's — so any tenant whose search fits it can be offered it, not only the one who asked about
+ * the taken home. It needs a rent and a place or a size; less than that is kept as the event only
+ * (broker-inbox.ts recordOtherHome) and the broker is asked for the rest. The same offer said twice (the
+ * broker's burst, a re-read) is one lead. Photos come later in the chat and are added by the inbox.
+ */
+export async function keepOtherHome(brokerId: string, offer: OtherHomeOffer): Promise<OtherHomeResult> {
+  if (offer.rent == null || (!offer.area && offer.bedrooms == null)) return { ok: false, reason: "thin" };
+  const broker = await db.broker.findUnique({ where: { id: brokerId }, select: { id: true, name: true, userId: true, phones: true } });
+  if (!broker) return { ok: false, reason: "no-broker" };
+  const prefix = `broker-other:${broker.id}:`;
+  const mine = await db.listing.findMany({ where: { sourceListingId: { startsWith: prefix } }, select: { id: true, priceMonth: true, bedrooms: true, location: { select: { address: true } } } });
+  const place = offer.area ?? "Kigali";
+  const twin = mine.find((l) => Number(l.priceMonth) === offer.rent && (offer.bedrooms == null || l.bedrooms === offer.bedrooms) && (!offer.area || l.location?.address?.toLowerCase() === place.toLowerCase()));
+  if (twin) return { ok: true, listingId: twin.id, created: false };
+  if (mine.length >= MAX_OTHER_HOMES) return { ok: false, reason: "limit" };
+
+  const phone = broker.phones[0] ?? null;
+  let hostId = broker.userId;
+  if (!hostId) {
+    const sourceHostId = `broker:${broker.id}`;
+    const user = await db.user.upsert({
+      where: { sourceHostId },
+      create: { email: sourceHostId, sourceHostId, phoneNumber: phone, role: "MANAGER" },
+      update: { phoneNumber: phone },
+      select: { id: true },
+    });
+    hostId = user.id;
+    await db.broker.update({ where: { id: broker.id }, data: { userId: hostId } });
+  }
+  const zone = resolveZone({ text: place, pinIsReal: false });
+  const district = DISTRICTS.find((d) => d.code === zone?.district) ?? DISTRICTS[0]!;
+  const pin = zone && zone.zone.level !== "district" ? zone.zone : district;
+  const location = await db.location.create({
+    data: {
+      address: place,
+      city: "Kigali",
+      state: district.nameEn,
+      country: "Rwanda",
+      postalCode: "",
+      latitude: pin.lat,
+      longitude: pin.lng,
+      zoneKey: `KIGALI_${district.code}`,
+      sector: zone?.sector ?? null,
+      neighbourhood: zone?.neighbourhood ?? null,
+    },
+    select: { id: true },
+  });
+  const beds = offer.bedrooms;
+  const rooms = beds == null ? "Home" : beds === 0 ? "Studio" : `${beds}-bedroom home`;
+  const listing = await db.listing.create({
+    data: {
+      source: "WEB",
+      sourceListingId: `${prefix}${mine.length + 1}`,
+      sourceUrl: phone ? `https://wa.me/${phone.replace(/[^\d]/g, "")}` : null,
+      sourceCapturedAt: new Date(),
+      canonicalLocale: "en",
+      title: `${rooms} in ${place}`,
+      description: offer.note?.slice(0, 500) ?? "",
+      rentPeriod: "MONTHLY",
+      priceMonth: offer.rent,
+      currency: "RWF",
+      bedrooms: beds,
+      furnished: offer.furnished ?? null,
+      photoUrls: [],
+      hostId,
+      locationId: location.id,
+      draft: true,
+      isPublished: false,
+    },
+    select: { id: true },
+  });
+  await db.listingBroker.create({ data: { listingId: listing.id, userId: hostId, brokerId: broker.id, role: "BROKER" } });
+  return { ok: true, listingId: listing.id, created: true };
+}
