@@ -26,7 +26,12 @@ import { openDemand, optInDemand } from "./demand";
 import { proposeViewing, openViewingAsk, readViewingAsk } from "./deal";
 import { readViewingTime, viewingLabel } from "./deal-pure";
 import { converse } from "./driver-loop";
-import { composeReply, DRIVER_SYSTEM, driverEnabled, guardDriverText, guardNumbers, renderTurn, replyLanguageOf, type ChatLine, type DriverState } from "./driver-pure";
+import { brokerCheckOf, composeReply, confirmedFirst, DRIVER_SYSTEM, driverEnabled, guardDriverText, guardNumbers, mergeHumanLines, pickHumanTurns, PREVERIFY, renderTurn, replyLanguageOf, resolvePick, type ChatLine, type DriverState, type HumanTurn, type PickRead } from "./driver-pure";
+import { withoutListingBudget } from "./ref-budget-pure";
+import { findChatMessages } from "@/lib/whatsapp/evolution";
+import { messageText } from "../../../scripts/wa/outbox-pure";
+import { addressList, textHash, type Sent } from "../../../scripts/wa/tenant-pure";
+import { lidOfPhone, readState } from "./wa-state";
 import { coerceMemory } from "./memory";
 import { rankCandidates } from "./rank";
 import { relaxations } from "./relax";
@@ -66,7 +71,7 @@ export interface DriveInput {
   refSource?: string | null;
   seed?: { messages: AgentMessage[]; requirements: Prisma.JsonValue };
   /** A home code's home ("K6823" from a TikTok post): leads the search when it fits. */
-  refHome?: { id: number; filters?: Record<string, unknown> } | null;
+  refHome?: { id: number; filters?: Record<string, unknown>; taken?: boolean; rent?: number } | null;
   onAnswering?: () => void;
 }
 
@@ -80,18 +85,21 @@ export async function driverReady(): Promise<boolean> {
 function chatLines(messages: AgentMessage[]): ChatLine[] {
   const out: ChatLine[] = [];
   for (const m of messages) {
+    const at = Date.parse(m.at);
+    const when = Number.isFinite(at) ? { at } : {};
     if (m.role === "user") {
-      out.push({ who: "tenant", text: m.text });
+      out.push({ who: "tenant", text: m.text, ...when });
       continue;
     }
     const said = "said" in m ? m.said : undefined;
-    if (said) out.push({ who: "mkan", text: said });
-    else if (m.kind === "answer" && m.text) out.push({ who: "mkan", text: m.text });
-    else if (m.kind === "ask") out.push({ who: "mkan", text: `(asked for their ${m.field === "maxPrice" ? "budget" : m.field})` });
-    else if (m.kind === "clarify") out.push({ who: "mkan", text: "(asked what kind of home they want)" });
-    else if (m.kind === "shortlist") out.push({ who: "mkan", text: m.same ? "(said these are the same homes as before)" : `(sent a list of ${Math.min(m.count, MAX_HOMES)} homes)` });
-    else if (m.kind === "none") out.push({ who: "mkan", text: "(said nothing matched yet)" });
-    else if (m.kind === "followUp") out.push({ who: "mkan", text: "(sent a short reply)" });
+    const say = (text: string) => out.push({ who: "mkan", text, ...when });
+    if (said) say(said);
+    else if (m.kind === "answer" && m.text) say(m.text);
+    else if (m.kind === "ask") say(`(asked for their ${m.field === "maxPrice" ? "budget" : m.field})`);
+    else if (m.kind === "clarify") say("(asked what kind of home they want)");
+    else if (m.kind === "shortlist") say(m.same ? "(said these are the same homes as before)" : `(sent a list of ${Math.min(m.count, MAX_HOMES)} homes)`);
+    else if (m.kind === "none") say("(said nothing matched yet)");
+    else if (m.kind === "followUp") say("(sent a short reply)");
   }
   return out;
 }
@@ -100,6 +108,43 @@ function chatLines(messages: AgentMessage[]): ChatLine[] {
 function statedBudget(text: string): number | null {
   const r = parseRequirements(text);
   return r.maxPrice && r.maxPrice >= 10_000 && r.maxPrice <= 5_000_000 && r.stay !== "short" ? r.maxPrice : null;
+}
+
+/** How far back a person's own messages in the chat are read: a takeover is remembered for days, not hours. */
+const HUMAN_LOOKBACK_MS = 3 * 86_400_000;
+
+/**
+ * What a person at Mkan (Abdout) typed in this chat from the phone. The bot stores only WHEN (wa-tenant noteFromMe →
+ * WaState `tenant-human`, a time per phone), not the words — the words are in the bridge's message store, which
+ * findChatMessages reads per chat (both directions). A message is a person's when it is fromMe in this chat and not one of the
+ * bot's own (WaState `tenant-sent`: ids, plus text hashes for an echo that beat its id). Never throws, never slow:
+ * no read, no human lines.
+ */
+async function humanTurnsFor(digits: string, now = Date.now()): Promise<HumanTurn[]> {
+  try {
+    const lid = await lidOfPhone(digits);
+    const addrs = addressList({ phone: digits, lid });
+    const since = now - HUMAN_LOOKBACK_MS;
+    const [sent, records] = await Promise.all([
+      readState<Sent>("tenant-sent", []),
+      // This chat only, under both addresses (the phone and the @lid) — not the whole line.
+      Promise.race([
+        Promise.all([`${digits}@s.whatsapp.net`, ...(lid ? [lid.includes("@") ? lid : `${lid}@lid`] : [])].map((jid) => findChatMessages(jid, 40))).then((r) => r.flat()),
+        new Promise<never>((_, no) => setTimeout(() => no(new Error("slow")), 3_500)),
+      ]),
+    ]);
+    return pickHumanTurns(records, {
+      addrs,
+      sentIds: new Set(sent.map((x) => x.id).filter(Boolean)),
+      sent: sent.filter((x) => x.h && addrs.includes(x.phone)).map((x) => ({ at: Date.parse(x.at), h: x.h! })),
+      textOf: (m) => messageText(m ?? undefined),
+      hash: textHash,
+      since,
+    });
+  } catch (err) {
+    console.warn(`[driver] a person's messages were not read: ${(err as Error).message}`);
+    return [];
+  }
 }
 
 // ── one turn ─────────────────────────────────────────────────────────────────
@@ -118,6 +163,14 @@ interface Turn {
   /** Candidates from this turn's search. */
   pool: Map<number, ShortlistItem>;
   justShown: ShortlistItem[] | null;
+  /** The shown home this message names, read by meaning (driver-pure resolvePick). */
+  pick: PickRead | null;
+  /** The rent of the home a code named: a yardstick for "similar", never a budget. */
+  refRent: number | null;
+  /** Homes asked about before showing (this turn's search): their broker check, by id. */
+  verified: Map<number, { outcome: string; item: ShortlistItem }>;
+  /** Verified homes held behind the list: the next best when a shown one is taken. */
+  backups: ShortlistItem[];
   checks: { id: number; title: string; outcome: CheckOutcome | "confirmed" | "busy" }[];
   offered: { id: number; labels: string[]; at: string[] } | null;
   lastOffered: { id: number; at: string[] } | null;
@@ -189,10 +242,15 @@ function candidateFacts(items: ShortlistItem[], t: Turn) {
     fits: s.reasons.slice(0, 4),
     ask_broker: facts[i]?.askBroker ?? [],
     confirmed_free: s.availability === "confirmed",
+    broker_check: brokerCheckOf(t.verified.get(s.id)?.outcome, s.availability),
   }));
 }
 
 async function searchTool(t: Turn, input: Record<string, unknown>) {
+  // A pick is not a search: the tenant named a shown home, so it is checked, and nothing else is shown instead.
+  if (t.pick?.sure && !t.checks.some((c) => c.id === t.pick!.id)) {
+    return { error: `The tenant picked home ${t.pick.number} (${t.pick.title}) from the list. Do not search: call check_availability for home_numbers [${t.pick.number}] and offer_viewing_slots for it now.` };
+  }
   const { changed, unplaced } = applySlots(t, input);
   await db.agentTask.update({ where: { id: t.taskId }, data: { requirements: json(t.requirements) } }).catch(() => {});
   const query: Requirements = { ...t.requirements, stay: "long" };
@@ -218,9 +276,14 @@ async function searchTool(t: Turn, input: Record<string, unknown>) {
   // Never past the tenant's budget: a stretch is not a fit (budgetRespected), and a list of homes they cannot pay is the old bot.
   const limit = t.requirements.maxPrice ? t.requirements.maxPrice * 1.05 : null;
   const within = limit ? items.filter((s) => s.cost.period !== "month" || s.cost.headline <= limit) : items;
-  const pinned = t.pin ? within.find((s) => s.id === t.pin) : undefined;
-  const ordered = pinned ? [pinned, ...within.filter((s) => s.id !== t.pin)] : within;
+  // No budget given and a code's home in play: similar means near ITS rent, never the tenant's budget.
+  const near = !limit && t.refRent ? within.filter((s) => s.cost.period !== "month" || s.cost.headline <= t.refRent! * 1.25) : within;
+  const pinned = t.pin ? near.find((s) => s.id === t.pin) : undefined;
+  const rest = confirmedFirst(near.filter((s) => s.id !== t.pin));
+  const ordered = pinned ? [pinned, ...rest] : rest;
   t.pool = new Map(ordered.slice(0, 5).map((s) => [s.id, s]));
+  // The best few are asked before any is shown (inside the broker caps): the tenant is told it is being checked.
+  if (t.pool.size) await verifyTop(t, [...t.pool.values()].filter((s) => s.availability !== "rented")).catch((err) => console.warn(`[driver] ${t.taskId} pre-verify: ${(err as Error).message}`));
   t.events.push(["search_done", "done", { tool: "search_homes", candidates: candidates.length, returned: t.pool.size, relaxed: relaxedKeys }]);
   let saved = false;
   if (t.pool.size === 0 && !t.saved) {
@@ -235,6 +298,7 @@ async function searchTool(t: Turn, input: Record<string, unknown>) {
     ...(changed.length ? { brief_updated: changed } : {}),
     ...(unplaced ? { places_not_recognised: unplaced } : {}),
     candidates: candidateFacts([...t.pool.values()], t),
+    ...(t.verified.size ? { brokers_asked_now: t.verified.size, say_briefly: "the candidates marked asking_now are being checked with their brokers: say so in one short line; the answer reaches the tenant here" } : {}),
     ...(relaxedKeys.length ? { widened: relaxedKeys, note: "These fit only after widening those details: say so plainly." } : {}),
     ...(t.pool.size === 0 ? { note: "Nothing within the budget matches. Say so honestly and ask which detail they can relax (area, size or budget).", ...(saved ? { saved_search: "the search is saved: new matching homes are sent to this chat automatically" } : {}) } : {}),
   };
@@ -255,7 +319,10 @@ async function showTool(t: Turn, input: Record<string, unknown>) {
     const was = prior.get(s.id);
     return was && s.availability === "unconfirmed" && was.availability !== "unconfirmed" ? { ...s, availability: was.availability } : s;
   });
-  await db.agentTask.update({ where: { id: t.taskId }, data: { shortlist: json(list) } });
+  // The homes checked behind the list stay on the shortlist after it, so a "taken" goes straight to them (broker.ts).
+  const behind = [...t.verified.values()].map((v) => prior.get(v.item.id) ?? v.item).filter((s) => !list.some((x) => x.id === s.id) && s.availability !== "rented");
+  t.backups = list.length >= MAX_HOMES ? behind : [];
+  await db.agentTask.update({ where: { id: t.taskId }, data: { shortlist: json([...list, ...t.backups]) } });
   t.shown = list;
   t.justShown = list;
   list.forEach((s) => t.shownIds.add(s.id));
@@ -301,6 +368,20 @@ const OUTCOME_FOR_MODEL: Record<string, string> = {
   busy: "the check could not start just now; say you will check it and offer the viewing slots",
 };
 
+/** One home's broker check, inside every cap and gate askAvailabilityFor / askBroker hold (broker-sends, cadence, team numbers). */
+async function askOne(t: Turn, item: ShortlistItem): Promise<CheckOutcome | "confirmed" | "busy"> {
+  const ask = (): Promise<AskOutcome | null> => askAvailabilityFor(t.taskId, item.id).catch(() => null);
+  let res = await ask();
+  if (!res) {
+    await sleep(1_200);
+    res = await ask();
+  }
+  if (!res) await handPickToPerson(t.taskId, item, "check-failed").catch(() => {});
+  const outcome: CheckOutcome | "confirmed" | "busy" = res?.why === "confirmed" ? "confirmed" : res?.asked ? (res.slow ? "slow" : "asked") : ((res?.why as CheckOutcome | undefined) ?? "busy");
+  t.checks.push({ id: item.id, title: item.title, outcome });
+  return outcome;
+}
+
 async function checkTool(t: Turn, input: Record<string, unknown>) {
   const nums = (Array.isArray(input.home_numbers) ? input.home_numbers : []).filter((x): x is number => typeof x === "number");
   const items = [...new Set(nums)].map((n) => homeByNumber(t, n)).filter((s): s is ShortlistItem => !!s);
@@ -309,20 +390,54 @@ async function checkTool(t: Turn, input: Record<string, unknown>) {
   await db.agentTask.updateMany({ where: { id: t.taskId, status: "RUNNING" }, data: { status: "DONE" } });
   const results = await Promise.all(
     items.map(async (item) => {
-      const ask = (): Promise<AskOutcome | null> => askAvailabilityFor(t.taskId, item.id).catch(() => null);
-      let res = await ask();
-      if (!res) {
-        await sleep(1_200);
-        res = await ask();
-      }
-      if (!res) await handPickToPerson(t.taskId, item, "check-failed").catch(() => {});
-      const outcome: CheckOutcome | "confirmed" | "busy" = res?.why === "confirmed" ? "confirmed" : res?.asked ? (res.slow ? "slow" : "asked") : ((res?.why as CheckOutcome | undefined) ?? "busy");
-      t.checks.push({ id: item.id, title: item.title, outcome });
+      // A home this turn's search already asked about is not asked twice: its answer is the check's.
+      const before = t.verified.get(item.id);
+      const outcome = before && before.outcome !== "busy" ? (before.outcome as CheckOutcome | "confirmed") : await askOne(t, item);
       return { home_number: t.shown.indexOf(item) + 1, title: item.title, status: outcome, meaning: OUTCOME_FOR_MODEL[outcome] ?? OUTCOME_FOR_MODEL.busy };
     }),
   );
   t.events.push(["availability_asked", "waiting_person", { tool: "check_availability", homes: items.map((s) => s.id) }]);
-  return { results };
+  // Taken is never a dead end: the homes already checked behind the list come first, then a new search.
+  const taken = results.some((r) => r.status === "taken");
+  const next = taken ? t.backups.filter((s) => s.availability !== "rented" && !t.shown.some((x) => x.id === s.id)) : [];
+  return {
+    results,
+    ...(taken
+      ? {
+          next_best: next.length
+            ? { homes: candidateFacts(next, t), note: "These were already checked with their brokers: show_homes with these ids, best first, before searching again." }
+            : { note: "Nothing checked is waiting: search_homes for the next best and show it." },
+        }
+      : {}),
+  };
+}
+
+/**
+ * Before the tenant sees any home: the brokers of the best PREVERIFY candidates are asked, in parallel, inside the
+ * same caps and gates as a tenant's own pick (askAvailabilityFor). The shortlist on disk holds the homes shown so far
+ * first, then these, so a broker's answer lands on the list (broker.ts applyAnswer) and a "taken" goes on to the next
+ * best (nextBestAfterTaken). A home a broker already confirmed is not asked again.
+ */
+async function verifyTop(t: Turn, items: ShortlistItem[]): Promise<void> {
+  const targets = items.slice(0, PREVERIFY);
+  if (!targets.length) return;
+  const onDisk = await db.agentTask.findUnique({ where: { id: t.taskId }, select: { shortlist: true } }).catch(() => null);
+  const disk = (onDisk?.shortlist as unknown as ShortlistItem[] | null) ?? [];
+  const prior = new Map(disk.map((s) => [s.id, s]));
+  const front = t.shown.map((s) => prior.get(s.id) ?? s);
+  const merged = targets.filter((s) => !front.some((f) => f.id === s.id)).map((s) => {
+    const was = prior.get(s.id);
+    return was && s.availability === "unconfirmed" && was.availability !== "unconfirmed" ? { ...s, availability: was.availability } : s;
+  });
+  await db.agentTask.update({ where: { id: t.taskId }, data: { shortlist: json([...front, ...merged]) } });
+  await db.agentTask.updateMany({ where: { id: t.taskId, status: "RUNNING" }, data: { status: "DONE" } });
+  await Promise.all(
+    merged.map(async (item) => {
+      const outcome = item.availability === "confirmed" ? "confirmed" : item.availability === "rented" ? "taken" : item.availability === "asked" ? "already" : await askOne(t, item);
+      t.verified.set(item.id, { outcome, item });
+    }),
+  );
+  if (t.verified.size) t.events.push(["availability_asked", "waiting_person", { tool: "search_homes", preverify: [...t.verified.keys()] }]);
 }
 
 async function slotsTool(t: Turn, input: Record<string, unknown>) {
@@ -459,10 +574,15 @@ export async function driveTurn(input: DriveInput): Promise<DriveResult> {
       profileId: profile.id,
       requirements: { ...mergeRequirements(EMPTY_REQUIREMENTS, coerceRequirements(task.requirements)), stay: "long" },
       memoryDismissed: coerceMemory(task.profile?.memory).dismissed,
-      pin: input.refHome?.id ?? null,
+      // A taken home is not pinned: it cannot be offered, only its neighbours.
+      pin: input.refHome && !input.refHome.taken ? input.refHome.id : null,
+      pick: null,
+      refRent: input.refHome?.rent ?? null,
+      verified: new Map(),
+      backups: listed ? onDisk.slice(MAX_HOMES).filter((s) => s.availability !== "rented") : [],
       shown: listed ? onDisk.slice(0, MAX_HOMES) : [],
       shownIds: new Set([...(listed ? onDisk.slice(0, MAX_HOMES).map((s) => s.id) : []), ...before.flatMap((m) => (m.role === "agent" && "shownIds" in m ? m.shownIds ?? [] : []))]),
-      pool: new Map(),
+      pool: new Map(listed ? onDisk.slice(MAX_HOMES).filter((s) => s.availability !== "rented").map((s) => [s.id, s]) : []),
       justShown: null,
       checks: [],
       offered: null,
@@ -473,7 +593,12 @@ export async function driveTurn(input: DriveInput): Promise<DriveResult> {
     };
     // What a tap on a home's code carries (its own place, size and price) and what the rules read in this
     // message that is plainly a field: the brief the model starts from. It may correct any of it.
-    if (input.refHome?.filters) t.requirements = { ...mergeRequirements(t.requirements, coerceRequirements(input.refHome.filters)), stay: "long" };
+    // Its price is the home's, not the tenant's budget: it never enters the brief (ref-budget-pure.ts).
+    if (input.refHome?.filters) t.requirements = { ...mergeRequirements(t.requirements, coerceRequirements(withoutListingBudget(input.refHome.filters))), stay: "long" };
+    t.pick = resolvePick(
+      message.text,
+      t.shown.map((s, i) => ({ number: i + 1, id: s.id, title: s.title, places: [s.zone, s.district], rentRwf: Math.round(s.cost.headline) })),
+    );
     const read = parseRequirements(message.text);
     const budget = statedBudget(message.text);
     t.requirements = mergeRequirements(t.requirements, {
@@ -491,7 +616,11 @@ export async function driveTurn(input: DriveInput): Promise<DriveResult> {
     const basisText = !isLanguageNeutral(message.text) ? message.text : [...tenantMessages].reverse().find((x) => !isLanguageNeutral(x)) ?? message.text;
     const basisLang: WaLang = basisText === message.text ? lang : waLang(basisText);
     const viewingAsk = await readViewingAsk(phone).catch(() => null);
-    const chat = chatLines(before);
+    // A person at Mkan who typed in this chat (Abdout takes over from the phone): his words are in what the model reads.
+    const humans = await humanTurnsFor(input.digits);
+    const chat = mergeHumanLines(chatLines(before), humans);
+    const lastBot = [...before].reverse().find((m) => m.role === "agent");
+    const humanInChat = humans.length > 0 && humans[humans.length - 1]!.at > (lastBot ? Date.parse(lastBot.at) || 0 : 0);
     const said = chat.filter((l) => l.who === "mkan" && !l.text.startsWith("(")).map((l) => l.text);
     const state: DriverState = {
       now: new Date(Date.now() + 2 * 3_600_000).toISOString().replace("T", " ").slice(0, 16) + " (Kigali)",
@@ -501,7 +630,9 @@ export async function driveTurn(input: DriveInput): Promise<DriveResult> {
       earlierHomesShown: Math.max(0, t.shownIds.size - t.shown.length),
       viewing: viewingAsk || t.lastOffered ? { homeNumber: t.shown.findIndex((s) => s.id === (viewingAsk?.listingId ?? t.lastOffered?.id)) + 1 || null, slotsOffered: t.lastOffered ? t.lastOffered.at.map((a) => viewingLabel(new Date(a), lang)) : [], requested: !!viewingAsk?.proposedAt } : null,
       replyLanguage: replyLanguageOf(basisText, basisLang),
-      refHome: input.refHome ? { code: `K${input.refHome.id}`, found: true } : readHomeRef(message.text) ? { code: `K${readHomeRef(message.text)}`, found: false } : null,
+      pick: t.pick ? { number: t.pick.number, id: t.pick.id, title: t.pick.title, how: t.pick.how, sure: t.pick.sure } : null,
+      ...(humanInChat ? { humanInChat } : {}),
+      refHome: input.refHome ? { code: `K${input.refHome.id}`, found: true, ...(input.refHome.taken ? { taken: true } : {}) } : readHomeRef(message.text) ? { code: `K${readHomeRef(message.text)}`, found: false } : null,
     };
     const toolResults: unknown[] = [];
     const guard = (raw: string) =>
@@ -548,6 +679,16 @@ export async function driveTurn(input: DriveInput): Promise<DriveResult> {
       const d = degraded(t, lang);
       raw = text = d.text || checkText(lang, "retry", "");
       spent = "degraded";
+    }
+
+    // Homes asked about before showing but never shown (the model asked a question instead): the list the tenant
+    // last saw goes back as it was, with the homes asked about behind it, so "1" and "2" still mean what they meant.
+    if (t.verified.size && !t.justShown) {
+      const now = await db.agentTask.findUnique({ where: { id: taskId }, select: { shortlist: true } }).catch(() => null);
+      const disk = (now?.shortlist as unknown as ShortlistItem[] | null) ?? [];
+      const front = t.shown.length ? t.shown.map((s) => disk.find((x) => x.id === s.id) ?? s) : onDisk;
+      const behind = t.shown.length >= MAX_HOMES ? disk.filter((x) => t.verified.has(x.id) && !front.some((f) => f.id === x.id) && x.availability !== "rented") : [];
+      await db.agentTask.update({ where: { id: taskId }, data: { shortlist: json([...front, ...behind]) } }).catch(() => {});
     }
 
     const block = t.justShown ? homeLines(t.justShown, lang, publicAppUrl()).join("\n\n") : null;

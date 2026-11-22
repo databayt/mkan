@@ -25,6 +25,7 @@ import { Signal } from "@/components/analytics/signal";
 import TrackView from "@/components/analytics/track-view";
 import { WhatsAppCta } from "./whatsapp-cta";
 import { VideoHero } from "@/components/listings/video-hero";
+import { pickSimilar } from "./similar-pure";
 
 /**
  * Mkan's own page for a broker home — /en/k/K5808 (Abdout, 2026-11-01). Every link a tenant
@@ -40,9 +41,9 @@ interface HomePageProps {
 }
 
 const COPY = {
-  en: { code: "Code {ref}", taken: "This home was just taken.", more: "More homes like this", approx: "Approximate area", mute: "Mute", unmute: "Turn sound on", ask: "Ask about this home", video: "Video of the home" },
-  ar: { code: "الرمز {ref}", taken: "تم تأجير هذا المنزل للتو.", more: "منازل أخرى مثل هذا", approx: "منطقة تقريبية", mute: "كتم الصوت", unmute: "تشغيل الصوت", ask: "اسأل عن هذا المنزل", video: "فيديو المنزل" },
-  rw: { code: "Kode {ref}", taken: "Iyi nzu imaze gukodeshwa.", more: "Andi mazu nk'iyi", approx: "Agace kegereye", mute: "Funga ijwi", unmute: "Fungura ijwi", ask: "Baza kuri iyi nzu", video: "Videwo y'inzu" },
+  en: { code: "Code {ref}", taken: "This one is taken.", takenHint: "Here are a few like it that are still free.", takenWords: "Hi, {ref} is taken. Can you show me similar homes?", more: "More homes like this", approx: "Approximate area", mute: "Mute", unmute: "Turn sound on", ask: "Ask about this home", video: "Video of the home" },
+  ar: { code: "الرمز {ref}", taken: "تم تأجير هذا المنزل.", takenHint: "هذه منازل مشابهة لا تزال متاحة.", takenWords: "مرحباً، {ref} مؤجَّر. هل تعرض عليّ منازل مشابهة؟", more: "منازل أخرى مثل هذا", approx: "منطقة تقريبية", mute: "كتم الصوت", unmute: "تشغيل الصوت", ask: "اسأل عن هذا المنزل", video: "فيديو المنزل" },
+  rw: { code: "Kode {ref}", taken: "Iyi nzu yamaze gufatwa.", takenHint: "Dore andi asa nayo agihari.", takenWords: "Mwiriwe, {ref} yamaze gufatwa. Mwanyereka andi asa nayo?", more: "Andi mazu nk'iyi", approx: "Agace kegereye", mute: "Funga ijwi", unmute: "Fungura ijwi", ask: "Baza kuri iyi nzu", video: "Videwo y'inzu" },
 } as const;
 
 const fetchHome = cache(async (id: number) =>
@@ -92,6 +93,33 @@ function placeOf(h: Home, lang: "en" | "ar" | "rw"): string | null {
   return district ? districtName(district, lang) || h.location?.state || null : null;
 }
 
+/** Free broker homes near a taken one's size and rent (similar-pure.ts picks the 3). */
+async function similarHomes(home: Home) {
+  const district = home.location?.state ?? null;
+  const rows = await db.listing.findMany({
+    where: {
+      id: { not: home.id },
+      lostAt: null,
+      rentPeriod: "MONTHLY",
+      currency: "RWF",
+      source: { in: [...LEAD_SOURCES] },
+      sourceUrl: { not: null },
+      ...(home.priceMonth ? { priceMonth: { gte: Math.round(home.priceMonth * 0.6), lte: Math.round(home.priceMonth * 1.4) } } : {}),
+      location: { city: { equals: "Kigali", mode: "insensitive" }, ...(district ? { state: { equals: district, mode: "insensitive" } } : {}) },
+    },
+    select: {
+      id: true, title: true, propertyType: true, rentPeriod: true, priceMonth: true, bedrooms: true, lostAt: true, photoUrls: true, videoPosterUrl: true,
+      location: { select: { state: true, sector: true, neighbourhood: true } },
+    },
+    orderBy: { updatedAt: "desc" },
+    take: 30,
+  });
+  return pickSimilar(
+    { id: home.id, priceMonth: home.priceMonth, bedrooms: home.bedrooms, district },
+    rows.map((r) => ({ ...r, district: r.location?.state ?? null })),
+  );
+}
+
 export async function generateMetadata({ params }: HomePageProps): Promise<Metadata> {
   const { lang, ref } = await params;
   const id = homeIdOfRef(ref);
@@ -110,7 +138,7 @@ export async function generateMetadata({ params }: HomePageProps): Promise<Metad
     path,
     image: home.videoPosterUrl ?? home.photoUrls?.[0],
     // Indexed once it passes the trust gate (published); a draft lead stays out of search engines.
-    noIndex: !home.isPublished,
+    noIndex: !home.isPublished || !!home.lostAt,
   });
 }
 
@@ -139,6 +167,8 @@ export default async function BrokerHomePage({ params }: HomePageProps) {
   const num = (n: number) => n.toLocaleString(l === "ar" ? "ar" : "en", { maximumFractionDigits: 1 });
   const ref_ = `K${home.id}`;
   const lost = !!home.lostAt;
+  // A taken home leads somewhere: 2–3 like it that are still free, and the WhatsApp line (2026-11-22).
+  const similar = lost ? await similarHomes(home).catch(() => []) : [];
 
   const cost = home.priceMonth
     ? longStayCost({
@@ -260,7 +290,34 @@ export default async function BrokerHomePage({ params }: HomePageProps) {
         </p>
       )}
 
-      {lost && <p className="mt-4 rounded-xl bg-muted p-3 text-sm font-medium">{t.taken}</p>}
+      {lost && (
+        <section className="mt-4 space-y-3">
+          <p className="rounded-xl bg-muted p-3 text-sm font-medium">
+            {t.taken} {similar.length > 0 && <span className="font-normal text-muted-foreground">{t.takenHint}</span>}
+          </p>
+          {similar.length > 0 && (
+            <ul className="space-y-2">
+              {similar.map((s) => (
+                <li key={s.id}>
+                  <Link href={`/${lang}/k/K${s.id}`} className="flex gap-3 rounded-xl p-2 ring-1 ring-border transition-colors hover:bg-muted">
+                    <span className="relative size-16 shrink-0 overflow-hidden rounded-lg bg-muted">
+                      {(s.videoPosterUrl ?? s.photoUrls[0]) && <BlurImage src={(s.videoPosterUrl ?? s.photoUrls[0])!} alt="" fill sizes="64px" className="object-cover" />}
+                    </span>
+                    <span className="min-w-0 text-sm">
+                      <span dir="auto" className="block truncate font-medium">{scrubTitle(s.title) || `K${s.id}`}</span>
+                      <span className="block text-muted-foreground">{s.priceMonth ? `${money(s.priceMonth)} ${say("perMonth", "/ month")}` : null}</span>
+                      <span className="block truncate text-xs text-muted-foreground">{[placeOf(s as unknown as Home, l), s.bedrooms != null ? fill(say("beds", "{n} bd"), { n: s.bedrooms }) : null].filter(Boolean).join(" · ")}</span>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+          <WhatsAppCta href={continueOnWhatsApp(null, `${fill(t.takenWords, { ref: ref_ })} ${K_PAGE_MARK}`)} listingId={home.id}>
+            {t.ask}
+          </WhatsAppCta>
+        </section>
+      )}
 
       {cost && !lost && (
         <details open className="mt-4 rounded-xl bg-muted/60 p-3 text-sm">

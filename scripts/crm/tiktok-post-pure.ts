@@ -32,6 +32,13 @@ export interface PostRow {
   postedAt: string | null;
   /** Set once the home is taken or its ad or video is gone (Listing.lostAt): it never goes out again. */
   lostAt: string | null;
+  /**
+   * The newest broker answer on the home (BrokerRequest, respondedAt): `confirmedAt` a yes ("it is free"), `rentedAt` a
+   * "taken". Undefined = the row was loaded without them (an old caller): the availability checks below are skipped.
+   * Null = loaded, and no such answer exists.
+   */
+  confirmedAt?: string | null;
+  rentedAt?: string | null;
   /** Its TikTokPost row (set at pick; carried in queue.json to render and upload). */
   postId?: string;
   /** Lever 4 experiment: this post's caption carries the follow ask (set at pick, by postNumber parity). */
@@ -104,8 +111,29 @@ export function sourcePostedAt(r: Pick<PostRow, 'photoUrls' | 'postedAt'>): numb
  */
 export const MAX_MONTHLY_RENT = 15_000_000;
 
+/** A broker's yes older than this no longer says the home is free: it is asked again before the page posts it. */
+export const CONFIRM_DAYS = 3;
+
+/** The newest broker word on the home is "taken" (a yes after it lifts it: broker.ts applyAnswer lifts lostAt the same way). */
+export const brokerSaidTaken = (r: Pick<PostRow, 'confirmedAt' | 'rentedAt'>): boolean =>
+  !!r.rentedAt && (!r.confirmedAt || Date.parse(r.rentedAt) > Date.parse(r.confirmedAt));
+
+/**
+ * Whether a home's availability is established for a post: a broker said yes in the last CONFIRM_DAYS days, or the
+ * ad itself is that fresh (an ad posted today or yesterday IS the broker saying it is free). Anything older is held
+ * and its broker is asked again first (`reaskQueue`). Not judged (null = fine) for a row loaded without the answers.
+ */
+export function unconfirmedReason(r: PostRow, now = Date.now()): string | null {
+  if (r.confirmedAt === undefined) return null;
+  if (r.confirmedAt && now - Date.parse(r.confirmedAt) <= CONFIRM_DAYS * DAY) return null;
+  const posted = sourcePostedAt(r);
+  if (posted !== null && now - posted <= AD_DAYS * DAY) return null;
+  return `not confirmed free in the last ${CONFIRM_DAYS} days — its broker is asked again first`;
+}
+
 export function ineligibleReason(r: PostRow, consented: ReadonlySet<string>, now = Date.now()): string | null {
   if (r.lostAt) return 'taken, or its ad is gone';
+  if (brokerSaidTaken(r)) return 'a broker said it is taken';
   if (!r.priceMonth || r.priceMonth < 50_000) return 'no monthly price';
   if (r.priceMonth > MAX_MONTHLY_RENT) return 'price looks like a sale';
   if (r.photoUrls.length < MIN_PHOTOS) return `under ${MIN_PHOTOS} photos`;
@@ -113,6 +141,8 @@ export function ineligibleReason(r: PostRow, consented: ReadonlySet<string>, now
   const posted = sourcePostedAt(r);
   if (posted === null) return 'no source post date';
   if (now - posted > FRESH_DAYS * DAY) return `source post over ${FRESH_DAYS} days old`;
+  const stale = unconfirmedReason(r, now);
+  if (stale) return stale;
   if (r.source === 'TIKTOK') {
     const h = brokerHandle(r.hostSourceId);
     if (!h || !consented.has(h)) return 'broker has not agreed to reposts';
@@ -120,6 +150,40 @@ export function ineligibleReason(r: PostRow, consented: ReadonlySet<string>, now
   }
   if (r.source === 'MANUAL' || r.source === 'AIRBNB') return null;
   return `source ${r.source ?? 'unknown'}`;
+}
+
+/**
+ * Homes that would go out today but for the availability check: eligible in every other way, so the one thing
+ * missing is a broker's fresh yes. They are written to the re-ask queue (tiktok-takedown.ts / WaState `tiktok-reask`)
+ * and posted once a broker answers.
+ */
+export function needsReask(rows: PostRow[], consented: ReadonlySet<string>, now = Date.now()): PostRow[] {
+  return rows.filter((r) => unconfirmedReason(r, now) !== null && ineligibleReason({ ...r, confirmedAt: new Date(now).toISOString() }, consented, now) === null);
+}
+
+/** A post on the page whose home is gone: it comes down (or its caption says taken) — the Mac job's removal queue. */
+export interface PostedRow {
+  id: string;
+  listingId: number;
+  ref: string;
+  status: string;
+  postedAt: string | null;
+  tiktokUrl: string | null;
+  tiktokId: string | null;
+  lostAt: string | null;
+  confirmedAt: string | null;
+  rentedAt: string | null;
+}
+export const TAKEDOWN_WITHIN_DAYS = 45;
+export function takedownsDue(posts: PostedRow[], queued: ReadonlySet<string>, now = Date.now()): PostedRow[] {
+  return posts.filter(
+    (p) =>
+      p.status === 'POSTED' &&
+      !queued.has(p.id) &&
+      !!p.postedAt &&
+      now - Date.parse(p.postedAt) <= TAKEDOWN_WITHIN_DAYS * DAY &&
+      (!!p.lostAt || brokerSaidTaken(p)),
+  );
 }
 
 function resting(e: LedgerEntry | undefined, now: number): boolean {

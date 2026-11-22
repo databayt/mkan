@@ -7,6 +7,7 @@ import { appendTaskEvent, homeLink, requestConfirmations } from "./broker";
 import { gateForTask } from "./broker-sends";
 import { dealEvent } from "./deal-event";
 import { coerceRequirements } from "./requirements";
+import { listingDerivedBudget } from "./ref-budget-pure";
 import type { ShortlistItem } from "./types";
 import { postSlackCard } from "./whatsapp";
 
@@ -103,6 +104,13 @@ export async function askBroker(taskId: string, item: ShortlistItem, requirement
 
   // Picking it means a monthly rent: the broker is asked about one.
   const requirements = { ...coerceRequirements(requirementsJson), stay: "long" as const };
+  // The broker is told the tenant's need and budget (broker-message.ts): only what the tenant said. A "budget" that is a
+  // home's own rent (a code's search carries rent + 15%, home-ref.ts) is not theirs and goes no further (2026-11-22).
+  if (requirements.maxPrice) {
+    const ref = await db.agentTask.findUnique({ where: { id: taskId }, select: { refListingId: true } }).catch(() => null);
+    const refRent = ref?.refListingId ? (await db.listing.findUnique({ where: { id: ref.refListingId }, select: { priceMonth: true } }).catch(() => null))?.priceMonth : null;
+    if (listingDerivedBudget(requirements.maxPrice, [item.cost?.headline, refRent])) requirements.maxPrice = null;
+  }
   const overrides = new Set<number>();
   const asked = await requestConfirmations(taskId, [item], requirements as never, locale, { tenantPick: true, overrides });
   if (asked.length === 0) {

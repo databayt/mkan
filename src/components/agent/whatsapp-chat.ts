@@ -37,6 +37,7 @@ import { askAround } from "./demand";
 import { viewingRep } from "./broker-message";
 import { parseBrokerReply } from "./broker-reply";
 import { homeForRef } from "./home-ref";
+import { withoutListingBudget } from "./ref-budget-pure";
 import { isPersonal } from "./personal";
 import { afterViewingFor, openViewingAsk, prepareDealSheet, proposeViewing, readViewingAsk, recordAfterViewing } from "./deal";
 import { askTimeMessage, readAfterViewing, readViewingTime, viewingLabel } from "./deal-pure";
@@ -319,7 +320,8 @@ export async function handleTenantWhatsApp(input: {
       viewer,
       digits,
       current,
-      message: { role: "user", text, at: new Date().toISOString(), wa: input.msgId, ...(refHome ? { filters: refHome.filters, pin: refHome.id } : {}) },
+      // The home's own rent is a yardstick, never the tenant's budget: it stays out of the brief (ref-budget-pure.ts).
+      message: { role: "user", text, at: new Date().toISOString(), wa: input.msgId, ...(refHome ? { filters: withoutListingBudget(refHome.filters), pin: refHome.id } : {}) },
       lang,
       refSource: refSource ?? refSourceOf(restMarked, ref),
       refHome,

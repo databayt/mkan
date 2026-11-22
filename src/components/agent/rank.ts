@@ -69,13 +69,35 @@ export interface Candidate extends PricedHome {
  * title and type, because brokers post a shop as a "room".
  */
 const COMMERCIAL_RE = /\b(?:shops?|boutiques?|kiosks?|commercial|business (?:room|space|unit|premises|cent(?:er|re))|warehouses?|godown|offices? (?:space|for rent|room)|(?:plots?|land) for|for sale)\b|\b(?:ububiko|iduka|amaduka)\b|للبيع|محل تجاري/i;
-const NIGHTLY_RE = /\b(?:airbnb|per night|a night|nightly|daily rent|short[- ]?stay|guest ?house|holiday (?:home|rental)|vacation|by the night)\b/i;
+const NIGHTLY_RE = /\b(?:airbnb|per night|a night|nightly|daily rent|short[- ]?stay|guest ?house|holiday (?:home|rental)|vacation|by the night|hotel|hostel|lodge|motel|bnb)\b/i;
 export function notAHome(c: Pick<Candidate, "title" | "propertyType" | "rentPeriod">, r: Pick<Requirements, "stay">): boolean {
   const t = c.title ?? "";
   if (COMMERCIAL_RE.test(t) || /^(?:commercial|office|shop|land)/i.test(c.propertyType ?? "")) return true;
   // The agent covers monthly rentals: a nightly stay is never offered to one (a short-stay ask never reaches a search).
   if (r.stay !== "short" && (c.rentPeriod === "NIGHTLY" || NIGHTLY_RE.test(t))) return true;
   return false;
+}
+
+/**
+ * A monthly rent no real home of that size costs in Kigali: noise from a misread ad ("2-bedroom villa · 40,000",
+ * "3-bedroom house · 70,000" reached tenants, 2026-11-22 — a 40,000 figure is a room, a deposit or a typo). A
+ * house, villa or apartment of two bedrooms or more under ~60k (three or more: ~100k) is dropped, unless the tenant
+ * asked for the cheapest ("cheap first"). Rooms and studios have no floor.
+ */
+export const MIN_RENT_2BED = 60_000;
+export const MIN_RENT_3BED = 100_000;
+const WHOLE_HOME_RE = /\b(?:house|villa|apartment|flat|townhouse|bungalow|maison|appartement)\b/i;
+export function implausibleRent(
+  c: Pick<Candidate, "title" | "propertyType" | "bedrooms" | "priceMonth" | "rentPeriod">,
+  r: Pick<Requirements, "cheap">,
+): boolean {
+  if (r.cheap || c.rentPeriod !== "MONTHLY" || !c.priceMonth) return false;
+  const t = c.title ?? "";
+  const wholeHome = ["Apartment", "Villa", "Townhouse", "Cottage"].includes(c.propertyType ?? "") || (c.propertyType !== "Rooms" && WHOLE_HOME_RE.test(t) && !/\b(?:room|studio|chambre)\b/i.test(t));
+  if (!wholeHome) return false;
+  const beds = c.bedrooms ?? Number(t.match(/(\d+)\s*[- ]?(?:bed(?:room)?s?|br|chambres?)\b/i)?.[1] ?? NaN);
+  if (!Number.isFinite(beds) || beds < 2) return false;
+  return c.priceMonth < (beds >= 3 ? MIN_RENT_3BED : MIN_RENT_2BED);
 }
 
 /** What the card tells the tenant to ask the broker: the ad is silent on something they asked for. */
@@ -271,6 +293,7 @@ const waterOf = (c: Candidate): boolean | null => (c.rentPeriod === "NIGHTLY" ? 
 /** Hard constraints: a home failing any of these is never shown. */
 export function passesHardFilters(c: Candidate, r: Requirements): boolean {
   if (notAHome(c, r)) return false;
+  if (implausibleRent(c, r)) return false;
   // A list of places ("kicukiro, remera, kabeza"): a home in any of them, or in the district they named, fits.
   if (r.neighbourhoods && r.neighbourhoods.length > 1) {
     const inDistrict = !!r.district && !!c.district && c.district.toUpperCase() === r.district;

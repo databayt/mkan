@@ -80,6 +80,7 @@ import {
   type GrayFrame,
   H,
   ineligibleReason,
+  needsReask,
   leftoverText,
   MAX_SLIDES,
   muteFilter,
@@ -171,6 +172,13 @@ const saveLedger = (l: Ledger) => {
 // ── rows ─────────────────────────────────────────────────────────────────────
 async function loadRows(where: Record<string, unknown>): Promise<PostRow[]> {
   const { db } = await import('../../src/lib/db');
+  // The newest broker yes and "taken" per home: the page posts only homes confirmed free lately (ineligibleReason).
+  const answers = await db.brokerRequest
+    .groupBy({ by: ['listingId', 'status'], where: { status: { in: ['AVAILABLE', 'RENTED'] }, respondedAt: { not: null } }, _max: { respondedAt: true } })
+    .catch(() => null);
+  const newest = (status: string) => new Map((answers ?? []).filter((a) => a.status === status && a._max.respondedAt).map((a) => [a.listingId, a._max.respondedAt!.toISOString()]));
+  const yes = newest('AVAILABLE');
+  const gone = newest('RENTED');
   const rows = await db.listing.findMany({
     where: { rentPeriod: 'MONTHLY', location: { country: 'Rwanda' }, ...where },
     select: {
@@ -195,6 +203,8 @@ async function loadRows(where: Record<string, unknown>): Promise<PostRow[]> {
     // A broker lead's own video date beats these (sourcePostedAt reads it from the frames' video id).
     postedAt: (r.postedDate ?? r.createdAt).toISOString(),
     lostAt: r.lostAt?.toISOString() ?? null,
+    // Without the answers (the table did not answer) the check is skipped, never failed closed on a database blip.
+    ...(answers ? { confirmedAt: yes.get(r.id) ?? null, rentedAt: gone.get(r.id) ?? null } : {}),
   }));
 }
 
@@ -319,6 +329,17 @@ function probeVideo(r: PostRow): Probe {
   }
 }
 
+/** The homes whose broker must be asked again before a post: WaState `tiktok-reask`, one entry per home, the newest ask wins. */
+async function queueReask(rows: PostRow[]): Promise<void> {
+  const { db } = await import('../../src/lib/db');
+  const row = await db.waState.findUnique({ where: { key: 'tiktok-reask' } });
+  const now = new Date().toISOString();
+  const kept = new Map(((row?.value as { listingId: number; ref: string; at: string }[] | null) ?? []).map((e) => [e.listingId, e]));
+  for (const r of rows) if (!kept.has(r.id)) kept.set(r.id, { listingId: r.id, ref: refOf(r), at: now });
+  const value = [...kept.values()].slice(-300) as unknown as import('@prisma/client').Prisma.InputJsonValue;
+  await db.waState.upsert({ where: { key: 'tiktok-reask' }, create: { key: 'tiktok-reask', value }, update: { value } });
+}
+
 async function pick(): Promise<PostRow[]> {
   // --n / TIKTOK_POSTS_PER_DAY: "fresh" (the default since 2026-11-07) posts every postable home
   // whose ad went up today or yesterday, from TIKTOK_POSTS_MIN (10) up to TIKTOK_POSTS_MAX (15); see
@@ -334,6 +355,12 @@ async function pick(): Promise<PostRow[]> {
   for (const r of rows) {
     const w = ineligibleReason(r, consented);
     if (w) why.set(w, (why.get(w) ?? 0) + 1);
+  }
+  // Homes held only for want of a fresh broker yes go on the re-ask queue (WaState `tiktok-reask`): asked again, then posted.
+  const held = needsReask(rows, consented);
+  if (held.length) {
+    console.log(`  held for a fresh broker yes (${held.length}): ${held.slice(0, 12).map(refOf).join(', ')}${held.length > 12 ? ' …' : ''}`);
+    if (!flag('dry')) await queueReask(held).catch((e) => console.warn(`  ! re-ask queue not written: ${(e as Error).message.slice(0, 100)}`));
   }
   // A second pick on the same day adds to today's queue. It never replaces the queue: an earlier
   // pick's renders and uploads read from it.

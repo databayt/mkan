@@ -43,13 +43,16 @@ VOICE
 WHAT TO DO, in this order of priority
 1. Answer what the tenant actually asked, first. A question about a home ("is it furnished?", "how many bathrooms?", "where is it?", "do you have photos?") is answered from answer_from_listing, in a line or two, with no list attached. If the facts do not say, say the ad does not say and that it is confirmed at the viewing. "Is it still available / free?" is about a home: if you have shown or named one, say you are checking it with the broker (check_availability) and that the broker usually answers within a day; if no home is on the table yet, say you have none lined up yet and ask which home they mean (a home's code looks like K1234) or what they are looking for, and that you check each one with its broker. "Where is it?" / "location" is answered with the home's area from the tool.
 2. Ask for the ONE thing that matters most and is still missing: the budget first when you do not know it (what is the most they can pay a month), then the area, then the size. Never ask for something the tenant already gave, in any wording: read the brief and the chat. In Kigali a bare figure of two or three digits for a rent ("priced 700", "400-500") means thousands of RWF (RWF 700,000): take it that way, say it back as "700k", and do not ask about currency. A range means its upper end is the maximum. Never ask two questions in one message. If you already asked for something and they did not answer, do not ask the same question again in new words: ask something lighter instead (the area, or "a room or a whole apartment?"), or answer what they did say. Never say that you asked before or that you are changing how you ask.
-3. As soon as you know the budget plus one more thing (an area, a size, or a type), search and show the best 1 or 2 homes with show_homes: one line on why they fit this tenant, then the list, then one question ("Which one do you like?" or "Want to see one?"). Show homes that fit the brief and the budget. Never show a shop, an office or a commercial space.
-4. Only when the tenant picks a home (a number, a K-code, "this one", "the first") or says they want to see one: call check_availability for it AND offer_viewing_slots for it in the same turn. Say you are checking with the broker, never that it is available (a broker answers within a day, often sooner). Then offer the two time labels exactly as offer_viewing_slots returned them, and say someone from Mkan meets them at the house. One question: which time? A home's code the tenant sends (K1234) counts as a pick of that exact home: search_homes (it leads the results when it exists and fits), show_homes with it, then check_availability and offer_viewing_slots in the same turn. If state.refHome says found:false, that code is not in Mkan's list now: say so in a short honest line (never invent it) and carry on with what they need. Never check a home or offer times for a home the tenant has not chosen or asked to see: showing homes is not a pick, a budget is not a pick. You may write a slot's weekday and month words in the tenant's language, but keep its day number and time digits exactly as given (for example "samedi 21 nov, 15:00"). Offer the times once; if the tenant moves on to something else, answer that, and bring the viewing back only when it fits, in new words.
+3. As soon as you know the budget plus one more thing (an area, a size, or a type), search and show the best 1 or 2 homes with show_homes: one line on why they fit this tenant, then the list, then one question ("Which one do you like?" or "Want to see one?"). Show homes that fit the brief and the budget. Never show a shop, an office or a commercial space. search_homes asks the brokers of the best 2 or 3 candidates BEFORE you show anything (each candidate says broker_check: "confirmed_free", "asking_now", "already_asked" or "not_asked"): show a confirmed_free home first, and when you show one that is asking_now or already_asked, say in one short line that we are checking it with the broker and that it is back shortly (never that it is free). Never show a home whose broker_check is "taken". If every candidate is still being checked, say we are checking the ones that fit and show the best, honestly labelled; the answer reaches the tenant here by itself.
+4. A PICK IS BY MEANING, not only by number. Anything that names a home already shown is a pick: "No. 1", "number 2", "the first one", "the Kabeza one", "the 2 bed house for 350k", its title, its rent, its K-code, a screenshot or photo whose [photo: …] reading names its code. When state.pick is set, the tenant picked that home (state.pick.number): go STRAIGHT to check_availability for it (and offer_viewing_slots in the same turn). Never search again, never show other homes instead, never ask "which one?" for a pick you can read. When state.pick is not set but the message clearly means one of state.homesShown, treat it the same way. Only when the tenant picks a home (a number, a K-code, "this one", "the first") or says they want to see one: call check_availability for it AND offer_viewing_slots for it in the same turn. Say you are checking with the broker, never that it is available (a broker answers within a day, often sooner). Then offer the two time labels exactly as offer_viewing_slots returned them, and say someone from Mkan meets them at the house. One question: which time? A home's code the tenant sends (K1234) counts as a pick of that exact home: search_homes (it leads the results when it exists and fits), show_homes with it, then check_availability and offer_viewing_slots in the same turn. If state.refHome says found:false, that code is not in Mkan's list now: say so in a short honest line (never invent it) and carry on with what they need. Never check a home or offer times for a home the tenant has not chosen or asked to see: showing homes is not a pick, a budget is not a pick. You may write a slot's weekday and month words in the tenant's language, but keep its day number and time digits exactly as given (for example "samedi 21 nov, 15:00"). Offer the times once; if the tenant moves on to something else, answer that, and bring the viewing back only when it fits, in new words.
 5. When the tenant asks to talk, meet, call, or speak to a person ("can we talk", "link me with a human"): never say you cannot connect them, never refuse, never promise that a person will reply or call. Read the need behind it (to see the place, to trust it, to ask something) and meet it yourself: you handle everything here so they can ask you anything, and when they are ready to see a home someone from Mkan meets them at the house. Then offer the two viewing slots for the home they are on (offer_viewing_slots). If they are on no home yet, call offer_viewing_slots with no home_number, say viewings can be on those two times and someone from Mkan meets them at the house, and ask the one missing thing (budget first) so you can find the home to see.
 6. When the tenant names or agrees a time ("tomorrow 10am", "the second one", "Thursday works"): call book_viewing. Say what the tool says: the time is asked of the broker and you will confirm here; never that it is confirmed unless the tool says so. Say it once. After that, do not restate the booking in every message: answer what they just said in a line, and mention the viewing again only if they ask or something changed.
-7. If a check says a home is taken, go straight to the next best: search_homes, then show_homes. Never end on "sorry".
+7. If a check says a home is taken, go straight to the next best: a confirmed_free or already shown home first, else search_homes, then show_homes. Never end on "sorry". If state.refHome.taken is true, the home the tenant came for (its K-code, from a post or a link) is taken: say so in one honest line and show the closest homes at once, never send them to it.
 8. Thanks, "ok", small talk: one warm short line, then the next step (a viewing time, or the missing question). Do not repeat a line you sent.
 9. Not about homes at all: one line on what you do (find a home to rent in Kigali, check it, set up a viewing) and ask what they need.
+
+WHEN A PERSON FROM MKAN WROTE
+Lines in the chat that begin "Mkan (Osman)" were typed by a person at Mkan from the phone, not by you. They are Mkan's word: carry on from them and never contradict them (a time, a price, a promise, a decision). If one answers or arranges something, do not redo it; take it from there. state.humanInChat is true when such a line came after your last message.
 
 HARD RULES
 - Never state a price, a fee, an availability, a name, a place, a link or a number that a tool did not return in this turn or that the tenant did not write. Prices only as the tools gave them, written the way people text a rent in Kigali: "150k a month" (never "RWF 150,000/month": that form is the list's).
@@ -68,10 +71,10 @@ After show_homes, the homes go out as photos with a short caption each, and the 
 
 TOOLS
 - update_brief: record what the tenant told you (areas, budget, size, type, furnished, move-in). search_homes also takes these, so call update_brief alone only when you are not searching yet.
-- search_homes: finds up to 5 candidates that fit the brief (never homes already shown). Returns facts per candidate. Pass the brief fields you learned this turn.
+- search_homes: finds up to 5 candidates that fit the brief (never homes already shown, never a shop, a nightly stay or an implausible rent) and asks the brokers of the best 2 or 3 while it runs (broker_check). Returns facts per candidate. Pass the brief fields you learned this turn. Not for a pick.
 - show_homes: sends 1 or 2 of those candidates (by id) as the chat's list, with photos. Best fit first.
 - answer_from_listing: the facts of a shown home, for a question.
-- check_availability: asks the broker of one or more shown homes, in parallel.
+- check_availability: asks the broker of one or more shown homes, in parallel (a pick goes here, never to search_homes).
 - offer_viewing_slots: two real times Mkan can be at the house.
 - book_viewing: books the time the tenant chose for a shown home.
 
@@ -94,7 +97,7 @@ export const DRIVER_TOOLS: Anthropic.Tool[] = [
   },
   {
     name: "search_homes",
-    description: "Search Mkan's homes for the brief (updated with any fields you pass). Returns up to 5 candidates with facts, best fit first; homes already shown are left out. Use only the ids it returns.",
+    description: "Search Mkan's homes for the brief (updated with any fields you pass). Returns up to 5 candidates with facts, best fit first (a broker-confirmed free home first); homes already shown are left out, and the brokers of the best 2-3 are asked while it runs (broker_check on each). Not for a pick of a shown home: use check_availability. Use only the ids it returns.",
     input_schema: { type: "object", properties: { ...brief, include_shown: { type: "boolean", description: "Only when the tenant asks for the earlier homes again." } }, additionalProperties: false },
   },
   {
@@ -135,15 +138,18 @@ export const EFFECT_TOOLS = new Set(["show_homes", "check_availability", "book_v
 // ── showing the chat ─────────────────────────────────────────────────────────
 
 export interface ChatLine {
-  who: "tenant" | "mkan";
+  /** `human`: a person at Mkan (Abdout) typed it from the phone, in the chat, outside the bot. */
+  who: "tenant" | "mkan" | "human";
   text: string;
+  /** ms since epoch, when known: places a person's message in the chat's order (mergeHumanLines). */
+  at?: number;
 }
 
 /** The last `keep` lines of the chat, both sides, oldest first, long ones cut. */
 export function renderChat(lines: ChatLine[], keep = 14): string {
   const tail = lines.slice(-keep);
   if (!tail.length) return "(no earlier messages)";
-  return tail.map((l) => `${l.who === "tenant" ? "Tenant" : "Mkan"}: ${l.text.replace(/\s+/g, " ").trim().slice(0, 420)}`).join("\n");
+  return tail.map((l) => `${l.who === "tenant" ? "Tenant" : l.who === "human" ? "Mkan (Osman)" : "Mkan"}: ${l.text.replace(/\s+/g, " ").trim().slice(0, 420)}`).join("\n");
 }
 
 export interface DriverState {
@@ -153,7 +159,11 @@ export interface DriverState {
   homesShown: { number: number; id: number; title: string; area: string | null; rent: string; availability: string }[];
   earlierHomesShown: number;
   viewing: { homeNumber: number | null; slotsOffered: string[]; requested: boolean } | null;
-  refHome: { code: string; found: boolean } | null;
+  refHome: { code: string; found: boolean; taken?: boolean } | null;
+  /** The shown home this message names (resolvePick): the tenant PICKED it, so the turn checks it, never searches. */
+  pick?: { number: number; id: number; title: string; how: PickHow; sure: boolean } | null;
+  /** A person at Mkan (Abdout) wrote in this chat since the bot's last message: see the "Mkan (Osman)" lines. */
+  humanInChat?: boolean;
   /** The language the reply must be in, from the tenant's latest message (the model mirrors it). */
   replyLanguage: string;
 }
@@ -274,4 +284,180 @@ export function composeReply(text: string, homesBlock: string | null, raw: strin
   if (!homesBlock) return text;
   if (raw.includes(HOMES_TOKEN)) return raw.replace(HOMES_TOKEN, `\n\n${homesBlock}\n\n`).replace(/\n{3,}/g, "\n\n").trim();
   return `${text}\n\n${homesBlock}`;
+}
+
+// ── a pick, by meaning ───────────────────────────────────────────────────────
+
+export type PickHow = "code" | "number" | "details";
+export interface PickHome {
+  number: number;
+  id: number;
+  title: string;
+  /** Neighbourhood and district names the home sits in, as shown. */
+  places?: (string | null | undefined)[];
+  /** The monthly rent, RWF. */
+  rentRwf: number;
+}
+export interface PickRead {
+  number: number;
+  id: number;
+  title: string;
+  how: PickHow;
+  /** A K-code or a number: certain. "details" (title, rent, place) is likely, and the model confirms it. */
+  sure: boolean;
+}
+
+const ORDINAL_WORDS: [RegExp, number][] = [
+  [/\b(?:first|1st|premier|première|premiere|iya mbere|iyambere)\b|الأول|الاول|الأولى|الاولى/i, 1],
+  [/\b(?:second|2nd|deuxième|deuxieme|iya kabiri|iyakabiri)\b|الثاني|الثانية/i, 2],
+  [/\b(?:third|3rd|troisième|troisieme|iya gatatu)\b|الثالث/i, 3],
+];
+const BUDGET_WORD_RE = /\b(?:budget|max(?:imum)?|up to|under|below|at most|no more than|can (?:pay|afford)|afford|between|around)\b|ميزانية|ingengo/i;
+const SEARCH_WORD_RE = /\b(?:looking for|search|find me|show me|do you have|i (?:need|want a|want an|am looking)|je cherche|ndashaka)\b/i;
+const TITLE_STOP = new Set(["the", "and", "for", "with", "in", "at", "of", "to", "a", "an", "rent", "kigali", "home", "available"]);
+const SYNONYMS: Record<string, string> = { bedroom: "bed", bedrooms: "bed", beds: "bed", br: "bed", standalone: "stand", "stand-alone": "stand", apartments: "apartment", houses: "house" };
+
+const tokens = (s: string): string[] =>
+  asciiDigits(s)
+    .toLowerCase()
+    .replace(/stand[- ]alone/g, "stand")
+    .split(/[^a-z0-9\u0600-\u06ff]+/)
+    .filter(Boolean)
+    .map((w) => SYNONYMS[w] ?? w)
+    .filter((w) => !TITLE_STOP.has(w));
+
+/** Rents named in a message as a figure: "350k", "350,000", "350000". */
+const rentsNamed = (plain: string): number[] => {
+  const out: number[] = [];
+  for (const m of plain.matchAll(/(\d{2,3}(?:\.\d)?)\s?k\b/gi)) out.push(Math.round(Number(m[1]) * 1000));
+  for (const m of plain.matchAll(/\b(\d{1,3}(?:[ ,]\d{3})+|\d{5,7})\b/g)) out.push(Number(m[1]!.replace(/[ ,]/g, "")));
+  return out;
+};
+
+/**
+ * The shown home a tenant message names, or null. A pick is by MEANING: a home's K-code (a screenshot's
+ * [photo: … K6823 …] reading too), its number ("No. 1", "the first one", "home 2", a bare "1"), or — when the
+ * message is not a search or a budget — two of its title, rent and place ("the 2 bed house in Kabeza for 350k").
+ * A figure that is a budget is not a pick of the home priced the same (11-22: "No. 1 — … for 350k" got six other
+ * homes, and nearly every pick died "taken" while the tenant was shown more).
+ */
+export function resolvePick(text: string, shown: readonly PickHome[]): PickRead | null {
+  if (!shown.length) return null;
+  const plain = asciiDigits(text);
+  const read = (h: PickHome, how: PickHow, sure: boolean): PickRead => ({ number: h.number, id: h.id, title: h.title, how, sure });
+
+  const codes = new Set([...plain.matchAll(/\bK\s?(\d{3,6})\b/gi)].map((m) => Number(m[1])));
+  const byCode = shown.filter((h) => codes.has(h.id));
+  if (byCode.length === 1) return read(byCode[0]!, "code", true);
+
+  const numbers = new Set<number>();
+  const labelled = /(?:\bno\.?\s*|\bnumbers?\s*|\bnum[eé]ro\s*|#\s*|\bn[°º]\s*|\bnimero\s*|\b(?:home|house|option|choice|apartment)\s+(?:no\.?\s*|number\s*|#\s*)?|رقم\s*)(\d)\b(?!\s*(?:bed|br\b|bath|k\b|\d|,))/gi;
+  for (const m of plain.matchAll(labelled)) numbers.add(Number(m[1]));
+  const verbed = /\b(?:choose|pick|take|like|want|prefer|select|nshaka|ndashaka|yego|oui|prends)\s+(?:the\s+)?(?:no\.?\s*|number\s*|#\s*)?(\d)\b(?!\s*(?:bed|br\b|bath|k\b|\d|,))/gi;
+  for (const m of plain.matchAll(verbed)) numbers.add(Number(m[1]));
+  const bare = plain.trim().match(/^[#]?\s*(\d)\s*[.!)]?$/);
+  if (bare) numbers.add(Number(bare[1]));
+  ORDINAL_WORDS.forEach(([re, n]) => {
+    if (re.test(plain)) numbers.add(n);
+  });
+  const valid = [...numbers].filter((n) => shown.some((h) => h.number === n));
+  const byNumber = valid.length === 1 ? shown.find((h) => h.number === valid[0]) ?? null : null;
+
+  // Details: two of title, rent and place, never in a search or a budget.
+  let byDetails: PickHome | null = null;
+  if (!BUDGET_WORD_RE.test(plain) && !SEARCH_WORD_RE.test(plain)) {
+    const words = new Set(tokens(plain));
+    const rents = rentsNamed(plain);
+    const scored = shown.map((h) => {
+      const t = tokens(h.title);
+      const overlap = t.filter((w) => words.has(w)).length;
+      const title = t.length >= 2 && overlap >= 3 && overlap / t.length >= 0.5;
+      const price = rents.some((r) => Math.abs(r - h.rentRwf) <= Math.max(500, h.rentRwf * 0.01));
+      const place = (h.places ?? []).some((p) => p && p.trim().length >= 4 && plain.toLowerCase().includes(p.trim().toLowerCase()));
+      return { h, signals: Number(title) + Number(price) + Number(place) };
+    });
+    const best = Math.max(0, ...scored.map((x) => x.signals));
+    const top = scored.filter((x) => x.signals === best);
+    if (best >= 2 && top.length === 1) byDetails = top[0]!.h;
+  }
+
+  if (byNumber && byDetails && byNumber.id !== byDetails.id) return read(byDetails, "details", false);
+  if (byNumber) return read(byNumber, "number", true);
+  if (byDetails) return read(byDetails, "details", false);
+  return null;
+}
+
+// ── a person at Mkan typed in the chat ───────────────────────────────────────
+
+/** One stored WhatsApp message (Evolution's shape, trimmed to what is read). */
+export interface StoredMessage {
+  key?: { id?: string; fromMe?: boolean; remoteJid?: string; remoteJidAlt?: string };
+  message?: Record<string, unknown> | null;
+  messageTimestamp?: number | string;
+}
+export interface HumanTurn {
+  at: number;
+  text: string;
+}
+
+const ECHO_MS = 120_000;
+const addressOf = (jid: string | undefined): string | null => (jid ? (jid.endsWith("@lid") ? jid : jid.split("@")[0] ?? null) : null);
+
+/**
+ * The messages a person at Mkan typed in a tenant's chat: fromMe, in this chat, with words, and NOT the bot's own
+ * (an id in `sentIds`, or the same words within two minutes of one the bot sent: the echo of a reply). Oldest first.
+ */
+export function pickHumanTurns(
+  records: readonly StoredMessage[],
+  o: { addrs: readonly string[]; sentIds: ReadonlySet<string>; sent: readonly { at: number; h: string }[]; textOf: (m: StoredMessage["message"]) => string; hash: (t: string) => string; since: number },
+): HumanTurn[] {
+  const out: HumanTurn[] = [];
+  for (const r of records) {
+    const k = r.key;
+    if (!k?.fromMe || !k.id || o.sentIds.has(k.id)) continue;
+    const here = [addressOf(k.remoteJid), addressOf(k.remoteJidAlt)].some((a) => !!a && o.addrs.includes(a));
+    if (!here) continue;
+    const ts = Number(r.messageTimestamp ?? 0);
+    const at = ts > 0 ? ts * 1000 : 0;
+    if (!at || at < o.since) continue;
+    const text = (o.textOf(r.message ?? null) ?? "").trim();
+    if (!text) continue;
+    const h = o.hash(text);
+    if (o.sent.some((s) => s.h === h && Math.abs(s.at - at) < ECHO_MS)) continue;
+    out.push({ at, text });
+  }
+  return out.sort((a, b) => a.at - b.at);
+}
+
+/** The chat with a person's messages put where they were typed, among the lines that carry a time. */
+export function mergeHumanLines(lines: readonly ChatLine[], humans: readonly HumanTurn[]): ChatLine[] {
+  const out = [...lines];
+  for (const h of humans) {
+    const line: ChatLine = { who: "human", text: h.text, at: h.at };
+    const i = out.findIndex((l) => l.at != null && l.at > h.at);
+    if (i === -1) out.push(line);
+    else out.splice(i, 0, line);
+  }
+  return out;
+}
+
+// ── before showing ───────────────────────────────────────────────────────────
+
+/** How many homes are asked about before the tenant sees any. */
+export const PREVERIFY = 3;
+
+/** Broker-confirmed homes first, the rest in their order. */
+export function confirmedFirst<T extends { confirmed?: boolean; availability?: string }>(items: readonly T[]): T[] {
+  const yes = (x: T) => x.confirmed === true || x.availability === "confirmed";
+  return [...items.filter(yes), ...items.filter((x) => !yes(x))];
+}
+
+/** What the model hears about a home's broker check: honest, never "free" unless a broker said so. */
+export type BrokerCheck = "confirmed_free" | "asking_now" | "already_asked" | "not_asked" | "taken";
+export function brokerCheckOf(outcome: string | null | undefined, availability: string | undefined): BrokerCheck {
+  if (availability === "confirmed" || outcome === "confirmed") return "confirmed_free";
+  if (availability === "rented" || outcome === "taken") return "taken";
+  if (outcome === "asked" || outcome === "slow" || outcome === "handed") return "asking_now";
+  if (outcome === "already" || availability === "asked") return "already_asked";
+  return "not_asked";
 }
