@@ -173,7 +173,7 @@ describe("the broker answers", () => {
   it("the share line follows the broker's language: French, and Kinyarwanda with English under it", async () => {
     brokerRow = { ...brokerRow, preferredLanguage: "FR" };
     await asked();
-    expect((await brokerViewingReply(BROKER, "oui", later))!.reply).toMatch(/\nUne dernière chose, pour les locataires que Mkan vous amène : nous demandons 10% de votre commission.*Répondez OUI/);
+    expect((await brokerViewingReply(BROKER, "oui", later))!.reply).toMatch(/\nUne dernière chose, pour les locataires que Mkan vous amène : nous demandons 10 % de votre commission.*Répondez OUI/);
     bookViewing.mockClear();
     brokerRow = { ...brokerRow, preferredLanguage: "RW" };
     await asked();

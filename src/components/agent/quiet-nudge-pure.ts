@@ -120,11 +120,11 @@ export function followUpMessage(lang: ConfirmLang, plan: FollowUpPlan): string {
       case "ar":
         return one ? `${hi} وصل للتو منزل جديد يناسب طلبك: ${offerHomeLine(lang, a!)}. أتأكد لك أنه متاح؟ أرسل ${code}.` : `${hi} وصل منزلان جديدان يناسبان طلبك:\n${list}\nأتأكد لك أن أحدهما متاح؟ أرسل رمزه، مثل ${code}.`;
       case "rw":
-        return one ? `${hi} Hamaze kuboneka inzu nshya ihuye n'ibyo wasabye: ${offerHomeLine(lang, a!)}. Ndebe ko igihari? Ohereza ${code}.` : `${hi} Hamaze kuboneka inzu ebyiri nshya zihuye n'ibyo wasabye:\n${list}\nNdebe ko imwe igihari? Ohereza kode yayo, nka ${code}.`;
+        return one ? `${hi} Hamaze kuboneka inzu nshya ihuye n'ibyo wasabye: ${offerHomeLine(lang, a!)}. Ndebe ko iracyahari? Ohereza ${code}.` : `${hi} Hamaze kuboneka inzu ebyiri nshya zihuye n'ibyo wasabye:\n${list}\nNdebe ko imwe iracyahari? Ohereza kode yayo, nka ${code}.`;
       case "fr":
-        return one ? `${hi} Un nouveau logement vient d'arriver qui correspond à votre demande : ${offerHomeLine(lang, a!)}. Je vérifie qu'il est libre ? Envoyez ${code}.` : `${hi} Deux nouveaux logements correspondent à votre demande :\n${list}\nJe vérifie qu'un des deux est libre ? Envoyez son code, par exemple ${code}.`;
+        return one ? `${hi} Un nouveau logement correspond à votre demande : ${offerHomeLine(lang, a!)}. Voulez-vous que je vérifie qu'il est toujours disponible ? Envoyez ${code}.` : `${hi} Deux nouveaux logements correspondent à votre demande :\n${list}\nVoulez-vous que je vérifie si l'un des deux est toujours disponible ? Envoyez son code, par exemple ${code}.`;
       case "sw":
-        return one ? `${hi} Nyumba mpya imeingia inayolingana na ulichoomba: ${offerHomeLine(lang, a!)}. Niangalie kama iko wazi? Tuma ${code}.` : `${hi} Nyumba mbili mpya zinalingana na ulichoomba:\n${list}\nNiangalie kama moja iko wazi? Tuma nambari yake, kama ${code}.`;
+        return one ? `${hi} Nyumba mpya imepatikana inayolingana na ulichoomba: ${offerHomeLine(lang, a!)}. Niangalie kama bado ipo? Tuma ${code}.` : `${hi} Nyumba mbili mpya zinalingana na ulichoomba:\n${list}\nNiangalie kama mojawapo bado ipo? Tuma kodi yake, kama ${code}.`;
       default:
         return one ? `${hi} A new one just came in that fits what you asked for: ${offerHomeLine(lang, a!)}. Want me to check it's free? Send ${code}.` : `${hi} Two new ones fit what you asked for:\n${list}\nWant me to check one is free? Send its code, like ${code}.`;
     }
@@ -139,7 +139,7 @@ export function followUpMessage(lang: ConfirmLang, plan: FollowUpPlan): string {
       case "fr":
         return `${hi} ${budget ? "Votre budget est-il fixe, ou pourriez-vous monter un peu pour le bon logement ? Donnez-moi le chiffre et je relance la recherche." : "Accepteriez-vous aussi des quartiers voisins ? Nommez-en un et je cherche là-bas."}`;
       case "sw":
-        return `${hi} ${budget ? "Bajeti yako ni ya kudumu, au unaweza kuongeza kidogo kwa nyumba sahihi? Niambie kiasi nitatafuta tena." : "Je, unaweza kuzingatia maeneo ya karibu pia? Taja moja nitatafuta huko."}`;
+        return `${hi} ${budget ? "Je, bajeti yako ni kikomo, au unaweza kuongeza kidogo kwa nyumba inayokufaa? Niambie kiasi, nitatafuta tena." : "Je, maeneo ya karibu pia yanakufaa? Taja moja, nitatafuta huko."}`;
       default:
         return `${hi} ${budget ? "Is your budget fixed, or could you stretch a little for the right home? Tell me the number and I'll look again." : "Would you consider nearby areas too? Name one and I'll look there."}`;
     }
@@ -150,9 +150,9 @@ export function followUpMessage(lang: ConfirmLang, plan: FollowUpPlan): string {
     case "rw":
       return `${hi} Nta kwihuta. Nzakomeza kureba inzu ikubereye, nkwandikire niboneye imwe. Umbwire igihe cyose nzongera ndebe.`;
     case "fr":
-      return `${hi} Rien ne presse. Je garde l'œil ouvert et je vous écris si un logement correspond. Dites-le-moi quand vous voulez et je relance la recherche.`;
+      return `${hi} Rien ne presse. Je garde l'œil ouvert et je vous écris si un logement correspond. Écrivez-moi quand vous voulez et je relance la recherche.`;
     case "sw":
-      return `${hi} Hakuna haraka. Nitaendelea kutafuta nyumba inayokufaa na nitakuandikia ikipatikana. Niambie wakati wowote nitatafuta tena.`;
+      return `${hi} Hakuna haraka. Nitaendelea kutafuta nyumba inayokufaa na nitakuandikia ikipatikana. Niambie wakati wowote, nitatafuta tena.`;
     default:
       return `${hi} No rush. I'll keep an eye out for homes that fit and write if one comes up. Say the word anytime and I'll look again.`;
   }

@@ -103,14 +103,14 @@ export function dealSheetMessage(f: DealFacts, lang: DealLang): string {
       .join("\n");
   }
   if (lang === "rw") {
-    const util = (s: string) => (s === "included" ? "biri mu bukode" : s === "separate" ? "ubyishyura ukwawe" : "itangazo ntiribivuga, tuzabaza");
+    const util = (s: string) => (s === "included" ? "ari mu bukode" : s === "separate" ? "ntabwo ari mu bukode" : "itangazo ntiribivuga, tuzabaza");
     return [
       f.askedOn
-        ? `Wabajije ibya "${f.title}" (${f.ref}) ku itariki ya ${f.askedOn}. Inkuru nziza: komisiyoneri avuga ko igihari.`
-        : `Inkuru nziza: komisiyoneri avuga ko "${f.title}" (${f.ref}) igihari.`,
+        ? `Wabajije ibya "${f.title}" (${f.ref}) ku itariki ya ${f.askedOn}. Inkuru nziza: komisiyoneri avuga ko iracyahari.`
+        : `Inkuru nziza: komisiyoneri avuga ko "${f.title}" (${f.ref}) iracyahari.`,
       rent != null ? `Ubukode: ${rwf(rent)} ku kwezi.` : null,
-      moveIn ? `Kwimukira: hafi ${moveIn}${advance ? ` — ${months(advance.qty, lang)} mbere` : ""}${deposit && deposit.qty ? ` na ${months(deposit.qty, lang)} y'ingwate` : ""}${typical ? " (nk'uko bisanzwe i Kigali, bizemezwa mu gusura)" : ""}.` : null,
-      pct ? `Komisiyo ya komisiyoneri: ${pct} by'ukwezi kumwe${commission?.source === "typical" ? " (bisanzwe, bizemezwa mu gusura)" : ""}.` : c ? `Nta komisiyo ya komisiyoneri.` : null,
+      moveIn ? `Kwimukira: hafi ${moveIn}${advance ? ` — ${months(advance.qty, lang)} mbere` : ""}${deposit && deposit.qty ? ` n'ingwate y'${months(deposit.qty, lang)}` : ""}${typical ? " (nk'uko bisanzwe i Kigali, bizemezwa mu gusura)" : ""}.` : null,
+      pct ? `Komisiyo ya komisiyoneri: ${pct} y'ubukode bw'ukwezi kumwe${commission?.source === "typical" ? " (bisanzwe, bizemezwa mu gusura)" : ""}.` : c ? `Nta komisiyo ya komisiyoneri.` : null,
       `Gusura: ni ubuntu kuri wowe, Mkan irabyishyura.`,
       `Amazi: ${util(water)}. Amashanyarazi: ${util(power)}.`,
       `Ibikurikira: duhurira ku nzu, wowe, komisiyoneri na ${f.rep} wo muri Mkan. Niba uyikunze, twandika amasezerano tukayasinya uwo munsi. Uzane indangamuntu.`,
@@ -235,14 +235,25 @@ export function readViewingTime(text: string, now: Date): ViewingTime | null {
   return { at };
 }
 
-const WD = { en: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], ar: ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"], rw: ["Cyumweru", "Mbere", "Kabiri", "Gatatu", "Kane", "Gatanu", "Gatandatu"] };
+const WD = {
+  en: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+  ar: ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"],
+  rw: ["Cyumweru", "Mbere", "Kabiri", "Gatatu", "Kane", "Gatanu", "Gatandatu"],
+  fr: ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"],
+  sw: ["Jumapili", "Jumatatu", "Jumanne", "Jumatano", "Alhamisi", "Ijumaa", "Jumamosi"],
+};
 const MO = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MO_FR = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
+const MO_SW = ["Januari", "Februari", "Machi", "Aprili", "Mei", "Juni", "Julai", "Agosti", "Septemba", "Oktoba", "Novemba", "Desemba"];
 
-/** "Tue 4 Nov, 10:00" in Kigali time. */
-export function viewingLabel(at: Date, lang: DealLang): string {
+/** "Tue 4 Nov, 10:00" in Kigali time; French "mardi 4 novembre à 10:00", Swahili "Jumanne 4 Novemba, 10:00". */
+export function viewingLabel(at: Date, lang: DealLang | "fr" | "sw"): string {
   const k = new Date(at.getTime() + KIGALI_MS);
   const hm = `${String(k.getUTCHours()).padStart(2, "0")}:${String(k.getUTCMinutes()).padStart(2, "0")}`;
-  return `${WD[lang][k.getUTCDay()]} ${k.getUTCDate()} ${MO[k.getUTCMonth()]}, ${hm}`;
+  const day = `${WD[lang][k.getUTCDay()]} ${k.getUTCDate()}`;
+  if (lang === "fr") return `${day} ${MO_FR[k.getUTCMonth()]} à ${hm}`;
+  if (lang === "sw") return `${day} ${MO_SW[k.getUTCMonth()]}, ${hm}`;
+  return `${day} ${MO[k.getUTCMonth()]}, ${hm}`;
 }
 
 /**
@@ -469,9 +480,41 @@ const rwfRange = (r: [number, number]) => (r[1] !== r[0] ? `${rwf(r[0])}–${rwf
  * only what was said, in the tenant's language; null when nothing was.
  * `moveIn` is what moving in costs on those terms (the viewing fee is Mkan's).
  */
-export function confirmedTermsLine(lang: DealLang, t: BrokerTerms, moveIn: [number, number] | null): string | null {
+export function confirmedTermsLine(lang: ConfirmLang, t: BrokerTerms, moveIn: [number, number] | null): string | null {
   const free = t.noCommission === true || t.commissionPct === 0;
   const total = moveIn ? rwfRange(moveIn) : null;
+  if (lang === "fr") {
+    const mois = (q: number) => (q === 0.5 ? "un demi-mois" : q === 1 ? "1 mois" : `${q} mois`);
+    const util = (v: boolean) => (v ? "inclus" : "à votre charge");
+    const parts = [
+      t.rent != null ? `loyer ${rwf(t.rent)} par mois` : null,
+      t.monthsInAdvance != null ? `${mois(t.monthsInAdvance)} d'avance` : null,
+      t.depositMonths != null ? (t.depositMonths === 0 ? "pas de caution" : `caution de ${mois(t.depositMonths)}`) : null,
+      free ? "pas de commission du courtier" : t.commissionPct != null ? `commission du courtier : ${pctOf(t.commissionPct)} d'un mois de loyer` : null,
+      t.waterIncluded != null ? `eau ${util(t.waterIncluded)}` : null,
+      t.electricityIncluded != null ? `électricité ${util(t.electricityIncluded)}` : null,
+      t.leaseMonths != null ? `bail de ${mois(t.leaseMonths)}` : null,
+      t.moveIn ? `emménagement à partir du ${t.moveIn.slice(8, 10).replace(/^0/, "")} ${MO_FR[Number(t.moveIn.slice(5, 7)) - 1]}` : null,
+    ].filter(Boolean);
+    if (!parts.length) return null;
+    return `Confirmé par le courtier : ${parts.join(", ")}.${total ? ` Pour emménager : ${total}.` : ""}`;
+  }
+  if (lang === "sw") {
+    const miezi = (q: number) => (q === 0.5 ? "nusu mwezi" : q === 1 ? "mwezi 1" : `miezi ${q}`);
+    const util = (v: boolean) => (v ? "vimejumuishwa" : "unalipa wewe");
+    const parts = [
+      t.rent != null ? `kodi ${rwf(t.rent)} kwa mwezi` : null,
+      t.monthsInAdvance != null ? `${miezi(t.monthsInAdvance)} mbele` : null,
+      t.depositMonths != null ? (t.depositMonths === 0 ? "hakuna amana" : `amana ya ${miezi(t.depositMonths)}`) : null,
+      free ? "hakuna kamisheni ya dalali" : t.commissionPct != null ? `kamisheni ya dalali ${pctOf(t.commissionPct)} ya kodi ya mwezi mmoja` : null,
+      t.waterIncluded != null ? `maji ${util(t.waterIncluded)}` : null,
+      t.electricityIncluded != null ? `umeme ${util(t.electricityIncluded)}` : null,
+      t.leaseMonths != null ? `mkataba wa ${miezi(t.leaseMonths)}` : null,
+      t.moveIn ? `kuhamia kuanzia ${t.moveIn.slice(8, 10).replace(/^0/, "")} ${MO_SW[Number(t.moveIn.slice(5, 7)) - 1]}` : null,
+    ].filter(Boolean);
+    if (!parts.length) return null;
+    return `Dalali amethibitisha: ${parts.join(", ")}.${total ? ` Kuhamia: ${total}.` : ""}`;
+  }
   if (lang === "ar") {
     const util = (v: boolean) => (v ? "ضمن الإيجار" : "على المستأجر");
     const parts = [
@@ -488,12 +531,12 @@ export function confirmedTermsLine(lang: DealLang, t: BrokerTerms, moveIn: [numb
     return `أكّد الوسيط: ${parts.join("، ")}.${total ? ` للانتقال: ${total}.` : ""}`;
   }
   if (lang === "rw") {
-    const util = (v: boolean) => (v ? "biri mu bukode" : "ubyishyura ukwawe");
+    const util = (v: boolean) => (v ? "ari mu bukode" : "ntabwo ari mu bukode");
     const parts = [
       t.rent != null ? `ubukode ${rwf(t.rent)} ku kwezi` : null,
-      t.monthsInAdvance != null ? `${months(t.monthsInAdvance, lang)} mbere` : null,
-      t.depositMonths != null ? (t.depositMonths === 0 ? "nta ngwate" : `${months(t.depositMonths, lang)} y'ingwate`) : null,
-      free ? "nta komisiyo" : t.commissionPct != null ? `komisiyo ${pctOf(t.commissionPct)} by'ukwezi kumwe` : null,
+      t.monthsInAdvance != null ? `kwishyura ${months(t.monthsInAdvance, lang)} mbere` : null,
+      t.depositMonths != null ? (t.depositMonths === 0 ? "nta ngwate" : `ingwate y'${months(t.depositMonths, lang)}`) : null,
+      free ? "nta komisiyo" : t.commissionPct != null ? `komisiyo ya ${pctOf(t.commissionPct)} y'ubukode bw'ukwezi kumwe` : null,
       t.waterIncluded != null ? `amazi ${util(t.waterIncluded)}` : null,
       t.electricityIncluded != null ? `amashanyarazi ${util(t.electricityIncluded)}` : null,
       t.leaseMonths != null ? `amasezerano y'${months(t.leaseMonths, lang)}` : null,
@@ -545,13 +588,13 @@ export function viewingConfirmedMessage(
       body = `تم تأكيد المعاينة: «${v.title}»، ${v.label}${where}. ${v.rep} من مكان سيلتقي بك هناك مع الوسيط. أحضر هويتك؛ إن أعجبك المنزل نكتب العقد ونوقّعه في اليوم نفسه.${open ? " ما لم يؤكده الوسيط بعد (المقدّم والتأمين والخدمات) نحسمه في المعاينة." : ""} أخبرنا هنا إن تغيّر شيء.`;
       break;
     case "rw":
-      body = `Gusura byemejwe: "${v.title}", ${v.label}${where}. ${v.rep} wo muri Mkan azakubonera aho hantu hamwe na komisiyoneri. Uzane indangamuntu; niba uyikunze, amasezerano yandikwa agasinywa uwo munsi.${open ? " Ibitaremezwa na komisiyoneri (amafaranga ya mbere, ingwate, amazi n'amashanyarazi) tubyemeza mu gusura." : ""} Tubwire hano niba hari icyahindutse.`;
+      body = `Gusura byemejwe: "${v.title}", ${v.label}${where}. ${v.rep} wo muri Mkan azahurira nawe aho hamwe na komisiyoneri. Uzane indangamuntu; niba uyikunze, amasezerano yandikwa agasinywa uwo munsi.${open ? " Ibitaremezwa na komisiyoneri (amafaranga ya mbere, ingwate, amazi n'amashanyarazi) tubyemeza mu gusura." : ""} Tubwire hano niba hari icyahindutse.`;
       break;
     case "fr":
-      body = `Visite confirmée : « ${v.title} », ${v.label}${where}. ${v.rep} de Mkan vous y retrouvera avec le courtier. Apportez votre pièce d'identité ; si le logement vous plaît, le bail est rédigé et signé le jour même.${open ? " Ce que le courtier n'a pas encore confirmé (avance, caution, eau et électricité), nous le réglons pendant la visite." : ""} Dites-nous ici si quelque chose change.`;
+      body = `Visite confirmée : « ${v.title} », ${v.label}${where}. ${v.rep} de Mkan vous y retrouvera avec le courtier. Apportez votre pièce d'identité ; si le logement vous plaît, le bail est rédigé et signé le jour même.${open ? " Ce que le courtier n'a pas encore confirmé (mois d'avance, caution, eau et électricité), nous le réglons pendant la visite." : ""} Dites-nous ici si quelque chose change.`;
       break;
     case "sw":
-      body = `Ziara imethibitishwa: "${v.title}", ${v.label}${where}. ${v.rep} wa Mkan atakutana nawe hapo pamoja na dalali. Lete kitambulisho; ukipenda nyumba, mkataba huandikwa na kusainiwa siku hiyohiyo.${open ? " Yasiyothibitishwa bado na dalali (kodi ya mbele, amana, maji na umeme) tutayamaliza wakati wa ziara." : ""} Tuambie hapa kama kuna mabadiliko.`;
+      body = `Ziara imethibitishwa: "${v.title}", ${v.label}${where}. ${v.rep} wa Mkan atakutana nawe hapo pamoja na dalali. Lete kitambulisho; ukipenda nyumba, mkataba huandikwa na kusainiwa siku hiyohiyo.${open ? " Yale ambayo dalali hajathibitisha bado (kodi ya mbele, amana, maji na umeme) tutayamaliza wakati wa ziara." : ""} Tuambie hapa kama kuna mabadiliko.`;
       break;
     default:
       body = `Viewing confirmed: "${v.title}", ${v.label}${where}. ${v.rep} from Mkan will meet you there, with the broker. Bring your ID; if you like it, the lease is written and signed the same day.${open ? " Whatever the broker hasn't confirmed yet (months up front, deposit, water and electricity) we settle at the viewing." : ""} Tell us here if anything changes.`;
@@ -663,11 +706,11 @@ export function offerHomeLine(lang: ConfirmLang, h: OfferHome): string {
     case "ar":
       return line(h.bedrooms ? `${h.bedrooms} غرف نوم` : "منزل", place("ar") ? `في ${place("ar")}` : null, rent ? `${rent} في الشهر` : null);
     case "rw":
-      return line(h.bedrooms ? `${h.bedrooms} ibyumba` : "inzu", place("rw") ? `muri ${place("rw")}` : null, rent ? `${rent} ku kwezi` : null);
+      return line(h.bedrooms ? (h.bedrooms === 1 ? "icyumba kimwe" : `ibyumba ${h.bedrooms}`) : "inzu", place("rw") ? `muri ${place("rw")}` : null, rent ? `${rent} ku kwezi` : null);
     case "fr":
       return line(h.bedrooms ? `${h.bedrooms} chambre${h.bedrooms > 1 ? "s" : ""}` : "logement", place("en") ? `à ${place("en")}` : null, rent ? `${rent} par mois` : null);
     case "sw":
-      return line(h.bedrooms ? `vyumba ${h.bedrooms}` : "nyumba", place("en") ? `${place("en")}` : null, rent ? `${rent} kwa mwezi` : null);
+      return line(h.bedrooms ? `nyumba ya ${h.bedrooms === 1 ? "chumba 1" : `vyumba ${h.bedrooms}`}` : "nyumba", place("en") ? `${place("en")}` : null, rent ? `${rent} kwa mwezi` : null);
     default:
       return line(h.bedrooms ? `${h.bedrooms}-bedroom` : "home", place("en") ? `in ${place("en")}` : null, rent ? `${rent} a month` : null);
   }
@@ -685,11 +728,11 @@ export function afterViewingNotHomesText(lang: ConfirmLang, homes: readonly Offe
     case "ar":
       return `شكراً لإخبارك. وجدت لك ${homes.length > 1 ? "منزلين آخرين" : "منزلاً آخر"}:\n${list}\nأرسل رمز المنزل، مثل K${first.id}، وأتأكد من وسيطه أنه متاح، أو أخبرني بما تريد تغييره.`;
     case "rw":
-      return `Murakoze kumbwira. Nabonye ${homes.length > 1 ? "izindi nzu ebyiri" : "indi nzu"}:\n${list}\nOhereza kode, nka K${first.id}, ndebe na komisiyoneri wayo niba igihari, cyangwa umbwire icyo wahindura.`;
+      return `Murakoze kumbwira. Nabonye ${homes.length > 1 ? "izindi nzu ebyiri" : "indi nzu"}:\n${list}\nOhereza kode, nka K${first.id}, mbaze komisiyoneri wayo niba iracyahari, cyangwa umbwire icyo wahindura.`;
     case "fr":
-      return `Merci de me le dire. J'ai trouvé ${homes.length > 1 ? "deux autres logements" : "un autre logement"} :\n${list}\nEnvoyez le code, par exemple K${first.id}, et je vérifie auprès de son courtier qu'il est libre, ou dites-moi ce qu'il faut changer.`;
+      return `Merci de me l'avoir dit. J'ai trouvé ${homes.length > 1 ? "deux autres logements" : "un autre logement"} :\n${list}\nEnvoyez le code, par exemple K${first.id}, et je vérifie ${homes.length > 1 ? "la disponibilité auprès des courtiers" : "auprès du courtier qu'il est toujours disponible"}, ou dites-moi ce qu'il faut changer.`;
     case "sw":
-      return `Asante kwa kuniambia. Nimepata ${homes.length > 1 ? "nyumba nyingine mbili" : "nyumba nyingine"}:\n${list}\nTuma nambari, kama K${first.id}, nami nitamuuliza dalali kama bado iko wazi, au niambie cha kubadilisha.`;
+      return `Asante kwa kuniambia. Nimepata ${homes.length > 1 ? "nyumba nyingine mbili" : "nyumba nyingine"}:\n${list}\nTuma kodi, kama K${first.id}, nami nitamuuliza dalali kama bado ipo, au niambie cha kubadilisha.`;
     default:
       return `Thanks for telling me. I found ${homes.length > 1 ? "two others" : "another one"}:\n${list}\nSend the code, like K${first.id}, and I'll check with its broker that it's free, or tell me what to change.`;
   }

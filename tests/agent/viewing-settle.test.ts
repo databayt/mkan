@@ -186,7 +186,7 @@ describe("the broker answers a time on the table", () => {
   it("a French-speaking broker is confirmed in French, a Kinyarwanda one in Kinyarwanda with English under it", async () => {
     brokerRow = { ...brokerRow, preferredLanguage: "FR" };
     await tenantTime("2026-11-17T10:00");
-    expect((await broker("oui"))?.reply).toMatch(/^Confirmé, merci : Tue 17 Nov, 10:00\. Osman de Mkan sera là avec le locataire\./);
+    expect((await broker("oui"))?.reply).toMatch(/^Confirmé : mardi 17 novembre à 10:00\. Osman de Mkan sera là avec le locataire\./);
     brokerRow = { ...brokerRow, preferredLanguage: "RW" };
     await tenantTime("2026-11-17T10:00");
     const rw = (await broker("yego", { at: new Date(later.getTime() + 60_000) }))?.reply;

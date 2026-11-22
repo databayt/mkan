@@ -108,7 +108,7 @@ describe("the broker side acts on what Claude reads", () => {
     const a = await reply("Quel est son budget exactement ?");
     expect(a).toMatchObject({ kind: "reply", why: "about-me" });
     expect(h.created[0]!.body).toMatch(/jusqu'à 150k/);
-    expect(h.created[0]!.body).toMatch(/libre/);
+    expect(h.created[0]!.body).toMatch(/disponible/);
   });
 
   it("a budget the tenant never said is not given out", async () => {

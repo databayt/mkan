@@ -166,7 +166,7 @@ export async function askBodyNow(seed: string, requestIds: string[], to?: string
   const [slots, previous] = await Promise.all([
     import("./viewing-loop")
       .then(({ offerSlots }) => offerSlots())
-      .then((times) => times.map((t) => ({ en: viewingLabel(t, "en"), rw: viewingLabel(t, "rw") })))
+      .then((times) => times.map((t) => ({ en: viewingLabel(t, "en"), rw: viewingLabel(t, "rw"), fr: viewingLabel(t, "fr") })))
       .catch(() => []),
     to
       ? db.outboundMessage
@@ -452,7 +452,7 @@ export async function requestConfirmations(
   const slots = groups.size
     ? await import("./viewing-loop")
         .then(({ offerSlots }) => offerSlots())
-        .then((times) => times.map((t) => ({ en: viewingLabel(t, "en"), rw: viewingLabel(t, "rw") })))
+        .then((times) => times.map((t) => ({ en: viewingLabel(t, "en"), rw: viewingLabel(t, "rw"), fr: viewingLabel(t, "fr") })))
         .catch(() => [])
     : [];
   for (const sent of await sendGrouped(groups, slots)) events.push(["broker_contact_started", "waiting_person", sent]);

@@ -166,7 +166,7 @@ describe("the terms the person from Mkan confirms", () => {
     );
     expect(confirmedTermsLine("en", { noCommission: true, commissionPct: 0 }, null)).toBe("Confirmed with the broker: no broker's commission.");
     expect(confirmedTermsLine("ar", said, null)).toBe("أكّد الوسيط: 3 أشهر مقدماً، شهر تأميناً، عمولة الوسيط 10% من إيجار شهر، الماء ضمن الإيجار، الكهرباء على المستأجر، عقد لمدة 12 شهراً، الانتقال من 15 Nov.");
-    expect(confirmedTermsLine("rw", said, [1_435_000, 1_435_000])).toMatch(/^Byemejwe na komisiyoneri: amezi 3 mbere, ukwezi kumwe y'ingwate, .* amasezerano y'amezi 12, .*Kwimukira: RWF 1,435,000\.$/);
+    expect(confirmedTermsLine("rw", said, [1_435_000, 1_435_000])).toMatch(/^Byemejwe na komisiyoneri: kwishyura amezi 3 mbere, ingwate y'ukwezi kumwe, .* amasezerano y'amezi 12, .*Kwimukira: RWF 1,435,000\.$/);
     expect(confirmedTermsLine("en", {}, [1, 1])).toBeNull();
   });
 

@@ -106,7 +106,7 @@ export const viewingAuto = () => process.env.MKAN_VIEWING_AUTO?.trim().toLowerCa
 
 const plus = (phone: string) => `+${phoneKey(phone)}`;
 const variants = (phone: string) => [plus(phone), phoneKey(phone)];
-const labels = (at: Date) => ({ en: viewingLabel(at, "en"), rw: viewingLabel(at, "rw") });
+const labels = (at: Date) => ({ en: viewingLabel(at, "en"), rw: viewingLabel(at, "rw"), fr: viewingLabel(at, "fr") });
 /** The outbox label of every word to a broker about a viewing: the line's own reply, never held for "asked today". */
 const brokerLabel = (what: string, listingId: number) => `auto-viewing-${what}:${listingId}`;
 const langOf = (l: string | null | undefined): DealLang => (l === "ar" || l === "rw" ? l : "en");
@@ -328,7 +328,7 @@ async function book(ask: ViewingTimeAsk, at: Date, brokerPhone: string, place: s
       `Viewing booked → ${rep}`,
     ).catch(() => {});
   }
-  let text = viewingBookedBrokerMessage({ en: viewingLabel(at, "en"), rw: viewingLabel(at, "rw"), rep, askPlace: !place, lang: broker?.lang, spot });
+  let text = viewingBookedBrokerMessage({ ...labels(at), rep, askPlace: !place, lang: broker?.lang, spot });
   if (!broker?.agreement && broker?.brokerId) {
     // Mkan's terms ride on the booking's message. Kept as a terms ask already "handed" (deal-intro.ts
     // answerTerms): their YES records the agreement and prices the open deal; nothing else is sent.

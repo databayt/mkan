@@ -82,7 +82,7 @@ describe("broker message", () => {
     expect(rw).not.toMatch(/Hi |Is it/);
     expect(availabilityMessage([{ title: "A", link: ad("1") }], "s", { introduce: true, lang: "SW" })).toMatch(/^Hi there, this is Mkan/);
     expect(rw).toContain("Iracyahari?");
-    expect(fr).toContain("Est-elle toujours libre ?");
+    expect(fr).toContain("Est-elle toujours disponible ?");
     // The one-digit answer stays readable in each language, and asks sent before 11-22 still read.
     for (const lang of ["EN", "FR", "RW"]) for (const k of seeds) expect(offersReplyMenu(availabilityMessage([{ title: "A", link: ad(k) }], k, { introduce: false, lang }))).toBe(true);
     expect(offersReplyMenu("Is it still available? Reply 1 = still available, 2 = taken.")).toBe(true);

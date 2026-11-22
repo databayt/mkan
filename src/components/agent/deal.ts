@@ -439,7 +439,7 @@ export async function bookViewing(input: {
       .catch(() => null);
     const body = viewingConfirmedMessage(chatLang, {
       title: item?.title?.trim() || `#${input.listingId}`,
-      label: viewingLabel(input.at, labelLang),
+      label: viewingLabel(input.at, chatLang),
       place: input.place?.trim() || null,
       // The broker's spot, else the home's map pin, else its area.
       spot: meetingSpot(input.place, where?.location ?? null, chatLang),

@@ -121,7 +121,7 @@ describe("the list reads like WhatsApp (item 3)", () => {
     const ask: AgentMessage = { role: "agent", kind: "ask", field: "maxPrice", at };
     expect(formatWhatsApp(view([said("one bedroom"), ask], []), dict(en), "en", CHAT, APP)).toBe("What's the most you can pay a month, in RWF?");
     expect(formatWhatsApp(view([said("x"), ask], []), dict(ar), "ar", CHAT, APP)).toMatch(/ما أقصى مبلغ/);
-    expect(formatWhatsApp(view([said("x"), ask], []), dict(rw), "rw", CHAT, APP)).toMatch(/Ni angahe menshi/);
+    expect(formatWhatsApp(view([said("x"), ask], []), dict(rw), "rw", CHAT, APP)).toMatch(/Wakwishyura angahe/);
   });
 
   it("one language per message: a list in Kinyarwanda is all Kinyarwanda", () => {

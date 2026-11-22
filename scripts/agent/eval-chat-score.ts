@@ -167,7 +167,7 @@ export function questionsIn(text: string): QuestionKind[] {
   if (/\blocation\b|where is|where are|\bwhere\b.*\?|\boù\b|\bwapi\b|\bhehe\b|أين|وين|موقع/i.test(t) && (asking || /^\s*location\s*$/i.test(t))) out.push("location");
   if (asking && /bathroom|toilet|douche|salle de bain|حمام|ubwiherero/i.test(t)) out.push("bathrooms");
   if (asking && /\bvideo\b|\bphotos?\b|pictures?|\bimages?\b|amafoto|فيديو|صور/i.test(t)) out.push("media");
-  if (asking && /availab|still free|is it free|disponible|libre|متاح|igihari/i.test(t)) out.push("available");
+  if (asking && /availab|still free|is it free|disponible|libre|متاح|igihari|iracyahari/i.test(t)) out.push("available");
   return out;
 }
 
@@ -176,7 +176,7 @@ const ANSWERS: Record<QuestionKind, RegExp> = {
   location: /\b(is in|are in|located|neighbou?rhood|google maps|map|pin|\bkm\b|près de|situé|se trouve|dans le quartier|يقع|في حي|iherereye|riherereye)\b|📍/i,
   bathrooms: /bathroom|toilet|self-contained|salle de bain|douche|حمام|ubwiherero|\bbath\b/i,
   media: /\b(photos?|videos?|clip|pictures?|images?|amafoto|vidéo|صور|فيديو)\b/i,
-  available: /\b(free|available|taken|broker|courtier|confirm|libre|disponible|متاح|igihari|komisiyoneri)\b/i,
+  available: /\b(free|available|taken|broker|courtier|confirm|libre|disponible|متاح|igihari|iracyahari|komisiyoneri)\b/i,
 };
 
 export const asksForPerson = (text: string) =>

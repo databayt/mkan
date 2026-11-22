@@ -130,7 +130,7 @@ const COPY: Record<
     month: "/ukwezi",
     night: "/ijoro",
     seeAll: "Amazu yose, amafoto n'ikiguzi cyo kwimuka:",
-    check: "Ohereza nimero ndebe niba igihari, hanyuma dupange gusura. Ni ubuntu kuri wowe.",
+    check: "Ohereza nimero ndebe niba iracyahari, hanyuma dupange gusura. Ni ubuntu kuri wowe.",
     stop: "Ohereza STOP kugira ngo uhagarike.",
     pick: "Ohereza nimero, cyangwa wandike.",
     asked: "nabajije",
@@ -139,7 +139,7 @@ const COPY: Record<
     pinFound: "Iyi ni {ref}:",
     pinGone: "{ref} ntikiboneka, mbabarira. Dore amazu ameze nkayo:",
     pinGoneAlone: "{ref} ntikiboneka, mbabarira.",
-    checkPinned: "Nkubarize niba igihari kandi dupange gusura? Ohereza *1*. Ni ubuntu kuri wowe. *2* ni yindi.",
+    checkPinned: "Nkubarize niba iracyahari kandi dupange gusura? Ohereza *1*. Ni ubuntu kuri wowe. *2* ni yindi.",
     bookPinned: "Komisiyoneri avuga ko iracyahari. Ohereza *1* ngupangire gusura — ni ubuntu kuri wowe.",
     book: "Inzu yanditseho ko iracyahari ushobora kuyisura: ohereza nimero yayo nkagupangira. Ni ubuntu kuri wowe.",
     askAround: "Mbaze abakomisiyoneri bake bakorera muri ako gace? Ohereza *yego* nzakwandikira nibagira icyo babona.",
@@ -150,7 +150,7 @@ const COPY: Record<
     closest: "Nta nzu iri kuri {budget} cyangwa munsi yayo ku kwezi. Izi ni zo zegereye, zirenga gato:",
     widened: "Nta nzu ihuje ibyo wavuze byose, none izi ni zo zegereye:",
     checkShort: "Iyihe? Ohereza nimero yayo.",
-    askBudget: "Ni angahe menshi ushobora kwishyura ku kwezi, mu mafaranga y'u Rwanda?",
+    askBudget: "Wakwishyura angahe ku kwezi, ntarengwa? (mu mafaranga y'u Rwanda)",
     otherKnownBudget: "Nishimiye kugufasha. Mbwira agace n'ingano y'inzu, ngushakire amazu.",
   },
 };
@@ -710,7 +710,7 @@ export function checkText(lang: WaLang, outcome: CheckOutcome, title: string, li
   if (outcome === "host") {
     const at = link ? `: ${link}` : "";
     if (lang === "ar") return `«${title}» معروض من مالكه على مكان. يمكنك رؤيته وإرسال طلبك من صفحته${at}\nهل أتحقق من منزل آخر مع وسيطه؟ أرسل رقمه.`;
-    if (lang === "rw") return `"${title}" yashyizweho na nyirayo kuri Mkan. Wayireba ukohereza ubusabe ku rupapuro rwayo${at}\nUshaka ko ndeba indi nzu kuri komisiyoneri wayo? Ohereza nimero yayo.`;
+    if (lang === "rw") return `"${title}" yashyizweho na nyirayo kuri Mkan. Ushobora kuyireba ukohereza ubusabe ku rupapuro rwayo${at}\nUshaka ko ndeba indi nzu kuri komisiyoneri wayo? Ohereza nimero yayo.`;
     return `"${title}" is listed by its owner on Mkan. You can see it and send your request on its page${at}\nWant me to check another home with its broker? Send its number.`;
   }
   if (outcome === "retry") {
@@ -773,11 +773,11 @@ export const isBareYes = (text: string) =>
 export function whichOneText(lang: WaLang, n: number): string {
   if (n <= 1) {
     if (lang === "ar") return "أرسل 1 وأتأكد أنه ما زال متاحاً.";
-    if (lang === "rw") return "Ohereza 1 ndebe ko igihari.";
+    if (lang === "rw") return "Ohereza 1 ndebe ko iracyahari.";
     return "Send 1 and I'll check it's still free.";
   }
   if (lang === "ar") return `أيّها؟ أرسل رقمه، من 1 إلى ${n}، وأتأكد أنه ما زال متاحاً.`;
-  if (lang === "rw") return `Iyihe? Ohereza nimero yayo, kuva kuri 1 kugeza kuri ${n}, ndebe ko igihari.`;
+  if (lang === "rw") return `Iyihe? Ohereza nimero yayo, kuva kuri 1 kugeza kuri ${n}, ndebe ko iracyahari.`;
   return `Which one? Send its number, 1 to ${n}, and I'll check it's still free.`;
 }
 
@@ -795,7 +795,7 @@ export const personAfterHello = (text: string, messages: AgentMessage[] | null |
 /** "You're welcome", and what they can do next. */
 export function thanksText(lang: WaLang): string {
   if (lang === "ar") return "العفو! أرسل رقم المنزل الذي يعجبك وأتأكد أنه ما زال متاحاً، أو أخبرني بما تريد تغييره.";
-  if (lang === "rw") return "Ntacyo! Ohereza nimero y'inzu ikunogeye ndebe ko igihari, cyangwa umbwire icyo wahindura.";
+  if (lang === "rw") return "Ntacyo! Ohereza nimero y'inzu ikunogeye ndebe ko iracyahari, cyangwa umbwire icyo wahindura.";
   return "You're welcome! Send the number of a home you like and I'll check it's still free, or tell me what to change.";
 }
 
@@ -806,14 +806,14 @@ export function thanksText(lang: WaLang): string {
  */
 export function personText(lang: WaLang, rep: string): string {
   if (lang === "ar") return `أنا مساعد مكان، وأستطيع أن أقوم بكل شيء هنا: أجد المنازل، وأتأكد من وسطائها، وأرتب المعاينة، وهناك يلتقيك ${rep} من فريقنا. بماذا أساعدك؟`;
-  if (lang === "rw") return `Ndi umufasha wa Mkan, kandi byose nabikora hano: gushaka amazu, kubaza abakomisiyoneri no gutegura gusura, aho ${rep} wo mu itsinda ryacu azahurira nawe. Nagufasha iki?`;
+  if (lang === "rw") return `Ndi umufasha wa Mkan, kandi byose mbikorera hano: gushaka amazu, kubaza abakomisiyoneri no gutegura gusura, aho ${rep} wo mu itsinda ryacu azahurira nawe. Nagufasha iki?`;
   return `I'm Mkan's assistant, and I can do all of it here: find homes, check them with their brokers and set up the viewing, where ${rep} from our team meets you. What can I help with?`;
 }
 
 /** Under the homes, a message the writer could not answer (off, slow, or refused by its guard): how to go on. Never a promise. */
 export function unsureText(lang: WaLang): string {
   if (lang === "ar") return "لم أفهم ذلك تماماً. أرسل رقم منزل من القائمة وأتأكد من وسيطه أنه متاح، أو أخبرني بما تبحث عنه: المنطقة والميزانية وعدد الغرف.";
-  if (lang === "rw") return "Sinabyumvise neza. Ohereza nimero y'inzu iri ku rutonde ndebe ko igihari, cyangwa umbwire icyo ushaka: agace, amafaranga n'ibyumba.";
+  if (lang === "rw") return "Sinabyumvise neza. Ohereza nimero y'inzu iri ku rutonde ndebe ko iracyahari, cyangwa umbwire icyo ushaka: agace, amafaranga n'ibyumba.";
   return "I didn't quite get that. Send the number of a home above and I'll check with its broker that it's free, or tell me what you're looking for: the area, the budget and the bedrooms.";
 }
 
@@ -931,7 +931,7 @@ export function afterHomesKind(text: string): AfterHomes {
 export function sameHomesText(lang: WaLang, n: number): string {
   const range = n > 1 ? (lang === "ar" ? `من 1 إلى ${n}` : lang === "rw" ? `kuva kuri 1 kugeza kuri ${n}` : `1 to ${n}`) : "1";
   if (lang === "ar") return `هذه ما زالت أفضل المنازل لبحثك. أرسل رقم واحد منها، ${range}، وأتأكد أنه متاح، أو أخبرني بما تريد تغييره: المنطقة أو الميزانية أو عدد الغرف.`;
-  if (lang === "rw") return `Izi nizo nzu zikijyanye n'ibyo ushaka. Ohereza nimero y'imwe muri zo, ${range}, ndebe ko igihari, cyangwa umbwire icyo wahindura: agace, amafaranga cyangwa ibyumba.`;
+  if (lang === "rw") return `Izi ni zo nzu zihuye n'ibyo ushaka. Ohereza nimero y'imwe muri zo, ${range}, ndebe ko iracyahari, cyangwa umbwire icyo wahindura: agace, amafaranga cyangwa ibyumba.`;
   return `These are still the best homes for your search. Send the number of one, ${range}, and I'll check it's free, or tell me what to change: the area, the budget or the bedrooms.`;
 }
 
@@ -939,14 +939,14 @@ export function sameHomesText(lang: WaLang, n: number): string {
 export function visitText(lang: WaLang, n: number): string {
   const range = n > 1 ? (lang === "ar" ? `من 1 إلى ${n}` : lang === "rw" ? `kuva kuri 1 kugeza kuri ${n}` : `1 to ${n}`) : "1";
   if (lang === "ar") return `بكل سرور. أي منزل تريد أن تراه؟ أرسل رقمه، ${range}: أتأكد أنه متاح، ثم نتفق على موعد ونأتي معك.`;
-  if (lang === "rw") return `Yego rwose. Ni iyihe nzu wifuza gusura? Ohereza nimero yayo, ${range}: ndebe ko igihari, hanyuma tuguhe igihe tuzazana nawe.`;
+  if (lang === "rw") return `Yego rwose. Ni iyihe nzu wifuza gusura? Ohereza nimero yayo, ${range}: ndebe ko iracyahari, hanyuma tuguhe igihe tuzazana nawe.`;
   return `Happy to. Which home would you like to see? Send its number, ${range}: I'll check it's free, then we agree a time and come with you.`;
 }
 
 /** Small talk under the homes: a friendly line, and how to go on. */
 export function chatText(lang: WaLang): string {
   if (lang === "ar") return "أهلاً! أنا مساعد مكان. أرسل رقم منزل من القائمة وأتأكد أنه متاح، أو أخبرني بما تبحث عنه: المنطقة والميزانية وعدد الغرف.";
-  if (lang === "rw") return "Muraho! Ndi umufasha wa Mkan. Ohereza nimero y'inzu iri ku rutonde ndebe ko igihari, cyangwa umbwire icyo ushaka: agace, amafaranga n'ibyumba.";
+  if (lang === "rw") return "Muraho! Ndi umufasha wa Mkan. Ohereza nimero y'inzu iri ku rutonde ndebe ko iracyahari, cyangwa umbwire icyo ushaka: agace, amafaranga n'ibyumba.";
   return "Hi! I'm Mkan's assistant. Send the number of a home above and I'll check it's free, or tell me what you're looking for: the area, the budget and the bedrooms.";
 }
 
@@ -987,7 +987,7 @@ export function talkText(lang: WaLang, v: { title?: string | null; slots?: strin
   }
   if (lang === "rw") {
     const ask = title ? (slots.length === 2 ? `${slots[0]} cyangwa ${slots[1]}, ni uwuhe ukubereye?` : slots.length === 1 ? `${slots[0]} byakubera byiza?` : "Ni uwuhe munsi ukubereye?") : "Urashaka iki? Agace, ibyumba n'amafaranga.";
-    return `Byose mbikorera hano, nabaza icyo ushaka cyose. Nuba witeguye gusura ${title ? `"${title}"` : "inzu ukunze"}, umuntu wo muri Mkan azahurira nawe ku nzu. ${ask}`;
+    return `Byose mbikorera hano, mbaza icyo ushaka cyose. Niba witeguye gusura ${title ? `"${title}"` : "inzu ukunze"}, umuntu wo muri Mkan azahurira nawe ku nzu. ${ask}`;
   }
   const ask = title ? (slots.length === 2 ? `Does ${slots[0]} or ${slots[1]} suit you?` : slots.length === 1 ? `Does ${slots[0]} suit you?` : "Which day suits you?") : "What are you looking for? The area, the bedrooms and your budget.";
   return `I handle everything here, so ask me anything. When you're ready to see ${title ? `"${title}"` : "a home you like"}, someone from Mkan meets you at the house. ${ask}`;

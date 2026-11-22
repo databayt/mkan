@@ -43,7 +43,7 @@ interface HomePageProps {
 const COPY = {
   en: { code: "Code {ref}", taken: "This one is taken.", takenHint: "Here are a few like it that are still free.", takenWords: "Hi, {ref} is taken. Can you show me similar homes?", more: "More homes like this", approx: "Approximate area", mute: "Mute", unmute: "Turn sound on", ask: "Ask about this home", video: "Video of the home" },
   ar: { code: "الرمز {ref}", taken: "تم تأجير هذا المنزل.", takenHint: "هذه منازل مشابهة لا تزال متاحة.", takenWords: "مرحباً، {ref} مؤجَّر. هل تعرض عليّ منازل مشابهة؟", more: "منازل أخرى مثل هذا", approx: "منطقة تقريبية", mute: "كتم الصوت", unmute: "تشغيل الصوت", ask: "اسأل عن هذا المنزل", video: "فيديو المنزل" },
-  rw: { code: "Kode {ref}", taken: "Iyi nzu yamaze gufatwa.", takenHint: "Dore andi asa nayo agihari.", takenWords: "Mwiriwe, {ref} yamaze gufatwa. Mwanyereka andi asa nayo?", more: "Andi mazu nk'iyi", approx: "Agace kegereye", mute: "Funga ijwi", unmute: "Fungura ijwi", ask: "Baza kuri iyi nzu", video: "Videwo y'inzu" },
+  rw: { code: "Kode {ref}", taken: "Iyi nzu yamaze gufatwa.", takenHint: "Dore andi asa nayo acyahari.", takenWords: "Mwiriwe, {ref} yamaze gufatwa. Mwanyereka andi asa nayo?", more: "Andi mazu nk'iyi", approx: "Agace kegereye", mute: "Funga ijwi", unmute: "Fungura ijwi", ask: "Baza kuri iyi nzu", video: "Videwo y'inzu" },
 } as const;
 
 const fetchHome = cache(async (id: number) =>

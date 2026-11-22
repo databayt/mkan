@@ -186,18 +186,18 @@ const hi = (name: string | null | undefined, word: string) => {
 const isFrench = (lang: string | null | undefined) => (lang ?? "").toUpperCase() === "FR";
 
 /** "Can you do {time}?" — the home named by the broker's own ad, as every ask to them is. */
-export function viewingTimeAskMessage(v: { name?: string | null; lang?: string | null; title: string; link?: string | null; en: string; rw: string; rep: string }): string {
+export function viewingTimeAskMessage(v: { name?: string | null; lang?: string | null; title: string; link?: string | null; en: string; rw: string; fr?: string; rep: string }): string {
   const home = v.link ? `${v.title}\n${v.link}` : v.title;
   if (isFrench(v.lang))
-    return `${hi(v.name, "Bonjour")}, ici Mkan. Notre locataire souhaite visiter cette maison le ${v.en}:\n${home}\nCela vous convient-il ? Répondez 1 = oui, ou envoyez un autre jour et une autre heure. ${v.rep} de Mkan l'accompagnera.`;
+    return `${hi(v.name, "Bonjour")}, ici Mkan. Notre locataire souhaiterait visiter cette maison le ${v.fr ?? v.en} :\n${home}\nEst-ce possible ? Répondez 1 = oui, ou proposez un autre jour et une autre heure. ${v.rep} de Mkan l'accompagnera.`;
   const rw = `${hi(v.name, "Muraho")}, ni Mkan. Umukiriya wacu arifuza gusura iyi nzu ${v.rw}:\n${home}\nBirashoboka? Subiza 1 = yego, cyangwa wohereze undi munsi n'isaha. ${v.rep} wo muri Mkan azazana na we.`;
   const en = `${hi(v.name, "Hi")}, Mkan here. Our tenant would like to see this home on ${v.en}. Does that work for you? Reply 1 = yes, or send another day and time. ${v.rep} from Mkan will come with them.`;
   return `${rw}\n\n${en}`;
 }
 
 /** The one chase: the same question, short. */
-export function viewingChaseMessage(v: { name?: string | null; lang?: string | null; en: string; rw: string }): string {
-  if (isFrench(v.lang)) return `${hi(v.name, "Bonjour")}, petit rappel de Mkan : la visite le ${v.en}, c'est possible ? Répondez 1 = oui, ou envoyez un autre moment.`;
+export function viewingChaseMessage(v: { name?: string | null; lang?: string | null; en: string; rw: string; fr?: string }): string {
+  if (isFrench(v.lang)) return `${hi(v.name, "Bonjour")}, petit rappel de Mkan : la visite le ${v.fr ?? v.en}, c'est possible ? Répondez 1 = oui, ou proposez un autre moment.`;
   return `${hi(v.name, "Muraho")}, ni Mkan nanone: gusura ${v.rw} birashoboka? Subiza 1 = yego, cyangwa wohereze ikindi gihe.\n\n${hi(v.name, "Hi")}, a quick reminder from Mkan: can you do the viewing on ${v.en}? Reply 1 = yes, or send another time.`;
 }
 
@@ -239,13 +239,13 @@ export function meetingSpot(place: string | null | undefined, loc: PlaceFacts, l
  * `askPlace`: they did not say where to meet, so the message asks. Kinyarwanda goes first with English
  * under it, as every message to a broker does (broker-message.ts).
  */
-export function viewingBookedBrokerMessage(v: { en: string; rep: string; askPlace: boolean; lang?: string | null; rw?: string; spot?: MeetingSpot }): string {
+export function viewingBookedBrokerMessage(v: { en: string; fr?: string; rep: string; askPlace: boolean; lang?: string | null; rw?: string; spot?: MeetingSpot }): string {
   const spot = v.spot ?? null;
   const spotEn = !v.askPlace && !spot ? "" : spot?.kind === "place" ? ` Meeting at: ${spot.text}.` : spot?.kind === "pin" ? ` We'll come to the home's pin: ${spot.text}. Tell us if another spot is better.` : spot?.kind === "area" ? ` We'll come to ${spot.text}: where exactly should they meet you?` : " Where should they meet you?";
   const en = `Confirmed, thank you: ${v.en}. ${v.rep} from Mkan will be there with the tenant.${v.askPlace || spot?.kind === "place" ? spotEn : ""} Murakoze!`;
   if (isFrench(v.lang)) {
-    const spotFr = !v.askPlace && !spot ? "" : spot?.kind === "place" ? ` Rendez-vous : ${spot.text}.` : spot?.kind === "pin" ? ` Nous viendrons à l'emplacement du logement : ${spot.text}. Dites-nous si un autre endroit est mieux.` : spot?.kind === "area" ? ` Nous viendrons à ${spot.text} : où exactement doivent-ils vous retrouver ?` : " Où doivent-ils vous retrouver ?";
-    return `Confirmé, merci : ${v.en}. ${v.rep} de Mkan sera là avec le locataire.${v.askPlace || spot?.kind === "place" ? spotFr : ""} Merci !`;
+    const spotFr = !v.askPlace && !spot ? "" : spot?.kind === "place" ? ` Rendez-vous : ${spot.text}.` : spot?.kind === "pin" ? ` Nous viendrons à l'emplacement du logement : ${spot.text}. Dites-nous si un autre endroit vous arrange mieux.` : spot?.kind === "area" ? ` Nous viendrons à ${spot.text} : où exactement doivent-ils vous retrouver ?` : " Où doivent-ils vous retrouver ?";
+    return `Confirmé : ${v.fr ?? v.en}. ${v.rep} de Mkan sera là avec le locataire.${v.askPlace || spot?.kind === "place" ? spotFr : ""} Merci !`;
   }
   if ((v.lang ?? "").toUpperCase() === "RW") {
     const spotRw = !v.askPlace && !spot ? "" : spot?.kind === "place" ? ` Duhurira: ${spot.text}.` : spot?.kind === "pin" ? ` Tuzaza kuri iyi nzu: ${spot.text}. Mutubwire niba hari ahandi heza.` : spot?.kind === "area" ? ` Tuzaza ${spot.text}: ni hehe neza bagomba kubahurira?` : " Bagomba kubahurira he?";
@@ -261,7 +261,7 @@ export function viewingBookedBrokerMessage(v: { en: string; rep: string; askPlac
 export function viewingShareAskLine(lang?: string | null): string {
   const pct = Math.round(MKAN_TERMS.pct * 100);
   const en = `One more thing, for the tenants Mkan brings you: we ask ${pct}% of your commission when they sign, and no viewing fee for them. Reply YES if that works for you.`;
-  if (isFrench(lang)) return `Une dernière chose, pour les locataires que Mkan vous amène : nous demandons ${pct}% de votre commission à la signature, et aucun frais de visite pour eux. Répondez OUI si cela vous convient.`;
+  if (isFrench(lang)) return `Une dernière chose, pour les locataires que Mkan vous amène : nous demandons ${pct} % de votre commission à la signature, et aucun frais de visite pour eux. Répondez OUI si cela vous convient.`;
   if ((lang ?? "").toUpperCase() === "RW") return `Ikindi: ku bakiriya Mkan ibazanira, dusaba ${pct}% bya komisiyo yawe bamaze gusinya, kandi nta mafaranga yo gusura. Subiza YEGO niba bikunyuze.\n${en}`;
   return en;
 }
@@ -348,7 +348,7 @@ export const sweepPlan = (i: { askedAt: Date; chased: boolean; tenantTold: boole
 /** The tenant named a time for a home no broker has confirmed yet: the line checks the home first, then the time. */
 export function checkingHomeFirstMessage(lang: DealLang, label: string): string {
   if (lang === "ar") return `تمام: ${label}. أتأكد أولاً من الوسيط أن المنزل ما زال متاحاً، ثم أثبّت الموعد وأراسلك هنا.`;
-  if (lang === "rw") return `Yego: ${label}. Ndabanza kubaza komisiyoneri niba inzu igihari, hanyuma nemeze igihe, nzakwandikira hano.`;
+  if (lang === "rw") return `Yego: ${label}. Ndabanza kubaza komisiyoneri niba inzu iracyahari, hanyuma nemeze igihe, nzakwandikira hano.`;
   return `Got it: ${label}. I'm first checking with the broker that the home is still free, then I'll lock the time and message you here.`;
 }
 

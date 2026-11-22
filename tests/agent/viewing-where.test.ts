@@ -53,7 +53,7 @@ describe("the tenant's confirmation", () => {
 
   it("speaks Arabic, Kinyarwanda, French and Swahili", () => {
     expect(viewingConfirmedMessage("ar", { ...v, spot: pin })).toMatch(/^تم تأكيد المعاينة: .*Osman من مكان سيلتقي بك هناك/);
-    expect(viewingConfirmedMessage("rw", { ...v, spot: pin })).toMatch(/^Gusura byemejwe: .*Osman wo muri Mkan azakubonera aho hantu/);
+    expect(viewingConfirmedMessage("rw", { ...v, spot: pin })).toMatch(/^Gusura byemejwe: .*Osman wo muri Mkan azahurira nawe aho/);
     expect(viewingConfirmedMessage("fr", { ...v, spot: pin })).toMatch(/^Visite confirmée : .*Osman de Mkan vous y retrouvera/);
     expect(viewingConfirmedMessage("sw", { ...v, spot: pin })).toMatch(/^Ziara imethibitishwa: .*Osman wa Mkan atakutana nawe hapo/);
   });

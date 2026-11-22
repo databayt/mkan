@@ -412,7 +412,7 @@ async function answerAvailabilityAsk(read: Read, phone: string, text: string, ha
         const settled = await handTime(ask.brokerRequestIds, home, when, phone);
         if (intro) return { kind: "availability", listingId: home, answer, applied: isNews, time: when, reply: await say("auto-terms", intro) };
         const label = when.toISOString();
-        return { kind: "availability", listingId: home, answer, applied: isNews, time: when, reply: await say(`auto-time:${label}`, settled ?? timeAckMessage(seed, lang, viewingLabel(when, lang === "RW" ? "rw" : "en"))) };
+        return { kind: "availability", listingId: home, answer, applied: isNews, time: when, reply: await say(`auto-time:${label}`, settled ?? timeAckMessage(seed, lang, viewingLabel(when, lang === "RW" ? "rw" : lang === "FR" ? "fr" : "en"))) };
       }
     }
     if (intro) return { kind: "availability", listingId: home, answer, applied: isNews, reply: await say("auto-terms", intro) };

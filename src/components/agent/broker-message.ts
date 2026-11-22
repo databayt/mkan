@@ -132,7 +132,7 @@ export interface BrokerVoice {
    * broker a yes AND a time in one reply: "Is it free? Could we view it Mon 23 Nov, 09:00 or Tue 24 Nov, 09:00?"
    * (2026-11-21: of 11 picks, four brokers said yes and not one viewing time was ever agreed).
    */
-  slots?: { en: string; rw: string }[];
+  slots?: { en: string; rw: string; fr?: string }[];
 }
 
 /** A first name fit to greet with: letters only, no emoji, no handle, not an agency's whole name. */
@@ -179,8 +179,9 @@ export function needLines(r: Requirements): NeedLines {
   const where = r.neighbourhood ?? district;
   const beds = r.bedrooms != null && r.bedrooms > 0 ? ` de ${r.bedrooms} chambre${r.bedrooms > 1 ? "s" : ""}` : "";
   const noun = r.homeType === "room" ? "une chambre" : r.bedrooms === 0 ? "un studio" : r.homeType === "house" ? `une maison${beds}` : r.homeType === "apartment" ? `un appartement${beds}` : r.bedrooms != null ? `un logement${beds}` : "un logement";
-  const fr = [`${noun}${where ? ` à ${where}` : ""}`, r.furnished === true ? "meublé" : r.furnished === false ? "non meublé" : null, r.maxPrice ? `jusqu'à ${shortRwf(r.maxPrice)}${r.pricePeriod === "night" ? " la nuit" : ""}` : null].filter(Boolean).join(", ");
-  return { EN: s.they, FR: `Il cherche ${fr}.`, RW: `Ashaka: ${s.rw}.` };
+  const fem = r.homeType === "room" || r.homeType === "house";
+  const fr = [`${noun}${where ? ` à ${where}` : ""}`, r.furnished === true ? (fem ? "meublée" : "meublé") : r.furnished === false ? (fem ? "non meublée" : "non meublé") : null, r.maxPrice ? `jusqu'à ${shortRwf(r.maxPrice)}${r.pricePeriod === "night" ? " la nuit" : ""}` : null].filter(Boolean).join(", ");
+  return { EN: s.they, FR: `Notre locataire cherche ${fr}.`, RW: `Ashaka: ${s.rw}.` };
 }
 
 /** One opener per variant: the tag is what the ask must not repeat to the same broker, whole sentences included. */
@@ -207,11 +208,11 @@ const EN_VARIANTS: AskVariant[] = [
   { tag: "quick one", text: (c) => `${c.hi}, quick one from Mkan. A tenant asked about ${c.many ? "these" : "this home"}:\n${c.link}${nl(c.need)}\n${EN_FREE(c)} ${c.slots ? `Can we visit ${c.slots}?` : "When can we visit?"}${c.menu}` },
 ];
 
-const FR_FREE = (c: AskCtx) => (c.many ? "Sont-elles encore libres ?" : "Est-elle toujours libre ?");
+const FR_FREE = (c: AskCtx) => (c.many ? "Sont-elles toujours disponibles ?" : "Est-elle toujours disponible ?");
 const FR_VARIANTS: AskVariant[] = [
-  { tag: "c'est Mkan", text: (c) => `${c.hi}, c'est Mkan. Un locataire aime ${c.many ? "celles-ci" : "celle-ci"} :\n${c.link}${nl(c.need)}\n${FR_FREE(c)} ${c.slots ? `Pourrait-on passer le ${c.slots} ?` : "Quel jour vous conviendrait pour une visite ?"}${c.menu}` },
-  { tag: "à nouveau", text: (c) => `${c.hi}, Mkan à nouveau. Nous avons un locataire pour ${c.many ? "ces maisons" : "cette maison"} :\n${c.link}${nl(c.need)}\n${FR_FREE(c)} ${c.slots ? `Le ${c.slots}, ça vous irait pour une visite ?` : "Quand pourrait-on la visiter ?"}${c.menu}` },
-  { tag: "voudrait", text: (c) => `${c.hi}, ici Mkan. Un de nos locataires voudrait ${c.many ? "les voir" : "la voir"} :\n${c.link}${nl(c.need)}\nToujours ${c.many ? "libres" : "libre"} ? ${c.slots ? `On pourrait venir le ${c.slots}.` : "Dites-nous un jour qui vous arrange."}${c.menu}` },
+  { tag: "c'est Mkan", text: (c) => `${c.hi}, c'est Mkan. Un locataire est intéressé par ${c.many ? "celles-ci" : "celle-ci"} :\n${c.link}${nl(c.need)}\n${FR_FREE(c)} ${c.slots ? `Pourrait-on passer le ${c.slots} ?` : "Quel jour vous conviendrait pour une visite ?"}${c.menu}` },
+  { tag: "à nouveau", text: (c) => `${c.hi}, Mkan à nouveau. Nous avons un locataire pour ${c.many ? "ces maisons" : "cette maison"} :\n${c.link}${nl(c.need)}\n${FR_FREE(c)} ${c.slots ? `Le ${c.slots}, ça vous irait pour une visite ?` : `Quand pourrait-on ${c.many ? "les" : "la"} visiter ?`}${c.menu}` },
+  { tag: "voudrait", text: (c) => `${c.hi}, ici Mkan. Un de nos locataires voudrait ${c.many ? "les voir" : "la voir"} :\n${c.link}${nl(c.need)}\nToujours ${c.many ? "disponibles" : "disponible"} ? ${c.slots ? `On pourrait passer le ${c.slots}.` : "Dites-nous un jour qui vous arrange."}${c.menu}` },
 ];
 
 const RW_FREE = (c: AskCtx) => (c.many ? "Ziracyahari?" : "Iracyahari?");
@@ -250,14 +251,14 @@ export function availabilityMessage(homes: BrokerHomeLine[], seed: string, voice
   const need = (typeof needRaw === "string" ? needRaw : needRaw?.[lang] ?? "").trim();
   const list = (voice.slots ?? []).slice(0, 2);
   const join = lang === "FR" ? " ou le " : lang === "RW" ? " cyangwa " : " or ";
-  const slots = list.map((x) => (lang === "RW" ? x.rw : x.en)).join(join);
+  const slots = list.map((x) => (lang === "RW" ? x.rw : lang === "FR" ? (x.fr ?? x.en) : x.en)).join(join);
   const menu = many ? "" : ` ${REPLY_MENU[lang]}`;
   const link = links.join("\n");
   const hiWord = lang === "FR" ? "Bonjour" : lang === "RW" ? "Muraho" : "Hi";
   const ctx: AskCtx = { hi: `${hiWord}${name ? ` ${name}` : lang === "EN" ? " there" : ""}`, link, need, many, slots, menu };
   if (voice.introduce) {
     if (lang === "FR")
-      return `${ctx.hi}, ici Mkan. Nous aidons des gens à trouver un logement à Kigali et nous les amenons chez des agents comme vous.\nUn locataire que nous accompagnons aime ${many ? "vos maisons" : "votre maison"} :\n${link}${nl(need)}\n${FR_FREE(ctx)} ${slots ? `Pourrait-on passer le ${slots} ?` : "Quel jour vous conviendrait pour une visite ?"}${menu}\nSi vous préférez ne plus recevoir nos messages, répondez stop.`;
+      return `${ctx.hi}, ici Mkan. Nous aidons des gens à trouver un logement à Kigali et nous les amenons chez des courtiers comme vous.\nUn locataire que nous accompagnons est intéressé par ${many ? "vos maisons" : "votre maison"} :\n${link}${nl(need)}\n${FR_FREE(ctx)} ${slots ? `Pourrait-on passer le ${slots} ?` : "Quel jour vous conviendrait pour une visite ?"}${menu}\nSi vous ne souhaitez plus recevoir nos messages, répondez stop.`;
     if (lang === "RW")
       return `${ctx.hi}, ni Mkan. Dufasha abantu kubona inzu i Kigali tukabazana ku ba komisiyoneri nkawe.\nUmukiriya dufasha yashimye ${many ? "amazu yawe" : "inzu yawe"}:\n${link}${nl(need)}\n${RW_FREE(ctx)} ${slots ? `Twayisura ${slots}?` : "Ni ryari twayisura?"}${menu}\nNiba udashaka ko tukwandikira, subiza stop.`;
     return `${ctx.hi}, this is Mkan. We help people find homes in Kigali and bring them to brokers like you.\nA tenant we're helping likes ${many ? "these homes of yours" : "your home"}:\n${link}${nl(need)}\n${EN_FREE(ctx)} ${slots ? `Could we come ${slots}?` : "If yes, when could we come?"}${menu}\nIf you'd rather we didn't message you, just reply stop.`;
@@ -270,7 +271,8 @@ export function viewingSlotLine(lang: Lang, many: boolean, slots: BrokerVoice["s
   const list = (slots ?? []).slice(0, 2);
   if (list.length === 0) return "";
   const t = (k: "en" | "rw") => list.map((x) => x[k]);
-  if (lang === "FR") return ` ${many ? "Si l'une est libre, pourrait-on la visiter" : "Si oui, pourrait-on la visiter"} le ${t("en").join(" ou le ")} ?`;
+  const fr = list.map((x) => x.fr ?? x.en);
+  if (lang === "FR") return ` ${many ? "Si l'une est disponible, pourrait-on la visiter" : "Si oui, pourrait-on la visiter"} le ${fr.join(" ou le ")} ?`;
   if (lang === "RW") return ` ${many ? "Niba imwe ihari, twayisura" : "Niba ihari, twayisura"} ${t("rw").join(" cyangwa ")}?`;
   return ` ${many ? "If one is free, could we view it" : "Could we view it"} ${t("en").join(" or ")}?`;
 }
@@ -287,7 +289,7 @@ export function nudgeMessage(links: string[], lang?: string | null, name?: strin
   const who = greetName(name);
   const l = langOf(lang);
   const menu = (m: string) => (many ? "" : `\n${m}`);
-  if (l === "FR") return `Bonjour${who ? ` ${who}` : ""}, petit rappel de Mkan : ${many ? "ces maisons sont-elles toujours libres" : "cette maison est-elle toujours libre"} ?\n${list}${menu(REPLY_MENU.FR)}`;
+  if (l === "FR") return `Bonjour${who ? ` ${who}` : ""}, petit rappel de Mkan : ${many ? "ces maisons sont-elles toujours disponibles" : "cette maison est-elle toujours disponible"} ?\n${list}${menu(REPLY_MENU.FR)}`;
   if (l === "RW") return `Muraho${who ? ` ${who}` : ""}, ni Mkan nanone: ${many ? "ziracyahari" : "iracyahari"}?\n${list}${menu(REPLY_MENU.RW)}`;
   return `Hi${who ? ` ${who}` : ""}, a quick reminder from Mkan: ${many ? "are these still free" : "is this still free"}?\n${list}${menu(REPLY_MENU.EN)}`;
 }
@@ -358,7 +360,7 @@ const say = (lang: string | null | undefined, seed: string, w: Words) => pickPhr
 export function availableAckMessage(seed: string, lang?: string | null): string {
   return say(lang, seed, {
     EN: ["Great, thank you. We'll come back to you to set up the viewing.", "Thanks! We'll get back to you with a time for the viewing.", "Perfect, thank you. We'll be in touch about the viewing."],
-    FR: ["Parfait, merci. Nous revenons vers vous pour organiser la visite.", "Merci ! Nous vous proposons un horaire pour la visite très vite."],
+    FR: ["Parfait, merci. Nous revenons vers vous pour organiser la visite.", "Merci ! Nous vous proposons très vite un horaire pour la visite."],
     RW: ["Murakoze cyane. Turabagarukira kugira ngo dutegure gusura.", "Murakoze! Turabandikira tubabwire igihe cyo gusura."],
   });
 }
@@ -381,7 +383,7 @@ export function takenOtherAckMessage(seed: string, lang?: string | null): string
       "Okay, thank you. We'd like to see the other one: could you send the link or photos, and the rent?",
     ],
     FR: ["Merci, avec plaisir ! Envoyez-nous le lien ou les photos de l'autre maison avec le prix, nous la montrerons à notre locataire.", "Merci de nous prévenir. Pouvez-vous nous envoyer les photos de l'autre maison et son loyer ?"],
-    RW: ["Murakoze, yego dushaka! Mutwoherereze amafoto y'indi nzu n'ibiciro, tuzayereka umukiriya.", "Murakoze kutubwira. Mwatwoherereza amafoto y'indi nzu n'ubukode bwayo?"],
+    RW: ["Murakoze, yego dushaka! Mutwoherereze amafoto y'indi nzu n'igiciro cyayo, tuzayereka umukiriya.", "Murakoze kutubwira. Mwatwoherereza amafoto y'indi nzu n'ubukode bwayo?"],
   });
 }
 
@@ -391,7 +393,7 @@ export function otherHomeKeptMessage(seed: string, lang?: string | null, taken =
     EN: taken
       ? ["Thanks, we've noted the other one and will show it to our tenants. Photos, if you have them, would help.", "Okay thank you, we noted the other home. Send photos here when you can."]
       : ["Thanks, we've noted it and will show it to our tenants. And is the first one still free?", "Thank you, noted! Is the first one still free?"],
-    FR: taken ? ["Merci, nous avons noté l'autre maison et la montrerons à nos locataires. Des photos nous aideraient."] : ["Merci, c'est noté ! La première est-elle toujours libre ?"],
+    FR: taken ? ["Merci, nous avons noté l'autre maison et la montrerons à nos locataires. Des photos nous aideraient."] : ["Merci, c'est noté ! La première est-elle toujours disponible ?"],
     RW: taken ? ["Murakoze, twanditse indi nzu kandi tuzayereka abakiriya. Amafoto yadufasha."] : ["Murakoze, twabyanditse! Iya mbere iracyahari?"],
   });
 }
@@ -400,7 +402,7 @@ export function otherHomeKeptMessage(seed: string, lang?: string | null, taken =
 export function timeAckMessage(seed: string, lang: string | null | undefined, label: string): string {
   return say(lang, seed, {
     EN: [`Great, ${label} works for us. We'll confirm with our tenant and come back to you shortly.`, `Thank you! We'll check ${label} with our tenant and confirm here.`],
-    FR: [`Parfait, ${label} nous convient. Nous confirmons avec notre locataire et revenons vers vous.`, `Merci ! Nous vérifions ${label} avec notre locataire et confirmons ici.`],
+    FR: [`Parfait, ${label} nous convient. Nous confirmons avec notre locataire et revenons vers vous.`, `Merci ! Nous vérifions avec notre locataire pour ${label} et confirmons ici.`],
     RW: [`Murakoze, ${label} birakunda. Turabigenzura n'umukiriya tubabwire.`, `Murakoze! Turabaza umukiriya ${label} tubabwire.`],
   });
 }
@@ -408,7 +410,7 @@ export function timeAckMessage(seed: string, lang: string | null | undefined, la
 /** They asked something about the tenant: answer with the need, then the question again. `need` may be empty. */
 export function questionReplyMessage(seed: string, lang: string | null | undefined, need: string, many = false): string {
   const l = langOf(lang);
-  const ask = many ? { EN: "Are they still free?", FR: "Sont-elles encore libres ?", RW: "Ziracyahari?" } : { EN: "Is it still free?", FR: "Est-elle encore libre ?", RW: "Iracyahari?" };
+  const ask = many ? { EN: "Are they still free?", FR: "Sont-elles toujours disponibles ?", RW: "Ziracyahari?" } : { EN: "Is it still free?", FR: "Est-elle toujours disponible ?", RW: "Iracyahari?" };
   if (!need.trim()) {
     return say(lang, seed, {
       EN: [`We'll confirm that at the viewing. ${ask.EN}`, `Good question, we'll confirm it when we come. ${ask.EN}`],
@@ -423,7 +425,7 @@ export function questionReplyMessage(seed: string, lang: string | null | undefin
 export function priceNotedMessage(seed: string, lang: string | null | undefined, askFree: boolean): string {
   return say(lang, seed, {
     EN: askFree ? ["Noted, thank you. Is it still free?", "Thanks for the price. Is it still free?"] : ["Noted, thank you.", "Thanks, noted."],
-    FR: askFree ? ["Noté, merci. Est-elle toujours libre ?"] : ["Noté, merci."],
+    FR: askFree ? ["Noté, merci. Est-elle toujours disponible ?"] : ["Noté, merci."],
     RW: askFree ? ["Twabyanditse, murakoze. Iracyahari?"] : ["Twabyanditse, murakoze."],
   });
 }
@@ -432,7 +434,7 @@ export function priceNotedMessage(seed: string, lang: string | null | undefined,
 export function clarifyMessage(seed: string, lang: string | null | undefined, many = false): string {
   return say(lang, seed, {
     EN: many ? ["Sorry, are they still free? A yes or no is fine."] : ["Sorry, is it still free? A yes or no is fine.", "Just to be sure: is it still free?"],
-    FR: many ? ["Pardon, sont-elles encore libres ? Oui ou non suffit."] : ["Pardon, est-elle encore libre ? Oui ou non suffit."],
+    FR: many ? ["Pardon, sont-elles toujours disponibles ? Oui ou non suffit."] : ["Pardon, est-elle toujours disponible ? Oui ou non suffit."],
     RW: many ? ["Mubabarire, ziracyahari? Yego cyangwa oya."] : ["Mubabarire, iracyahari? Yego cyangwa oya."],
   });
 }
@@ -486,7 +488,7 @@ export function brokerAnswerMessage(lang: string, title: string, available: bool
   if (lang === "rw")
     return available
       ? [
-          askedOn ? `Mkan: wabajije ibya "${title}" ku itariki ya ${askedOn}. Komisiyoneri yemeje ko igihari.` : `Mkan: komisiyoneri yemeje ko "${title}" igihari.`,
+          askedOn ? `Mkan: wabajije ibya "${title}" ku itariki ya ${askedOn}. Komisiyoneri yemeje ko iracyahari.` : `Mkan: komisiyoneri yemeje ko "${title}" iracyahari.`,
           `${askedOn ? "Niba ugishaka inzu, " : ""}${rep} wo muri Mkan arakwandikira hano vuba mupange gusura hamwe na komisiyoneri — ni ubuntu kuri wowe.`,
           ...(canPick ? ["Cyangwa uhitemo igihe cyo kuyisura hano:"] : []),
           link,
@@ -513,7 +515,7 @@ export function takenNextMessage(lang: string, title: string, homes: string, n: 
   if (lang === "ar")
     return `مكان: ${askedOn ? `سألت عن «${title}» يوم ${askedOn}، وهو` : `«${title}»`} مؤجَّر للأسف. هذا أقرب بديل لك:\n\n${homes}\n\nأرسل ${n > 1 ? "رقم أحدهما" : reply} وأتأكد أنه ما زال متاحاً وأرتب لك معاينة.`;
   if (lang === "rw")
-    return `Mkan: ${askedOn ? `wabajije ibya "${title}" ku itariki ya ${askedOn}. Yamaze` : `"${title}" yamaze`} gufatwa. Dore izikurikiraho zikubereye:\n\n${homes}\n\nOhereza ${n > 1 ? "nimero y'imwe" : reply} ndebe niba igihari.`;
+    return `Mkan: ${askedOn ? `wabajije ibya "${title}" ku itariki ya ${askedOn}. Yamaze` : `"${title}" yamaze`} gufatwa. Dore izikurikiraho zikubereye:\n\n${homes}\n\nOhereza ${n > 1 ? "nimero y'imwe" : reply} ndebe niba iracyahari.`;
   return `Mkan: ${askedOn ? `you asked about "${title}" on ${askedOn}. It's` : `"${title}" is`} taken, sorry. Next best for you:\n\n${homes}\n\nReply ${n > 1 ? "with a number" : reply} and I'll check it's still free and set up a viewing.`;
 }
 
