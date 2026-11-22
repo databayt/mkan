@@ -23,7 +23,7 @@ import "server-only";
  * A lease in WaState keeps two drains from overlapping.
  */
 import { waLink } from "../../../scripts/crm/public-links";
-import { isDirectChat, noteMisses, type HookMisses } from "../../../scripts/wa/tenant-pure";
+import { burstQuietLeft, isDirectChat, isImmediateLine, noteMisses, resolveAddresses, segmentBursts, type BurstLine, type HookMisses } from "../../../scripts/wa/tenant-pure";
 import {
   MAX_ATTEMPTS,
   REST_DAYS,
@@ -45,7 +45,6 @@ import {
   planOutbox,
   recipientKey,
   reminderOf,
-  senderPhone,
   startOfKigaliDay,
   typingMs,
 } from "../../../scripts/wa/outbox-pure";
@@ -54,10 +53,10 @@ import { askBodyNow, markIntroduced } from "./broker";
 import { brokerSendMode } from "./broker-sends";
 import { reconcileTermsAsk } from "./deal-intro";
 import { isRepostAsk, parseBrokerReply } from "./broker-reply";
-import { EvolutionError, connectionState, findMessages, isBridgeDown, mediaBytes, sendPresence, sendText } from "@/lib/whatsapp/evolution";
+import { EvolutionError, connectionState, findMessages, isBridgeDown, mediaBytes, sendMedia, sendPresence, sendText } from "@/lib/whatsapp/evolution";
 import { handleBrokerReply, repostAskKey, askMsgKey } from "./broker-inbox";
-import { heardIds, mutateState, pruneMessageClaims, readState, releaseLease, takeLease, writeState } from "./wa-state";
-import { answerTenant, noteFromMe, recordSent } from "./wa-tenant";
+import { clearBurst, heardIds, mutateState, phonesOfLids, pruneMessageClaims, readState, releaseLease, rememberAlias, takeLease, writeState } from "./wa-state";
+import { answerTenantBurst, noteFromMe, recordSent } from "./wa-tenant";
 import { postSlackCard } from "./whatsapp";
 
 const LEASE = "outbox-lease";
@@ -378,10 +377,19 @@ async function replies(dry: boolean, log: Log, sendsOff: boolean): Promise<numbe
   const records = await findMessages(new Date(now.getTime() - REPLY_LOOKBACK_MS), now, 200);
   const seen = await readState<string[]>("seen", []);
   const seenSet = new Set(seen);
+  // One person, two addresses: a message that carries only the @lid maps to its phone through what an
+  // earlier message taught us (wa-state.ts alias); a message that carries both teaches a new pair.
+  const addrOf = records.map((m) => resolveAddresses(m.key));
+  const known = await phonesOfLids([...new Set(addrOf.map((a) => a.lid).filter((l): l is string => !!l))]);
+  if (!dry) for (const a of addrOf) if (a.lid && a.phone && known.get(a.lid) !== a.phone) {
+    known.set(a.lid, a.phone);
+    await rememberAlias(a.lid, a.phone);
+  }
   const all = records
-    .map((m) => ({
+    .map((m, i) => ({
       id: m.key?.id ?? m.id ?? "",
-      phone: senderPhone(m.key),
+      phone: addrOf[i]!.phone ?? (addrOf[i]!.lid ? known.get(addrOf[i]!.lid!) ?? null : null),
+      lid: addrOf[i]!.lid,
       text: messageText(m.message),
       image: isImage(m.message, m.messageType),
       media: isMedia(m.message, m.messageType),
@@ -418,7 +426,7 @@ async function replies(dry: boolean, log: Log, sendsOff: boolean): Promise<numbe
   }
 
   // A person at Mkan typing in a tenant's chat pauses the agent there (wa-tenant.ts).
-  if (!dry) for (const m of all) if (m.fromMe && m.direct && m.phone && !byPhone.has(m.phone) && !posterPhones.has(m.phone)) await noteFromMe(m.phone, m.id, m.sentAt, m.text);
+  if (!dry) for (const m of all) if (m.fromMe && m.direct && m.phone && !byPhone.has(m.phone) && !posterPhones.has(m.phone)) await noteFromMe(m.phone, m.id, m.sentAt, m.text, m.lid);
   // The TikTok repost ask goes out from the phone, not from here: remember it, so the
   // broker's "yes" answers that ask and not an open "is this available?" (broker-inbox.ts).
   if (!dry) for (const m of all) if (m.fromMe && m.direct && m.phone && (byPhone.has(m.phone) || posterPhones.has(m.phone)) && isRepostAsk(m.text)) await writeState(repostAskKey(m.phone), { at: m.sentAt.toISOString() });
@@ -511,6 +519,11 @@ async function replies(dry: boolean, log: Log, sendsOff: boolean): Promise<numbe
       const marked = `${action.applied ? "marked" : "already"} ${action.answer === "RENTED" ? "rented" : "available"}`;
       const note = action.reply ? (said ? ` · we said "${action.reply.text}"` : sendsOff ? ` · not answered (broker sends off) — <${waLink(g.phone, "")}|answer by hand>` : "") : "";
       await postSlackCard(`✅ *${broker.name}* (+${g.phone}) answered → home #${action.listingId} ${marked}${note}\n> ${g.text.replace(/\n/g, "\n> ").slice(0, 600)}`);
+    } else if (action.kind === "resend") {
+      // Our link was dead for them ("The video is not available"): the home's own page, its photo, the same ask.
+      const said = await sendReply(g.phone, { text: action.text, outboundId: action.outboundId }, broker.name, log, sendsOff);
+      if (said && action.photoUrl) await sendMedia(g.phone, { url: action.photoUrl }).catch((err) => log(`resend photo to ${broker.name} failed: ${(err as Error).message}`));
+      await postSlackCard(`🔁 *${broker.name}* (+${g.phone}) couldn't open our link for home #${action.listingId}${said ? " · sent the Mkan page" + (action.photoUrl ? " + photo" : "") : " · not sent"}\n> ${g.text.replace(/\n/g, "\n> ").slice(0, 600)}`);
     } else {
       if (stored.length) pending[broker.id] = { urls: photoUrls, at: now.toISOString() };
       const botAsk = parseBrokerReply(g.text).asksIfBot ? "🤖 asks if they're talking to a bot — answer this one yourself.\n" : "";
@@ -534,13 +547,34 @@ async function replies(dry: boolean, log: Log, sendsOff: boolean): Promise<numbe
   // (2026-11-06: it was dropped; 2026-11-08: one another run held came back as a duplicate and was lost).
   const unfinished = new Set<string>();
   if (!dry && tenants.length > 0) await noteHookMisses(tenants, now, log).catch((err) => log(`hook-miss count failed: ${(err as Error).message}`));
-  for (const m of tenants) {
+  // One reply per burst (tenant-pure.ts): a phone's unanswered lines wait until the tenant has been quiet,
+  // then ONE turn reads them all. A trailing burst that is still young is left unseen and a pass is kicked
+  // for when it will be ready; a digit pick, STOP and START are turns of their own (segmentBursts).
+  const byTenant = new Map<string, typeof tenants>();
+  for (const m of tenants) byTenant.set(m.phone!, [...(byTenant.get(m.phone!) ?? []), m]);
+  for (const [phone, msgs] of byTenant) {
     if (dry) {
-      log(`would pass a tenant message to the agent`);
+      log(`would pass ${msgs.length} tenant message(s) from one chat to the agent`);
       continue;
     }
-    const outcome = await answerTenant({ phone: m.phone!, text: m.text, msgId: m.id, sentAt: m.sentAt, media: m.media });
-    if (outcome === "busy" || outcome === "held" || outcome === "error") unfinished.add(m.id);
+    const lines: (BurstLine & { lid: string | null })[] = msgs.map((m) => ({ id: m.id, text: m.text, sentAt: m.sentAt, media: m.media, lid: m.lid }));
+    const segments = segmentBursts(lines);
+    for (let i = 0; i < segments.length; i++) {
+      const seg = segments[i]!;
+      const trailing = i === segments.length - 1;
+      const immediate = seg.length === 1 && !seg[0]!.media && isImmediateLine(seg[0]!.text);
+      const left = trailing && !immediate ? burstQuietLeft(seg, now) : 0;
+      if (left > 0) {
+        for (const l of seg) unfinished.add(l.id);
+        kickOutbox("burst", left + 3_000);
+        log(`a tenant is still writing (${seg.length} line(s)) — waiting ${Math.round(left / 1000)} s for quiet`);
+        continue;
+      }
+      const lid = lines.find((l) => l.lid)?.lid ?? null;
+      const outcome = await answerTenantBurst(phone, seg, { lid });
+      if (outcome === "busy" || outcome === "held" || outcome === "error") for (const l of seg) unfinished.add(l.id);
+    }
+    if (!lines.some((l) => unfinished.has(l.id))) await clearBurst(phone);
   }
   if (!dry) {
     await mutateState<string[]>("seen", [], (list) => [...list, ...all.filter((m) => !unfinished.has(m.id)).map((m) => m.id)].slice(-SEEN_KEEP));

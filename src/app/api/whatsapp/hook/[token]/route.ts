@@ -1,10 +1,10 @@
 import { timingSafeEqual } from "node:crypto";
 import { after, NextResponse, type NextRequest } from "next/server";
-import { isDirectChat } from "../../../../../../scripts/wa/tenant-pure";
-import { isMedia, messageText, phoneKey, senderPhone } from "../../../../../../scripts/wa/outbox-pure";
-import { answerTenant, noteFromMe } from "@/components/agent/wa-tenant";
+import { burstQuietLeft, isDirectChat, isImmediateLine, resolveAddresses, TENANT_BURST_QUIET_MS, type BurstLine } from "../../../../../../scripts/wa/tenant-pure";
+import { isMedia, messageText, phoneKey } from "../../../../../../scripts/wa/outbox-pure";
+import { answerTenant, answerTenantBurst, noteFromMe } from "@/components/agent/wa-tenant";
 import { kickOutbox } from "@/components/agent/wa-outbox";
-import { claimMessage, markHeard, settleMessage } from "@/components/agent/wa-state";
+import { addBurstLine, burstTail, claimMessage, markHeard, phoneOfLid, rememberAlias, settleMessage, takeBurst } from "@/components/agent/wa-state";
 import { postSlackCard } from "@/components/agent/whatsapp";
 import { db } from "@/lib/db";
 import { hookToken, INSTANCE, type EvoMessage } from "@/lib/whatsapp/evolution";
@@ -12,8 +12,9 @@ import { hookToken, INSTANCE, type EvoMessage } from "@/lib/whatsapp/evolution";
 /**
  * The Mkan line's webhook: the shared bridge (hogwarts' Evolution) posts each
  * new message here (MESSAGES_UPSERT, set by `pnpm wa:pair`). A tenant's
- * message is answered at once; a person at Mkan typing in a tenant's chat
- * pauses the agent there. Brokers are left to the outbox poll, which reads an
+ * lines are collected until the chat has been quiet TENANT_BURST_QUIET_MS, then
+ * ONE turn answers them all (a digit pick, STOP and START go at once); a person
+ * at Mkan typing in a tenant's chat pauses the agent there. Brokers are left to the outbox poll, which reads an
  * album and its caption as one reply (wa-outbox.ts).
  *
  * The path token comes from MKAN_WA_BRIDGE_SECRET (evolution.ts hookToken).
@@ -62,7 +63,11 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 async function handle(m: EvoMessage) {
   const key = m.key;
   if (!key?.id || !isDirectChat(key.remoteJid)) return;
-  const phone = senderPhone(key);
+  // One person, two addresses: the phone and the @lid. Either can arrive alone; a pair seen once is
+  // remembered (wa-state.ts alias) so a later message with only the lid maps to the same person.
+  const seen = resolveAddresses(key);
+  const phone = seen.phone ?? resolveAddresses(key, await phoneOfLid(seen.lid)).phone;
+  if (phone && seen.lid && seen.phone) await rememberAlias(seen.lid, phone);
   if (!phone) {
     // WhatsApp hides some senders' numbers (an @lid with no number on it): the agent cannot answer one
     // yet, so a person does, from the phone — it used to be dropped without a word (2026-11-06).
@@ -86,14 +91,47 @@ async function handle(m: EvoMessage) {
   if (key.fromMe) {
     // The echo of the agent's own reply can arrive before sendText returns and its id is recorded.
     await sleep(10_000);
-    await noteFromMe(phone, key.id, sentAt, messageText(m.message));
+    await noteFromMe(phone, key.id, sentAt, messageText(m.message), seen.lid);
     return;
   }
   // Claimed once in answerTenant (wa-state.ts claimMessage): the poll that brings the same message
   // finds it answered — and one the webhook could not finish (a busy turn, an error) it answers itself.
   // The mark first: the poll counts a tenant message without one as missed by the hook (2026-11-08).
   await markHeard(key.id);
-  await answerTenant({ phone, text: messageText(m.message), msgId: key.id, sentAt, media: isMedia(m.message, m.messageType) });
+  const text = messageText(m.message);
+  const media = isMedia(m.message, m.messageType);
+  // A digit pick, STOP and START never wait (STOP above all): they are a turn of their own, as before.
+  if (isImmediateLine(text) && !media) {
+    await answerTenant({ phone, text, msgId: key.id, sentAt, media, lid: seen.lid });
+    return;
+  }
+  await collectAndAnswer(phone, seen.lid, { id: key.id, text, sentAt, media, arrivedAt: new Date() });
+}
+
+/**
+ * The debounce, safe on this host. The app is one long-lived container, so a timer can sleep through the
+ * quiet window — but a container restart loses it, so the line is first written to WaState (a `tburst:` row)
+ * and the poll (wa-outbox.ts) answers whatever a restart leaves: it reads the same lines from Evolution, holds
+ * them until the tenant has been quiet, and the claim on the newest line keeps the two paths from both
+ * answering. Every line starts a run, but only the one whose line is still the newest when the quiet time has
+ * passed takes the burst (takeBurst is one DELETE ... RETURNING) and runs the single turn; the others end.
+ */
+async function collectAndAnswer(phone: string, lid: string | null, line: BurstLine) {
+  await addBurstLine(phone, line);
+  // The safety net: if this container dies in the wait, the pass finds the lines and answers them.
+  kickOutbox("burst", TENANT_BURST_QUIET_MS + 20_000);
+  for (;;) {
+    const tail = await burstTail(phone);
+    if (!tail || tail.lastId !== line.id) return; // a newer line owns the burst, or the poll already answered it
+    const left = burstQuietLeft([{ ...line, arrivedAt: tail.lastAt }], new Date());
+    if (left <= 0) break;
+    await sleep(left + 250);
+  }
+  const lines = await takeBurst(phone, line.id);
+  if (!lines) return;
+  const outcome = await answerTenantBurst(phone, lines, { lid });
+  // A busy turn or an error leaves the lines unanswered: the pass takes them, soon.
+  if (outcome === "busy" || outcome === "error") kickOutbox("burst-retry", 20_000);
 }
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ token: string }> }) {

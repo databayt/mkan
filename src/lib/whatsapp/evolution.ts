@@ -151,7 +151,8 @@ export async function sendMedia(
 /** One stored message as Evolution v2 returns it from /chat/findMessages and the webhook. */
 export interface EvoMessage {
   id?: string;
-  key?: { id?: string; fromMe?: boolean; remoteJid?: string; remoteJidAlt?: string; senderPn?: string; participant?: string };
+  /** `remoteJidAlt` / `senderPn` / `senderLid` / `participantAlt` carry the other address (`@lid` ↔ phone) of the same person (Evolution v2 + Baileys 7). */
+  key?: { id?: string; fromMe?: boolean; remoteJid?: string; remoteJidAlt?: string; senderPn?: string; senderLid?: string; participant?: string; participantAlt?: string; participantPn?: string; addressingMode?: string };
   pushName?: string | null;
   messageType?: string;
   message?: Record<string, unknown> | null;

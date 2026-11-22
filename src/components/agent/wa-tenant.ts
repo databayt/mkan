@@ -8,13 +8,13 @@ import "server-only";
  * shows "typing…", runs the turn in-process (whatsapp-chat.ts) and sends the
  * reply. The turn dedupes by message id, so the two paths answer once.
  */
-import { followLine, homesListed, humanChatBeforeBot, langOfWords, LATE_AFTER_MS, lateLead, MAX_AGE_MS, mediaEnabled, MEDIA_NUDGE_MS, REPEAT_WINDOW_MS, repeatsLast, saidJustNow, showsAHome, startText, stopConfirmText, tenantDecision, textHash, typePleaseText, type Sent, type TenantDecision } from "../../../scripts/wa/tenant-pure";
+import { addressList, botSentTo, followLine, homesListed, humanAtAny, humanChatBeforeBot, joinBurst, planBurst, stoppedAt, type BurstLine, langOfWords, LATE_AFTER_MS, lateLead, MAX_AGE_MS, mediaEnabled, MEDIA_NUDGE_MS, REPEAT_WINDOW_MS, repeatsLast, saidJustNow, showsAHome, startText, stopConfirmText, tenantDecision, textHash, typePleaseText, type Sent, type TenantDecision } from "../../../scripts/wa/tenant-pure";
 import { db } from "@/lib/db";
 import { sendMedia, sendPresence, sendText } from "@/lib/whatsapp/evolution";
 import { isPersonal, markPersonal } from "./personal";
 import { readRepWord, repDigits } from "./rep-word-pure";
 import { testPhones } from "./broker-sends";
-import { addToList, CLAIM_STALE_MS, claimMessage, holdReply, MAX_ANSWER_TRIES, mutateState, readState, releaseMessage, removeFromList, settleMessage, writeState } from "./wa-state";
+import { addToList, CLAIM_STALE_MS, claimMessage, holdReply, lidOfPhone, MAX_ANSWER_TRIES, mutateState, readClaims, readState, releaseMessage, removeFromList, settleMessage, writeState } from "./wa-state";
 import { handleTenantWhatsApp, silenceTenant } from "./whatsapp-chat";
 import { sameHomesText, type WaLang } from "./whatsapp-format";
 import { postSlackCard } from "./whatsapp";
@@ -36,12 +36,13 @@ export async function recordSent(phone: string, id: string | undefined, text?: s
 }
 
 /** A fromMe message in a tenant chat: ours, or a person at Mkan taking over. */
-export async function noteFromMe(phone: string, id: string | undefined, at: Date, text?: string): Promise<void> {
+export async function noteFromMe(phone: string, id: string | undefined, at: Date, text?: string, lid?: string | null): Promise<void> {
   const sent = await readState<Sent>("tenant-sent", []);
   if (!id || sent.some((s) => s.id === id)) return;
   if (text) {
     const h = textHash(text);
-    if (sent.some((s) => s.phone === phone && s.h === h && Math.abs(new Date(s.at).getTime() - at.getTime()) < ECHO_WINDOW_MS)) return;
+    const mine = addressList({ phone, lid });
+    if (sent.some((s) => mine.includes(s.phone) && s.h === h && Math.abs(new Date(s.at).getTime() - at.getTime()) < ECHO_WINDOW_MS)) return;
   }
   await mutateState<Record<string, string>>("tenant-human", {}, (human) =>
     !human[phone] || new Date(human[phone]!).getTime() < at.getTime() ? { ...human, [phone]: at.toISOString() } : human,
@@ -74,6 +75,13 @@ export interface TenantMessage {
   sentAt: Date;
   /** A voice note, photo, location… (outbox-pure.ts isMedia): no words to read. */
   media?: boolean;
+  /** The person's other address (`<id>@lid`), when the message carried it: STOP / human / personal checks read both. */
+  lid?: string | null;
+  /**
+   * A burst (tenant-pure.ts joinBurst): `text` is every line joined, `msgId` the newest line (it carries the
+   * claim) and these are the earlier lines' ids, settled with it.
+   */
+  folded?: string[];
 }
 
 /** A few seconds between photos: three images at once from a number this young reads as spam to WhatsApp. */
@@ -122,6 +130,11 @@ const CHAIN_HOLD_MS = 60_000;
  */
 export function answerTenant(m: TenantMessage): Promise<TenantOutcome> {
   let hold: Promise<unknown> = Promise.resolve();
+  /** Settle the claim — and the earlier lines of a burst, which no pass may answer again. */
+  const settle = async () => {
+    await settleMessage(m.msgId);
+    for (const id of m.folded ?? []) await settleMessage(id).catch(() => {});
+  };
   const run = async (): Promise<TenantOutcome> => {
     try {
       const claim = await claimMessage(m.msgId);
@@ -132,7 +145,7 @@ export function answerTenant(m: TenantMessage): Promise<TenantOutcome> {
       }
       if (claim.mode === "resend") {
         if (Date.now() - new Date(claim.at).getTime() > RESEND_WITHIN_MS) {
-          await settleMessage(m.msgId);
+          await settle();
           await postSlackCard(`⚠️ A reply to +${m.phone} could not be sent for ${Math.round(RESEND_WITHIN_MS / 3_600_000)} h — answer by hand:\n> ${claim.text.slice(0, 500).replace(/\n/g, "\n> ")}`).catch(() => {});
           log(`tenant +${m.phone} reply handed to a person after failed sends`);
           return "error";
@@ -140,12 +153,12 @@ export function answerTenant(m: TenantMessage): Promise<TenantOutcome> {
         await recordSent(m.phone, undefined, claim.text);
         const out = await sendText(m.phone, claim.text);
         await recordSent(m.phone, out?.key?.id, claim.text);
-        await settleMessage(m.msgId);
+        await settle();
         log(`tenant +${m.phone} answered on a re-send (${claim.text.length} chars)`);
         return "sent";
       }
       if (claim.tries > MAX_ANSWER_TRIES) {
-        await settleMessage(m.msgId);
+        await settle();
         await postSlackCard(`⚠️ The agent failed ${MAX_ANSWER_TRIES} times on a message from +${m.phone} — answer by hand:\n> ${m.text.slice(0, 500).replace(/\n/g, "\n> ")}`).catch(() => {});
         log(`tenant +${m.phone} handed to a person after ${MAX_ANSWER_TRIES} failed tries`);
         return "error";
@@ -162,52 +175,55 @@ export function answerTenant(m: TenantMessage): Promise<TenantOutcome> {
           const { applyRepWord } = await import("./rep-word");
           const text = await applyRepWord(word);
           await sendLine(m, text, claim.tries);
-          await settleMessage(m.msgId);
+          await settle();
           log(`rep word: ${word.kind === "status" ? `${word.status} K${word.listingId}` : word.kind}`);
           return "sent";
         }
         if (/^(?:ok(?:ay)?|thanks|thank you|noted|👍|تمام|شكرا|شكراً)[\s.!]*$/iu.test(m.text.trim())) {
-          await settleMessage(m.msgId);
+          await settle();
           return "nothing";
         }
       }
       const now = new Date();
       // Abdout's own contacts (personal.ts) never get a line from the agent: no "please type", no STOP
       // confirmation, no card. A text still reaches the handler, which answers only one about a home.
+      // One person has two addresses (a phone and an @lid): the history is read under both (2026-11-22).
+      const lid = m.lid ?? (await lidOfPhone(m.phone));
+      const addrs = addressList({ phone: m.phone, lid });
       const [stopped, human, sent, personal] = await Promise.all([
         readState<string[]>("tenant-stop", []),
         readState<Record<string, string>>("tenant-human", {}),
         readState<Sent>("tenant-sent", []),
-        isPersonal(m.phone),
+        isPersonal(m.phone, lid ? [lid] : []),
       ]);
       const hourAgo = now.getTime() - 3_600_000;
       // Mkan's own person writing from their phone is not a tenant: anything beyond a word the loop reads
       // (above) is theirs, never the agent's. A number on the team's test list still gets the agent, for the phone test.
       if (rep && m.phone === rep && !m.media && !(await testPhones().catch(() => new Set<string>())).has(m.phone)) {
-        await settleMessage(m.msgId);
+        await settle();
         log(`tenant +${m.phone} is Mkan's own person — no agent reply`);
         return "skip-personal";
       }
       // A chat the line owner already lived in: a person talked there, long ago, and the agent never did.
-      const humanAtPhone = human[m.phone] ? new Date(human[m.phone]!) : null;
+      const humanAtPhone = humanAtAny(human, addrs);
       const personalChat =
         !personal &&
         humanChatBeforeBot({
           humanAt: humanAtPhone,
           now,
-          botSentToPhone: sent.some((s) => s.phone === m.phone),
+          botSentToPhone: botSentTo(sent, addrs),
           hasAgentChat: humanAtPhone ? (await db.agentTask.count({ where: { profile: { waPhone: `+${m.phone}` } } }).catch(() => 1)) > 0 : false,
         });
-      if (personalChat) await markPersonal(m.phone, "a person talked in this chat before the agent did");
+      if (personalChat) await markPersonal(m.phone, "a person talked in this chat before the agent did", lid ? [lid] : []);
       // Sent replies only (they carry an id): the pre-send echo marks would count every reply twice.
       const recent = sent.filter((s) => s.id && new Date(s.at).getTime() > hourAgo);
       const decision = tenantDecision({
         text: m.text,
         sentAt: m.sentAt,
         now,
-        stopped: stopped.includes(m.phone),
-        humanAt: human[m.phone] ? new Date(human[m.phone]!) : null,
-        phoneRepliesLastHour: recent.filter((s) => s.phone === m.phone).length,
+        stopped: stoppedAt(stopped, addrs),
+        humanAt: humanAtPhone,
+        phoneRepliesLastHour: recent.filter((s) => addrs.includes(s.phone)).length,
         lineRepliesLastHour: recent.length,
         media: m.media,
         personalChat: personalChat || undefined,
@@ -220,7 +236,7 @@ export function answerTenant(m: TenantMessage): Promise<TenantOutcome> {
           await sendLine(m, stopConfirmText(await chatLocale(m.phone, m.text)), claim.tries);
           await postSlackCard(`🛑 +${m.phone} said STOP — no replies or alerts until they send START:\n> ${m.text.slice(0, 200)}`).catch(() => {});
         }
-        await settleMessage(m.msgId);
+        await settle();
         log(`tenant +${m.phone} said STOP — silenced`);
         return decision;
       }
@@ -228,13 +244,13 @@ export function answerTenant(m: TenantMessage): Promise<TenantOutcome> {
         const nudgeKey = `tmedia:${m.phone}`;
         const last = personal ? null : await readState<{ at?: string }>(nudgeKey, {});
         if (!last || (last.at && Date.now() - new Date(last.at).getTime() < MEDIA_NUDGE_MS)) {
-          await settleMessage(m.msgId);
+          await settle();
           return "nothing";
         }
         // Once an hour per chat: "please type", in the language the chat was last in.
         await sendLine(m, typePleaseText(await chatLocale(m.phone, m.text)), claim.tries);
         await writeState(nudgeKey, { at: new Date().toISOString() });
-        await settleMessage(m.msgId);
+        await settle();
         log(`tenant +${m.phone} sent media — asked to type`);
         return "sent";
       }
@@ -242,20 +258,20 @@ export function answerTenant(m: TenantMessage): Promise<TenantOutcome> {
         // Back after a STOP: a welcome line, not a turn on the bare word (it read as "not about a home").
         await removeFromList("tenant-stop", m.phone);
         if (!personal) await sendLine(m, startText(await chatLocale(m.phone, m.text)), claim.tries);
-        await settleMessage(m.msgId);
+        await settle();
         log(`tenant +${m.phone} said START`);
         return personal ? "start" : "sent";
       }
       if (decision === "skip-old") {
         // Older than MAX_AGE_MS (an outage longer than that): a person answers, never silence.
-        await settleMessage(m.msgId);
+        await settle();
         const hours = Math.round((now.getTime() - m.sentAt.getTime()) / 3_600_000);
         if (!personal && m.text.trim()) await postSlackCard(`⏳ +${m.phone} wrote ${hours} h ago and the line never answered — answer by hand:\n> ${m.text.slice(0, 400).replace(/\n/g, "\n> ")}`).catch(() => {});
         log(`tenant +${m.phone} skip-old (${hours} h)`);
         return decision;
       }
       if (decision !== "answer") {
-        await settleMessage(m.msgId);
+        await settle();
         log(`tenant +${m.phone} ${decision}`);
         return decision;
       }
@@ -276,7 +292,7 @@ export function answerTenant(m: TenantMessage): Promise<TenantOutcome> {
           log(`tenant +${m.phone} held — its turn is still writing`);
           return "held";
         }
-        await settleMessage(m.msgId);
+        await settle();
         log(`tenant +${m.phone} no reply (${why})`);
         return "nothing";
       }
@@ -292,7 +308,7 @@ export function answerTenant(m: TenantMessage): Promise<TenantOutcome> {
       // (11-07 and 11-12, three times in one chat). Said once; the second message needs no answer.
       const sentNow = await readState<Sent>("tenant-sent", []);
       if (saidJustNow(sentNow, m.phone, reply, Date.now())) {
-        await settleMessage(m.msgId);
+        await settle();
         log(`tenant +${m.phone} not answered: the same reply went out under ${Math.round(REPEAT_WINDOW_MS / 60_000)} min ago`);
         return "nothing";
       }
@@ -303,7 +319,7 @@ export function answerTenant(m: TenantMessage): Promise<TenantOutcome> {
         const loc = await chatLocale(m.phone, m.text);
         const alt = n > 0 ? sameHomesText((loc === "ar" || loc === "rw" ? loc : "en") as WaLang, n) : null;
         if (!alt || repeatsLast(sentNow, m.phone, alt, Date.now())) {
-          await settleMessage(m.msgId);
+          await settle();
           log(`tenant +${m.phone} not answered: the last message sent was the same words`);
           return "nothing";
         }
@@ -316,7 +332,7 @@ export function answerTenant(m: TenantMessage): Promise<TenantOutcome> {
       await recordSent(m.phone, undefined, reply);
       const out = await sendText(m.phone, reply);
       await recordSent(m.phone, out?.key?.id, reply);
-      await settleMessage(m.msgId);
+      await settle();
       // The homes' own photos, as native media with a short caption (MKAN_WA_MEDIA, on unless set off). The
       // list above already carries every link, so a photo that fails to send costs nothing.
       if (media.length && mediaEnabled() && !personal) await sendHomePhotos(m.phone, media);
@@ -336,4 +352,29 @@ export function answerTenant(m: TenantMessage): Promise<TenantOutcome> {
     if (chains.get(m.phone) === held) chains.delete(m.phone);
   });
   return next;
+}
+
+/**
+ * Answer a tenant's burst of lines with ONE turn (2026-11-22). The lines are whatever the webhook collected
+ * (wa-state.ts addBurstLine) or the poll found unseen; ones an earlier turn already settled are dropped, the
+ * rest are joined in order and the newest carries the claim — so each line is answered once, never lost, and
+ * never twice (claimMessage). A run another turn is still on is "held"; the poll looks again.
+ */
+export async function answerTenantBurst(phone: string, lines: BurstLine[], extra: { lid?: string | null } = {}): Promise<TenantOutcome> {
+  if (lines.length === 0) return "duplicate";
+  const claims = await readClaims(lines.map((l) => l.id));
+  const plan = planBurst(lines, claims, new Date(), CLAIM_STALE_MS);
+  if (plan.kind === "none") return "duplicate";
+  if (plan.kind === "held") {
+    lookAgainSoon();
+    return "held";
+  }
+  if (plan.kind === "resend-first") {
+    // Its written reply goes out first, alone; the other lines are read on the next pass.
+    const out = await answerTenant({ phone, text: plan.line.text, msgId: plan.line.id, sentAt: plan.line.sentAt, media: plan.line.media, lid: extra.lid });
+    lookAgainSoon();
+    return out;
+  }
+  const joined = joinBurst(plan.lines)!;
+  return answerTenant({ phone, text: joined.text, msgId: joined.primary.id, sentAt: joined.sentAt, media: joined.text ? undefined : joined.media, lid: extra.lid, folded: joined.folded });
 }

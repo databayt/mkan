@@ -202,3 +202,181 @@ export function humanChatBeforeBot(i: { humanAt: Date | null; now: Date; botSent
   if (!i.humanAt || i.botSentToPhone || i.hasAgentChat) return false;
   return i.now.getTime() - i.humanAt.getTime() >= HUMAN_HOLD_MS;
 }
+
+// ── one person, two addresses (2026-11-22) ───────────────────────────────────────────────────────
+// WhatsApp now addresses a contact by a private `<id>@lid` AND by phone number, and a single thread
+// arrives under one while the bot's reply and the line owner's own history sit under the other. The
+// phone digits stay the canonical key (profiles are `sha256("wa:<digits>")`, STOP / human-hold / sent
+// lists are keyed by them); the lid is the second address every personal / STOP / human check also reads.
+
+/** The ids Evolution v2 can put on a message key (`remoteJidAlt`, `senderPn`, `senderLid`, `participantAlt`…). */
+export interface WaKey {
+  remoteJid?: string;
+  remoteJidAlt?: string;
+  senderPn?: string;
+  senderLid?: string;
+  participant?: string;
+  participantAlt?: string;
+  participantPn?: string;
+}
+
+/** The two addresses of one person: phone digits, and `<id>@lid`; either can be missing. */
+export interface WaAddresses {
+  phone: string | null;
+  lid: string | null;
+}
+
+const jidUser = (jid: string) => (jid.split('@')[0] ?? '').replace(/:\d+$/, '');
+const phoneDigits = (s: string) => s.replace(/[^\d]/g, '').replace(/^00/, '');
+export const isLid = (address: string | null | undefined): boolean => !!address && address.endsWith('@lid');
+/** `<id>@lid`, device suffix dropped; null when the string is not a lid. */
+export const lidOf = (jid: string | null | undefined): string | null => (jid && jid.endsWith('@lid') && jidUser(jid) ? `${jidUser(jid)}@lid` : null);
+
+/**
+ * Both addresses of the sender of a message key: the phone from `senderPn` / `remoteJidAlt` / `remoteJid`
+ * (an `@s.whatsapp.net` jid), the lid from whichever field carries an `@lid`. `phoneOfLid` is what an
+ * earlier message taught us (WaState `alias:<lid>`): it fills the phone of a message that carries only the lid.
+ */
+export function resolveAddresses(key: WaKey | undefined, phoneOfLid?: string | null): WaAddresses {
+  let phone: string | null = null;
+  for (const jid of [key?.senderPn, key?.remoteJidAlt, key?.participantPn, key?.remoteJid, key?.participantAlt, key?.participant]) {
+    if (jid && jid.endsWith('@s.whatsapp.net')) {
+      const d = phoneDigits(jidUser(jid));
+      if (d) {
+        phone = d;
+        break;
+      }
+    }
+  }
+  let lid: string | null = null;
+  for (const jid of [key?.remoteJid, key?.remoteJidAlt, key?.senderLid, key?.participant, key?.participantAlt]) {
+    lid = lidOf(jid);
+    if (lid) break;
+  }
+  if (!phone && phoneOfLid) phone = phoneDigits(phoneOfLid) || null;
+  return { phone, lid };
+}
+
+/** Every address a person is known by, for the checks that must see both halves of the history. */
+export const addressList = (a: Partial<WaAddresses> | null | undefined): string[] => [a?.phone, a?.lid].filter((x): x is string => !!x);
+
+/** STOP is on either address. */
+export const stoppedAt = (stopped: readonly string[], addrs: readonly string[]): boolean => addrs.some((a) => stopped.includes(a));
+
+/** The newest time a person typed in this chat, under any of its addresses. */
+export function humanAtAny(human: Record<string, string>, addrs: readonly string[]): Date | null {
+  let best = 0;
+  for (const a of addrs) {
+    const t = human[a] ? Date.parse(human[a]!) : NaN;
+    if (Number.isFinite(t) && t > best) best = t;
+  }
+  return best ? new Date(best) : null;
+}
+
+/** Did the agent ever send to any of these addresses? */
+export const botSentTo = (sent: Sent, addrs: readonly string[]): boolean => sent.some((s) => addrs.includes(s.phone));
+
+// ── one reply per burst (2026-11-22) ─────────────────────────────────────────────────────────────
+// People write in bursts ("Mwiriwe" / "ko nashakaga inzu…" / "itarengeje ibihumbi ijana" within ~3 min) and
+// the bot answered each line: 3–5 replies, sometimes in two languages. A tenant's lines now wait until the
+// chat has been quiet this long, then ONE turn reads them all, joined in order.
+
+export const TENANT_BURST_QUIET_MS = 25_000;
+
+export interface BurstLine {
+  id: string;
+  text: string;
+  sentAt: Date;
+  /** A voice note, photo, location… (no words). */
+  media?: boolean;
+  /** When the line reached us (the server's clock — the phone's can be off); falls back to sentAt. */
+  arrivedAt?: Date;
+}
+
+/**
+ * A line that never waits: a bare digit (a pick of the last numbered question), STOP, START. STOP must
+ * never wait; a pick or START alone is the whole turn, joined with words it would read as something else.
+ */
+export const isImmediateLine = (text: string | null | undefined): boolean => {
+  const t = (text ?? '').trim();
+  return /^\d{1,2}[\s.!]*$/.test(t) || isTenantStop(t) || isOptIn(t);
+};
+
+/** When the tenant last wrote: the newest line's arrival, never in the future. */
+export function lastWriteAt(lines: readonly BurstLine[], now: Date): number {
+  let best = 0;
+  for (const l of lines) best = Math.max(best, (l.arrivedAt ?? l.sentAt).getTime());
+  return Math.min(best, now.getTime());
+}
+
+/** How long until the tenant has been quiet for `quietMs`; 0 or less when the burst is ready. */
+export function burstQuietLeft(lines: readonly BurstLine[], now: Date, quietMs = TENANT_BURST_QUIET_MS): number {
+  if (lines.length === 0) return 0;
+  return lastWriteAt(lines, now) + quietMs - now.getTime();
+}
+
+/** Oldest first; equal times keep their given order. */
+export const inOrder = (lines: readonly BurstLine[]): BurstLine[] =>
+  lines.map((l, i) => ({ l, i })).sort((a, b) => a.l.sentAt.getTime() - b.l.sentAt.getTime() || a.i - b.i).map((x) => x.l);
+
+/**
+ * One chat's unanswered lines → the turns to run, in order: a run of ordinary lines is one burst, an
+ * immediate line (isImmediateLine) is a turn of its own and splits the burst around it.
+ */
+export function segmentBursts(lines: readonly BurstLine[]): BurstLine[][] {
+  const out: BurstLine[][] = [];
+  let run: BurstLine[] = [];
+  for (const l of inOrder(lines)) {
+    if (isImmediateLine(l.text) && !l.media) {
+      if (run.length) out.push(run);
+      out.push([l]);
+      run = [];
+    } else run.push(l);
+  }
+  if (run.length) out.push(run);
+  return out;
+}
+
+/** What one turn reads for a burst: the newest line carries the claim, the words are all lines newline-joined in order. */
+export function joinBurst(lines: readonly BurstLine[]): { primary: BurstLine; folded: string[]; text: string; media: boolean; sentAt: Date } | null {
+  const ordered = inOrder(lines);
+  const primary = ordered[ordered.length - 1];
+  if (!primary) return null;
+  const text = ordered.map((l) => l.text.trim()).filter(Boolean).join('\n');
+  return {
+    primary,
+    folded: ordered.slice(0, -1).map((l) => l.id),
+    text,
+    media: ordered.some((l) => l.media),
+    // The oldest unanswered line: how long the tenant has waited, for "Sorry for the slow reply" and the 12 h limit.
+    sentAt: ordered.reduce((o, l) => (l.sentAt.getTime() < o.getTime() ? l.sentAt : o), primary.sentAt),
+  };
+}
+
+/** A claim row as wa-state.ts keeps it: only the fields a burst plan reads. */
+export type ClaimRow = { s: 'working' | 'reply' | 'done'; at: string };
+
+export type BurstPlan =
+  | { kind: 'none' }
+  | { kind: 'held' }
+  /** An earlier line has a written but unsent reply: send it first, on its own; the rest wait for the next pass. */
+  | { kind: 'resend-first'; line: BurstLine }
+  | { kind: 'burst'; lines: BurstLine[] };
+
+/**
+ * Which of a burst's lines to read now. Settled lines are dropped (answered by an earlier turn); a line
+ * another run is still on (a fresh `working` claim that is not the newest) means that run is live — held;
+ * an earlier line whose reply was written but not sent goes first on its own, or its reply would be lost.
+ */
+export function planBurst(lines: readonly BurstLine[], claims: ReadonlyMap<string, ClaimRow>, now: Date, staleMs: number): BurstPlan {
+  const open = inOrder(lines).filter((l) => claims.get(l.id)?.s !== 'done');
+  if (open.length === 0) return { kind: 'none' };
+  const newest = open[open.length - 1]!;
+  for (const l of open) {
+    if (l === newest) continue;
+    const c = claims.get(l.id);
+    if (c?.s === 'reply') return { kind: 'resend-first', line: l };
+    if (c?.s === 'working' && now.getTime() - Date.parse(c.at) < staleMs) return { kind: 'held' };
+  }
+  return { kind: 'burst', lines: open };
+}

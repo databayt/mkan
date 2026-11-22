@@ -14,9 +14,13 @@
  *   tmsg:<id>     one claim per tenant message (below)
  *   thook:<id>    the webhook delivered this tenant message — one the poll finds without it was missed
  *   hook-miss     the misses of the last hours, and when #mkan last heard (tenant-pure.ts noteMisses)
+ *   alias:<lid>   {phone} — the phone digits of a `<id>@lid` address (one person, two addresses)
+ *   lid-of:<phone> {lid} — the reverse, so a phone-keyed check also reads the lid's history
+ *   tburst:<phone> a tenant's unanswered lines while the chat is not yet quiet (tenant-pure.ts BurstLine)
  */
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
+import { lidOf, type BurstLine, type ClaimRow } from "../../../scripts/wa/tenant-pure";
 
 export async function readState<T>(key: string, empty: T): Promise<T> {
   const row = await db.waState.findUnique({ where: { key } });
@@ -149,10 +153,121 @@ export async function releaseMessage(msgId: string): Promise<void> {
 /** Claims older than the poll's lookback are history; so is the ask a sent message carried, after a week. */
 export async function pruneMessageClaims(olderThanMs = 2 * 86_400_000): Promise<number> {
   const now = Date.now();
-  const [claims, heard, asks] = await Promise.all([
+  const [claims, bursts, heard, asks] = await Promise.all([
     db.waState.deleteMany({ where: { key: { startsWith: "tmsg:" }, updatedAt: { lt: new Date(now - olderThanMs) } } }),
+    db.waState.deleteMany({ where: { key: { startsWith: "tburst:" }, updatedAt: { lt: new Date(now - olderThanMs) } } }),
     db.waState.deleteMany({ where: { key: { startsWith: "thook:" }, updatedAt: { lt: new Date(now - olderThanMs) } } }),
     db.waState.deleteMany({ where: { key: { startsWith: "ask-msg:" }, updatedAt: { lt: new Date(now - 7 * 86_400_000) } } }),
   ]);
-  return claims.count + heard.count + asks.count;
+  return claims.count + bursts.count + heard.count + asks.count;
+}
+
+// ── one person, two addresses ────────────────────────────────────────────────────────────────────
+
+const aliasKey = (lid: string) => `alias:${lid}`;
+const lidOfKey = (phone: string) => `lid-of:${phone}`;
+
+/** The phone a lid is known by; null when no message has taught us one. */
+export async function phoneOfLid(lid: string | null | undefined): Promise<string | null> {
+  const l = lidOf(lid);
+  if (!l) return null;
+  const row = await db.waState.findUnique({ where: { key: aliasKey(l) }, select: { value: true } }).catch(() => null);
+  const phone = (row?.value as { phone?: string } | null)?.phone;
+  return phone || null;
+}
+
+/** The lid a phone is known by; null when none has been seen. */
+export async function lidOfPhone(phone: string | null | undefined): Promise<string | null> {
+  if (!phone) return null;
+  const row = await db.waState.findUnique({ where: { key: lidOfKey(phone) }, select: { value: true } }).catch(() => null);
+  return (row?.value as { lid?: string } | null)?.lid || null;
+}
+
+/**
+ * Remember that this lid and this phone are one person (a message key carried both). Writes only when
+ * the pair is new or changed — most messages repeat a pair already known. Never throws.
+ */
+export async function rememberAlias(lid: string, phone: string): Promise<void> {
+  const l = lidOf(lid);
+  if (!l || !phone) return;
+  try {
+    if ((await phoneOfLid(l)) !== phone) await writeState(aliasKey(l), { phone, at: new Date().toISOString() });
+    if ((await lidOfPhone(phone)) !== l) await writeState(lidOfKey(phone), { lid: l, at: new Date().toISOString() });
+  } catch {
+    // The alias only widens a check; a failed write costs nothing the next message cannot repair.
+  }
+}
+
+/** Every address of the person behind this one (the address itself first): the phone and the lid. */
+export async function addressesOf(address: string): Promise<string[]> {
+  const lid = lidOf(address);
+  const other = lid ? await phoneOfLid(lid) : await lidOfPhone(address);
+  return other && other !== address ? [address, other] : [address];
+}
+
+// ── one reply per burst ──────────────────────────────────────────────────────────────────────────
+
+const burstKey = (phone: string) => `tburst:${phone}`;
+type BurstRow = { lines: { id: string; text: string; sentAt: string; arrivedAt: string; media?: boolean }[]; lastId: string; lastAt: string };
+
+/**
+ * Add one line to the phone's burst in a single SQL statement (webhook runs in several requests at once;
+ * a read-modify-write would drop a line). A line already in it (a redelivery) is not added twice.
+ */
+export async function addBurstLine(phone: string, line: BurstLine): Promise<void> {
+  const arrived = (line.arrivedAt ?? new Date()).toISOString();
+  const one = JSON.stringify({ id: line.id, text: line.text, sentAt: line.sentAt.toISOString(), arrivedAt: arrived, ...(line.media ? { media: true } : {}) });
+  const fresh = JSON.stringify({ lines: [JSON.parse(one)], lastId: line.id, lastAt: arrived });
+  await db.$executeRaw`INSERT INTO "WaState" ("key", "value", "updatedAt") VALUES (${burstKey(phone)}, ${fresh}::jsonb, now())
+    ON CONFLICT ("key") DO UPDATE SET "value" = jsonb_build_object(
+        'lines', COALESCE("WaState"."value"->'lines', '[]'::jsonb) || ${`[${one}]`}::jsonb,
+        'lastId', ${line.id}::text, 'lastAt', ${arrived}::text), "updatedAt" = now()
+      WHERE NOT (COALESCE("WaState"."value"->'lines', '[]'::jsonb) @> jsonb_build_array(jsonb_build_object('id', ${line.id}::text)))`;
+}
+
+/** Who wrote last in this phone's pending burst, and when (the server's clock); null when none is pending. */
+export async function burstTail(phone: string): Promise<{ lastId: string; lastAt: Date } | null> {
+  const row = await db.waState.findUnique({ where: { key: burstKey(phone) }, select: { value: true } });
+  const v = row?.value as Partial<BurstRow> | undefined;
+  return v?.lastId && v.lastAt ? { lastId: v.lastId, lastAt: new Date(v.lastAt) } : null;
+}
+
+/**
+ * Take the pending burst, but only when `lastId` is still its last line — one DELETE ... RETURNING, so
+ * of two runs only one gets the lines, and a run whose tenant has written since gets nothing.
+ */
+export async function takeBurst(phone: string, lastId: string): Promise<BurstLine[] | null> {
+  const rows = await db.$queryRaw<{ value: BurstRow }[]>`DELETE FROM "WaState" WHERE "key" = ${burstKey(phone)} AND "value"->>'lastId' = ${lastId} RETURNING "value"`;
+  const v = rows[0]?.value;
+  if (!v?.lines?.length) return null;
+  return v.lines.map((l) => ({ id: l.id, text: l.text, sentAt: new Date(l.sentAt), arrivedAt: new Date(l.arrivedAt), media: l.media }));
+}
+
+/** Drop the phone's pending burst (the poll answered its lines). */
+export async function clearBurst(phone: string): Promise<void> {
+  await db.waState.deleteMany({ where: { key: burstKey(phone) } }).catch(() => {});
+}
+
+/** The claim rows of these message ids (a burst plan reads them: tenant-pure.ts planBurst). */
+export async function readClaims(msgIds: string[]): Promise<Map<string, ClaimRow>> {
+  const out = new Map<string, ClaimRow>();
+  if (msgIds.length === 0) return out;
+  const rows = await db.waState.findMany({ where: { key: { in: msgIds.map(claimKey) } }, select: { key: true, value: true } });
+  for (const r of rows) {
+    const v = r.value as Partial<ClaimValue> | null;
+    if (v?.s && v.at) out.set(r.key.slice("tmsg:".length), { s: v.s, at: v.at });
+  }
+  return out;
+}
+
+/** The phones of many lids at once (the poll reads a day of messages in one pass). */
+export async function phonesOfLids(lids: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  if (lids.length === 0) return out;
+  const rows = await db.waState.findMany({ where: { key: { in: lids.map(aliasKey) } }, select: { key: true, value: true } }).catch(() => []);
+  for (const r of rows) {
+    const phone = (r.value as { phone?: string } | null)?.phone;
+    if (phone) out.set(r.key.slice("alias:".length), phone);
+  }
+  return out;
 }
