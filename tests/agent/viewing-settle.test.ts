@@ -147,7 +147,7 @@ describe("the tenant names a time", () => {
     expect(cards.at(-1)).toMatch(/FYI/);
   });
 
-  it("says why it could not, instead of promising: auto off, sends paused, a team number, a web tenant, a share required", async () => {
+  it("says why it could not, instead of promising: auto off, sends paused, a team number, a web tenant", async () => {
     process.env.MKAN_VIEWING_AUTO = "off";
     expect(await tenantTime("2026-11-17T10:00")).toMatchObject({ outcome: "fallback", why: "auto-off", reply: null });
     delete process.env.MKAN_VIEWING_AUTO;
@@ -157,10 +157,14 @@ describe("the tenant names a time", () => {
     expect(await tenantTime("2026-11-17T10:00")).toMatchObject({ outcome: "fallback", why: "sends-off" });
     gate = { ok: false, why: "not-whatsapp", waPhone: null };
     expect(await tenantTime("2026-11-17T10:00")).toMatchObject({ outcome: "fallback", why: "no-whatsapp" });
-    gate = { ok: true, waPhone: TENANT };
-    paid = 10;
-    expect(await tenantTime("2026-11-17T10:00")).toMatchObject({ outcome: "fallback", why: "share-required" });
     expect(sent).toHaveLength(0);
+  });
+
+  it("never blocks on a missing share, at any deal count: it asks the broker for the time all the same", async () => {
+    paid = 25;
+    const r = await tenantTime("2026-11-17T10:00");
+    expect(r).toMatchObject({ outcome: "asked-broker" });
+    expect(sent[0]).toMatchObject({ kind: "BROKER_REQUEST", label: "auto-viewing-ask:7" });
   });
 });
 

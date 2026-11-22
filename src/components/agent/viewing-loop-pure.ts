@@ -20,7 +20,7 @@ import { zoneLabel } from "@/lib/geo/kigali-zones";
 import { greetName } from "./broker-message";
 import { parseBrokerReply } from "./broker-reply";
 import { readViewingTime, type ConfirmLang, type DealLang, type MeetingSpot } from "./deal-pure";
-import { readTermsReply } from "./intro-pure";
+import { MKAN_TERMS, readTermsReply } from "./intro-pure";
 
 const HOUR_MS = 3_600_000;
 
@@ -254,6 +254,18 @@ export function viewingBookedBrokerMessage(v: { en: string; rep: string; askPlac
   return en;
 }
 
+/**
+ * One short line on a booking's message when the broker has agreed no share: Mkan's terms, in their language
+ * (Kinyarwanda first with English under it, as every message to a broker). Their YES records the agreement.
+ */
+export function viewingShareAskLine(lang?: string | null): string {
+  const pct = Math.round(MKAN_TERMS.pct * 100);
+  const en = `One more thing, for the tenants Mkan brings you: we ask ${pct}% of your commission when they sign, and no viewing fee for them. Reply YES if that works for you.`;
+  if (isFrench(lang)) return `Une dernière chose, pour les locataires que Mkan vous amène : nous demandons ${pct}% de votre commission à la signature, et aucun frais de visite pour eux. Répondez OUI si cela vous convient.`;
+  if ((lang ?? "").toUpperCase() === "RW") return `Ikindi: ku bakiriya Mkan ibazanira, dusaba ${pct}% bya komisiyo yawe bamaze gusinya, kandi nta mafaranga yo gusura. Subiza YEGO niba bikunyuze.\n${en}`;
+  return en;
+}
+
 /** They named another time: it goes to the tenant first. */
 export const viewingCounterAckMessage = (en: string) => `Thank you. I'll check ${en} with the tenant and confirm here.`;
 /** Their other time does not work for Mkan's person: the nearest one that does. */
@@ -355,7 +367,7 @@ export function homeGoneMessage(lang: DealLang): string {
 }
 
 /** Why the line did not settle a time itself (settleViewingTime's `fallback`). */
-export type FallbackWhy = "auto-off" | "sends-off" | "test-number" | "no-whatsapp" | "share-required";
+export type FallbackWhy = "auto-off" | "sends-off" | "test-number" | "no-whatsapp";
 
 /**
  * The one #mkan card left for a viewing: an FYI that says why the line stopped and what it is doing next, plus the
@@ -372,7 +384,5 @@ export function viewingFallbackCard(v: { title: string; ref: string; label: stri
       return `${head}\nA team number: a rehearsal, so the line did not message the broker. For a real booking: ${v.command}`;
     case "no-whatsapp":
       return `${head}\nA web tenant with no WhatsApp number: the line can't message them, so nothing went to the broker. Their time is on their card in /find. For this one: ${v.command}`;
-    case "share-required":
-      return `${head}\nThe line did not book: enough deals are paid that a share is now required, and this broker has agreed none. It is asking the tenant nothing more. Record the share and the line books the next ask by itself: \`pnpm deal:terms --broker=<id> --share-pct=50\`. For this one: ${v.command}`;
   }
 }

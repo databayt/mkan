@@ -28,6 +28,8 @@ export interface MediaUnderstanding {
   listingHints?: ListingHints;
   /** The language the person spoke or wrote in it, when the media says. */
   lang?: Lang;
+  /** True for speech Google read (it has Kinyarwanda): a rw transcript with this flag is not labelled rough. */
+  reliable?: boolean;
 }
 
 /** The WhatsApp message as Evolution delivers it (webhook and findMessages). */
@@ -312,6 +314,70 @@ export function transcriptLang(transcript: string, whisperName: string | undefin
   return isLang(chatLang) ? chatLang : undefined;
 }
 
+// ── Google Speech-to-Text (the only reader here with Kinyarwanda) ─────────────
+
+/** v1 sync recognize: about 60 s and 10 MB of audio. */
+export const GOOGLE_MAX_BYTES = 10 * 1024 * 1024;
+export const GOOGLE_MAX_SECONDS = 60;
+export const GOOGLE_STT_URL = "https://speech.googleapis.com/v1/speech:recognize";
+export const GOOGLE_LANGUAGE = "rw-RW";
+export const GOOGLE_ALTERNATIVES = ["en-US", "fr-FR", "sw-KE"] as const;
+
+export interface GoogleAudioSpec {
+  encoding: "OGG_OPUS";
+  sampleRateHertz: number;
+}
+
+/**
+ * What a voice note's mimetype lets Google read: WhatsApp sends Ogg/Opus (`audio/ogg; codecs=opus`, 16 kHz typical;
+ * a `rate=` parameter wins when it is one Google takes). Anything else (m4a, mp3, a video's mp4) is not on v1 sync
+ * recognize: null, and Whisper keeps it.
+ */
+export function googleAudioSpec(mimetype: string | null | undefined): GoogleAudioSpec | null {
+  const t = (mimetype ?? "").toLowerCase();
+  if (!/ogg|opus/.test(t) || /webm|mp4|mpeg/.test(t)) return null;
+  const rate = Number(/rate=(\d+)/.exec(t)?.[1]);
+  return { encoding: "OGG_OPUS", sampleRateHertz: [8000, 12000, 16000, 24000, 48000].includes(rate) ? rate : 16000 };
+}
+
+/** The `speech:recognize` request body for one voice note. */
+export function googleSttBody(base64: string, spec: GoogleAudioSpec) {
+  return {
+    config: { languageCode: GOOGLE_LANGUAGE, alternativeLanguageCodes: [...GOOGLE_ALTERNATIVES], encoding: spec.encoding, sampleRateHertz: spec.sampleRateHertz, enableAutomaticPunctuation: true },
+    audio: { content: base64 },
+  };
+}
+
+export interface GoogleSttReply {
+  text: string;
+  /** The language Google settled on ("rw-rw", "en-us"), lower-cased. */
+  languageCode?: string;
+}
+
+/** Google's words: every result's best alternative, joined; null when it heard nothing (empty `{}` over silence). */
+export function parseGoogleStt(json: unknown): GoogleSttReply | null {
+  const results = (json as { results?: { alternatives?: { transcript?: string }[]; languageCode?: string }[] } | null)?.results;
+  if (!Array.isArray(results)) return null;
+  const text = results
+    .map((r) => r?.alternatives?.[0]?.transcript ?? "")
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!text) return null;
+  const languageCode = results.find((r) => r?.languageCode)?.languageCode;
+  return { text: text.slice(0, 1_200), ...(languageCode ? { languageCode: languageCode.toLowerCase() } : {}) };
+}
+
+/** Google's language label as one of ours; the transcript's own words decide when the label is none of them. */
+export function googleLang(transcript: string, languageCode: string | undefined, chatLang?: string | null): Lang | undefined {
+  const code = (languageCode ?? "").slice(0, 2);
+  if (isLang(code)) return code;
+  return transcriptLang(transcript, undefined, chatLang);
+}
+
+/** True when Whisper is a poor reader for this chat: Kinyarwanda, or a chat whose language is not yet known. */
+export const whisperMayMiss = (chatLang: string | null | undefined) => whisperLanguage(chatLang) === undefined;
+
 // ── what the driver reads ────────────────────────────────────────────────────
 
 /**
@@ -323,8 +389,8 @@ export function mediaTurnText(kind: MediaKind, r: MediaUnderstanding | null, cap
   const label = kind === "audio" ? "voice note" : kind === "image" ? "photo" : kind === "video" ? "video" : "file";
   if (!r) return `[${label}: could not be read${caption ? `, caption: "${caption}"` : ""}]`;
   // Whisper has no Kinyarwanda: its rw text is sound-alike guesses (a real line video, 11-22). Say so, so the turn
-  // takes only clear words (places, numbers) from it and asks for the rest.
-  const rough = r.lang === "rw" ? ", rough machine transcript, may be wrong" : "";
+  // takes only clear words (places, numbers) from it and asks for the rest. Google's rw (`reliable`) is read as heard.
+  const rough = r.lang === "rw" && !r.reliable ? ", rough machine transcript, may be wrong" : "";
   if (kind === "audio" && r.transcript) return `[voice note${r.lang ? `, ${r.lang}` : ""}${rough}: "${r.transcript.replace(/"/g, "'")}"]`;
   if (kind === "video" && rough && r.transcript) return `[video, rw${rough}: ${r.text}]`;
   return `[${label}${kind === "video" && r.lang ? `, ${r.lang}` : ""}: ${r.text}]`;

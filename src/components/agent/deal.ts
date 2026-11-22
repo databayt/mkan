@@ -198,7 +198,7 @@ export async function readViewingAsk(address: string | null | undefined): Promis
  * The tenant named a time. The line settles it itself (viewing-loop.ts settleViewingTime): it asks the broker,
  * books on their yes, and tells both sides — no viewing was ever booked while a person had to phone the broker
  * and type `pnpm deal:book`. Where it may not (MKAN_VIEWING_AUTO=off, broker sends paused, a team number, a web
- * tenant, a share required and none agreed) one FYI card goes to #mkan that says why and what to run, with both
+ * tenant) one FYI card goes to #mkan that says why and what to run, with both
  * chats one tap away. Dynamic import: viewing-loop.ts imports this file.
  */
 export async function proposeViewing(ask: ViewingAsk, at: Date, tenant: string, lang: DealLang): Promise<string> {
@@ -232,8 +232,8 @@ export async function proposeViewing(ask: ViewingAsk, at: Date, tenant: string, 
     `${viewingFallbackCard({ title: home?.title ?? `#${ask.listingId}`, ref: `K${ask.listingId}`, label: viewingLabel(at, "en"), why, tenant: `<${waLink(tenant, "")}|${tenant}>`, broker, command, rep: viewingRep() })}\n` +
       `💵 Mkan's share: ${share ? `${share} (agreed)` : "*none agreed*"}`,
   ).catch(() => {});
-  // The one-tap Yes on /monetize is kept for the two cases where a choice is really his: the automation is off, or no share is agreed.
-  const decided = why === "auto-off" || why === "share-required" ? await offerViewingDecision(ask, at, agreed, shown?.period === "month" ? Math.round(shown.headline) : null).catch(() => false) : false;
+  // The one-tap Yes on /monetize is kept for the case where a choice is really his: the automation is off.
+  const decided = why === "auto-off" ? await offerViewingDecision(ask, at, agreed, shown?.period === "month" ? Math.round(shown.headline) : null).catch(() => false) : false;
   await trace(ask.taskId, "viewing_proposed", "waiting_person", { listingId: ask.listingId, at: iso, decision: decided, fallback: why });
   const value = { ...ask, proposedAt: iso } satisfies ViewingAsk;
   await db.waState.update({ where: { key: askKey(tenant) }, data: { value } }).catch(() => {});

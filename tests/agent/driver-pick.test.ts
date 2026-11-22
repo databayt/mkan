@@ -66,8 +66,19 @@ describe("before showing: the best few are asked, confirmed-free first", () => {
   it("puts brokers' yeses first, each group in its order", () => {
     expect(pure.confirmedFirst(items).map((x) => x.id)).toEqual([2, 4, 1, 3]);
   });
-  it("asks the top three", () => {
-    expect(pure.PREVERIFY).toBe(3);
+  it("asks the top two", () => {
+    expect(pure.PREVERIFY).toBe(2);
+  });
+  it("asks only for a real brief: an area or a budget, never small talk", () => {
+    expect(pure.hasRealBrief({})).toBe(false);
+    expect(pure.hasRealBrief({ district: null, neighbourhood: null, neighbourhoods: null, area: null, near: null, maxPrice: null })).toBe(false);
+    expect(pure.hasRealBrief({ neighbourhood: "Kabeza" })).toBe(true);
+    expect(pure.hasRealBrief({ neighbourhoods: ["Remera", "Kabeza"] })).toBe(true);
+    expect(pure.hasRealBrief({ district: "gasabo" })).toBe(true);
+    expect(pure.hasRealBrief({ area: "centre" })).toBe(true);
+    expect(pure.hasRealBrief({ near: { name: "Kigali Heights" } })).toBe(true);
+    expect(pure.hasRealBrief({ maxPrice: 350_000 })).toBe(true);
+    expect(pure.hasRealBrief({ maxPrice: 0 })).toBe(false);
   });
   it("tells the model the truth about each home", () => {
     expect(pure.brokerCheckOf("confirmed", "unconfirmed")).toBe("confirmed_free");

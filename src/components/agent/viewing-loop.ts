@@ -39,14 +39,15 @@ import "server-only";
  *   an FYI. Terms the broker did not state are "to confirm at the viewing". Reminders (24 h / 2 h) and "how
  *   did it go?" are deal.ts viewingReminders, unchanged.
  *   `fallback` (only for the tenant side): the line may not do it itself — MKAN_VIEWING_AUTO=off, sends
- *   paused, a team number, a web tenant, a share required and none agreed. deal.ts proposeViewing then posts
+ *   paused, a team number, a web tenant. deal.ts proposeViewing then posts
  *   the one FYI card; `reply` is null and the caller must not invent a promise.
  *
  * `proposeViewingAuto`, `brokerViewingReply` and `acceptOffered` below are the same code, kept as thin
  * wrappers for the callers that already use them.
  *
- * Booking is deal.ts bookViewing, unchanged. A broker with no share on record is still booked while fewer than
- * MKAN_SHARE_REQUIRED_AFTER deals are paid (default 10): the terms are asked in the booking's own message.
+ * Booking is deal.ts bookViewing, unchanged. A broker with no share on record is always booked, at any deal count
+ * (2026-11-22: the MKAN_SHARE_REQUIRED_AFTER block is gone): Mkan's share is asked in the booking's own message,
+ * one short line in the broker's language, and the FYI line to Mkan's person says none is agreed yet.
  * `MKAN_VIEWING_AUTO=off` puts the FYI card and the one-tap Yes back in charge (deal.ts proposeViewing).
  */
 import { db } from "@/lib/db";
@@ -60,7 +61,6 @@ import { dealEvent } from "./deal-event";
 import { agreementOf, bookViewing, viewingAskKey, type ViewingAsk } from "./deal";
 import { shareLabel, viewingLabel, viewingProposedMessage, type DealLang } from "./deal-pure";
 import { termsAskKey, type TermsAsk } from "./deal-intro";
-import { MKAN_TERMS } from "./intro-pure";
 import type { ShortlistItem } from "./types";
 import {
   bookingNowMessage,
@@ -90,6 +90,7 @@ import {
   viewingCounterAckMessage,
   viewingRepCannotMessage,
   viewingRepMessage,
+  viewingShareAskLine,
   viewingTimeAskMessage,
   viewingTimeKey,
   viewingWaitMessage,
@@ -102,12 +103,6 @@ import { postSlackCard, sendMessages } from "./whatsapp";
 
 /** On unless MKAN_VIEWING_AUTO=off. */
 export const viewingAuto = () => process.env.MKAN_VIEWING_AUTO?.trim().toLowerCase() !== "off";
-
-/** From this many paid deals on, a viewing is not booked with a broker who has agreed no share. */
-const shareRequiredAfter = () => {
-  const n = Number(process.env.MKAN_SHARE_REQUIRED_AFTER);
-  return Number.isFinite(n) && n >= 0 && process.env.MKAN_SHARE_REQUIRED_AFTER?.trim() ? Math.floor(n) : 10;
-};
 
 const plus = (phone: string) => `+${phoneKey(phone)}`;
 const variants = (phone: string) => [plus(phone), phoneKey(phone)];
@@ -270,7 +265,6 @@ async function proposeInner(ask: ViewingAsk, at: Date, tenant: string, lang: Dea
     await postSlackCard(`📅 FYI — K${ask.listingId}: the tenant asked to see it *${viewingLabel(at, "en")}* but no broker with a number can be asked. The line told them and offered to check another home.`).catch(() => {});
     return out("no-broker", noBrokerMessage(lang));
   }
-  if (!broker.agreement && (await db.deal.count({ where: { status: "PAID" } })) >= shareRequiredAfter()) return out("fallback", null, { why: "share-required" });
 
   const rep = viewingRep();
   const askable = firstSendableAt({ kind: "BROKER_REQUEST", label: "auto-viewing" }, now);
@@ -341,7 +335,7 @@ async function book(ask: ViewingTimeAsk, at: Date, brokerPhone: string, place: s
     const stamp = new Date().toISOString();
     const value: TermsAsk = { listingId: ask.listingId, brokerId: broker.brokerId, tenants: [{ taskId: ask.taskId, phone: ask.tenant, lang: ask.lang }], at: stamp, handedAt: stamp };
     await writeState(termsAskKey(brokerPhone), value).catch(() => {});
-    text += `\nOne more thing, for the tenants Mkan brings you: we ask ${Math.round(MKAN_TERMS.pct * 100)}% of your commission when they sign, and no viewing fee for them. Reply YES if that works for you.`;
+    text += `\n${viewingShareAskLine(broker.lang)}`;
   }
   return { text, visitId: booked.visitId, dealId: booked.dealId };
 }

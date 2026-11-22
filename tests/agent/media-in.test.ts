@@ -1,6 +1,6 @@
 // @vitest-environment node
 /** media-in — photos, voice notes, videos and files read as words; the pure half and the flow with fake network. */
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => ({ db: {} }));
 vi.mock("@/lib/whatsapp/evolution", () => ({ mediaBytes: vi.fn(async () => null) }));
@@ -96,7 +96,44 @@ describe("Whisper's reply", () => {
   });
 });
 
+describe("Google Speech-to-Text, the pure half", () => {
+  it("reads WhatsApp's Ogg/Opus at 16 kHz, honours a rate it takes, and refuses what v1 sync does not", () => {
+    expect(pure.googleAudioSpec("audio/ogg; codecs=opus")).toEqual({ encoding: "OGG_OPUS", sampleRateHertz: 16000 });
+    expect(pure.googleAudioSpec("audio/ogg; codecs=opus; rate=48000")).toEqual({ encoding: "OGG_OPUS", sampleRateHertz: 48000 });
+    expect(pure.googleAudioSpec("audio/ogg; codecs=opus; rate=44100")?.sampleRateHertz).toBe(16000);
+    expect(pure.googleAudioSpec("audio/mp4")).toBeNull();
+    expect(pure.googleAudioSpec("audio/mpeg")).toBeNull();
+    expect(pure.googleAudioSpec("video/mp4")).toBeNull();
+    expect(pure.googleAudioSpec("")).toBeNull();
+  });
+
+  it("builds the v1 request", () => {
+    expect(pure.googleSttBody("QUJD", { encoding: "OGG_OPUS", sampleRateHertz: 16000 })).toEqual({
+      config: { languageCode: "rw-RW", alternativeLanguageCodes: ["en-US", "fr-FR", "sw-KE"], encoding: "OGG_OPUS", sampleRateHertz: 16000, enableAutomaticPunctuation: true },
+      audio: { content: "QUJD" },
+    });
+  });
+
+  it("joins the results, and is null over silence", () => {
+    expect(pure.parseGoogleStt({ results: [{ alternatives: [{ transcript: "Mwiriwe" }], languageCode: "rw-RW" }, { alternatives: [{ transcript: " ndashaka inzu" }] }] })).toEqual({ text: "Mwiriwe ndashaka inzu", languageCode: "rw-rw" });
+    expect(pure.parseGoogleStt({})).toBeNull();
+    expect(pure.parseGoogleStt({ results: [{ alternatives: [{ transcript: "  " }] }] })).toBeNull();
+    expect(pure.parseGoogleStt(null)).toBeNull();
+  });
+
+  it("takes Google's language label, else the words", () => {
+    expect(pure.googleLang("anything", "rw-rw")).toBe("rw");
+    expect(pure.googleLang("hello", "en-us")).toBe("en");
+    expect(pure.googleLang("Mwiriwe, ndashaka inzu", undefined, null)).toBe("rw");
+  });
+});
+
 describe("the user turn's form", () => {
+  it("a Google rw transcript is read as heard; Whisper's stays rough", () => {
+    expect(pure.mediaTurnText("audio", { kind: "audio", text: "x", transcript: "Ndashaka inzu", lang: "rw", reliable: true })).toBe('[voice note, rw: "Ndashaka inzu"]');
+    expect(pure.mediaTurnText("audio", { kind: "audio", text: "x", transcript: "Ndashaka inzu", lang: "rw" })).toMatch(/rough machine transcript/);
+  });
+
   it("brackets each kind, and says when it could not be read", () => {
     expect(pure.mediaTurnText("image", { kind: "image", text: "TikTok ad, K6823" })).toBe("[photo: TikTok ad, K6823]");
     expect(pure.mediaTurnText("audio", { kind: "audio", text: "x", transcript: 'Ndashaka "inzu"', lang: "rw" })).toBe("[voice note, rw, rough machine transcript, may be wrong: \"Ndashaka 'inzu'\"]");
@@ -169,5 +206,136 @@ describe("understandMedia (fake network)", () => {
   it("gives a file its name when no model reads it", async () => {
     const r = await understandMedia({ key: { id: "m4" }, message: { documentMessage: { mimetype: "application/zip", fileName: "lease.zip" } } }, { deps: {} });
     expect(r).toMatchObject({ kind: "document", text: 'file named "lease.zip"' });
+  });
+});
+
+describe("understandMedia — Kinyarwanda speech through Google (fake fetch)", () => {
+  const RW = "Mwiriwe, ndashaka inzu i Kicukiro itarengeje ibihumbi 150";
+  const ok = (body: unknown, status = 200) => ({ ok: status < 400, status, json: async () => body }) as Response;
+  const googleOk = () => ok({ results: [{ alternatives: [{ transcript: RW, confidence: 0.9 }], languageCode: "rw-rw" }] });
+  const deps = (whisper: unknown, mimetype = "audio/ogg; codecs=opus") => ({ bytes: async () => ({ bytes: OGG, mimetype }), whisper }) as never;
+  const whisperRw = () => vi.fn(async () => ({ text: "Mwiriwe ndashaka inzu i Kicukiro", language: "swahili", duration: 8, segments: [{ no_speech_prob: 0.02 }] }));
+  let fetchMock: ReturnType<typeof vi.fn>;
+  let logs: string[];
+  // The pause after a 403 lives in the module: every test gets a fresh one.
+  const fresh = async () => (await vi.resetModules(), (await import("@/components/agent/media-in")).understandMedia);
+
+  beforeEach(() => {
+    process.env.GOOGLE_SPEECH_API_KEY = "test-key";
+    delete process.env.GOOGLE_TRANSLATE_API_KEY;
+    delete process.env.GROQ_API_KEY;
+    fetchMock = vi.fn(async () => googleOk());
+    vi.stubGlobal("fetch", fetchMock);
+    logs = [];
+    for (const m of ["log", "warn"] as const) vi.spyOn(console, m).mockImplementation((...a: unknown[]) => void logs.push(a.join(" ")));
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    delete process.env.GOOGLE_SPEECH_API_KEY;
+  });
+
+  it("a Kinyarwanda chat is read by Google: the v1 request, no Whisper, a reliable transcript", async () => {
+    const understand = await fresh();
+    const whisper = whisperRw();
+    const r = await understand(voice(), { lang: "rw", deps: deps(whisper) });
+    expect(whisper).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0]! as [string, RequestInit];
+    expect(url).toBe("https://speech.googleapis.com/v1/speech:recognize?key=test-key");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body as string)).toMatchObject({
+      config: { languageCode: "rw-RW", alternativeLanguageCodes: ["en-US", "fr-FR", "sw-KE"], encoding: "OGG_OPUS", sampleRateHertz: 16000, enableAutomaticPunctuation: true },
+      audio: { content: OGG.toString("base64") },
+    });
+    expect(r).toMatchObject({ kind: "audio", lang: "rw", transcript: RW, reliable: true });
+    expect(pure.mediaTurnText("audio", r)).toBe(`[voice note, rw: "${RW}"]`);
+  });
+
+  it("falls back to the translate key, and a chat whose language is not known yet also goes to Google first", async () => {
+    delete process.env.GOOGLE_SPEECH_API_KEY;
+    process.env.GOOGLE_TRANSLATE_API_KEY = "tr-key";
+    const understand = await fresh();
+    const r = await understand(voice(), { deps: deps(whisperRw()) });
+    expect(String(fetchMock.mock.calls[0]![0])).toContain("key=tr-key");
+    expect(r?.reliable).toBe(true);
+    delete process.env.GOOGLE_TRANSLATE_API_KEY;
+  });
+
+  it("403 (the API is not enabled yet): Whisper answers, its rw stays rough, and Google is left alone afterwards", async () => {
+    fetchMock.mockResolvedValue(ok({ error: { status: "PERMISSION_DENIED" } }, 403));
+    const understand = await fresh();
+    const whisper = whisperRw();
+    const r = await understand(voice(), { lang: "rw", deps: deps(whisper) });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(whisper).toHaveBeenCalledTimes(1);
+    expect(r).toMatchObject({ kind: "audio", lang: "rw" });
+    expect(r?.reliable).toBeUndefined();
+    expect(pure.mediaTurnText("audio", r)).toMatch(/rough machine transcript/);
+    await understand(voice(), { lang: "rw", deps: deps(whisper) });
+    expect(fetchMock).toHaveBeenCalledTimes(1); // paused
+    expect(whisper).toHaveBeenCalledTimes(2);
+  });
+
+  it("empty, a network error and a timeout all fall back to Whisper without throwing", async () => {
+    const understand = await fresh();
+    const whisper = whisperRw();
+    fetchMock.mockResolvedValueOnce(ok({}));
+    expect((await understand(voice(), { lang: "rw", deps: deps(whisper) }))?.reliable).toBeUndefined();
+    fetchMock.mockRejectedValueOnce(new Error("boom"));
+    expect((await understand(voice(), { lang: "rw", deps: deps(whisper) }))?.transcript).toContain("ndashaka inzu");
+    fetchMock.mockImplementationOnce((_url: string, init: RequestInit) => new Promise((_res, rej) => init.signal!.addEventListener("abort", () => rej(Object.assign(new Error("aborted"), { name: "AbortError" })))));
+    expect((await understand(voice(), { lang: "rw", deps: deps(whisper), timeouts: { google: 20 } }))?.transcript).toContain("ndashaka inzu");
+    expect(whisper).toHaveBeenCalledTimes(3);
+  });
+
+  it("when both fail there is nothing: null", async () => {
+    const understand = await fresh();
+    fetchMock.mockResolvedValue(ok({}));
+    expect(await understand(voice(), { lang: "rw", deps: deps(async () => null) })).toBeNull();
+  });
+
+  it("a French or English chat stays on Whisper — unless Whisper labels what it heard Kinyarwanda", async () => {
+    const understand = await fresh();
+    const whisperEn = vi.fn(async () => ({ text: "I want a two bedroom in Kicukiro", language: "english", duration: 6, segments: [{ no_speech_prob: 0.01 }] }));
+    const en = await understand(voice(), { lang: "en", deps: deps(whisperEn) });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(en).toMatchObject({ lang: "en" });
+    const whisper = whisperRw();
+    const rw = await understand(voice(), { lang: "en", deps: deps(whisper) });
+    expect(whisper).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(rw).toMatchObject({ lang: "rw", transcript: RW, reliable: true });
+  });
+
+  it("a video's sound and an m4a voice note never go to Google", async () => {
+    const understand = await fresh();
+    const whisper = whisperRw();
+    await understand(video(), { lang: "rw", deps: { bytes: async () => ({ bytes: OGG, mimetype: "video/mp4" }), vision: async () => visionJson, whisper } as never });
+    const m4a = await understand(voice({ mimetype: "audio/mp4" }), { lang: "rw", deps: deps(whisper, "audio/mp4") });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(m4a?.reliable).toBeUndefined();
+  });
+
+  it("a note past Google's 60 s goes to Whisper alone; with no key Google is not called", async () => {
+    const understand = await fresh();
+    const whisper = whisperRw();
+    await understand(voice({ seconds: 95 }), { lang: "rw", deps: deps(whisper) });
+    expect(fetchMock).not.toHaveBeenCalled();
+    delete process.env.GOOGLE_SPEECH_API_KEY;
+    await understand(voice(), { lang: "rw", deps: deps(whisper) });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(whisper).toHaveBeenCalledTimes(2);
+  });
+
+  it("logs a timing line and never the words, the key or the audio", async () => {
+    const understand = await fresh();
+    fetchMock.mockResolvedValueOnce(ok({ error: {} }, 403));
+    await understand(voice(), { lang: "rw", deps: deps(whisperRw()) });
+    await (await fresh())(voice(), { lang: "rw", deps: deps(whisperRw()) });
+    const all = logs.join("\n");
+    expect(all).toMatch(/\[media\] audio ok \d+ms/);
+    expect(all).toMatch(/\[media\] google stt 403/);
+    expect(all).not.toMatch(/ndashaka|Mwiriwe|test-key/);
   });
 });

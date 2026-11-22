@@ -12,13 +12,18 @@ import "server-only";
  *
  *   image    bytes via Evolution (mediaBytes) → Claude Haiku vision, one call, spend lane `agent-media` under the
  *            same monthly cap as the rest of the agent (claude.ts canSpend / recordSpend).
- *   audio    Groq Whisper (whisper-large-v3) → transcript + language. Whisper has no Kinyarwanda: no language hint
- *            for it, the words are read by the driver's model as heard.
+ *   audio    Whisper has no Kinyarwanda, Google Speech-to-Text (v1 sync recognize, `rw-RW` with en/fr/sw alternatives)
+ *            has. Google first when the chat is rw or its language is not known yet, or when Whisper's result is
+ *            labelled rw; its rw transcript is `reliable` (not marked rough). Any failure (403 while the API is
+ *            not enabled, 10 s timeout, empty, a format v1 does not take) falls back to Groq Whisper
+ *            (whisper-large-v3), whose rw text stays rough.
  *   video    no ffmpeg on a Worker: the poster frame (videoMessage.jpegThumbnail) → vision, and the audio track →
- *            Whisper (it takes mp4; skipped above 25 MB), in parallel, merged into one line.
+ *            Whisper (it takes mp4; skipped above 25 MB), in parallel, merged into one line. Google sync recognize
+ *            takes no mp4: video speech is Whisper only.
  *   document an image file → vision; a small PDF → Claude's document block; anything else → its file name.
  *
  * Env: AGENT_ANTHROPIC_API_KEY (vision, through claude.ts), GROQ_API_KEY (Whisper), GROQ_WHISPER_MODEL,
+ * GOOGLE_SPEECH_API_KEY (else GOOGLE_TRANSLATE_API_KEY; the Speech-to-Text API must be enabled on its project),
  * AGENT_MEDIA_MODEL (default claude-haiku-5-5). Never logged: phone numbers, bytes, transcripts.
  */
 import { mediaBytes } from "@/lib/whatsapp/evolution";
@@ -29,12 +34,19 @@ import {
   captionOf,
   describeVision,
   fileLengthOf,
+  GOOGLE_MAX_BYTES,
+  GOOGLE_MAX_SECONDS,
+  GOOGLE_STT_URL,
+  googleAudioSpec,
+  googleLang,
+  googleSttBody,
   GROQ_MAX_BYTES,
   hintsOf,
   mediaKindOf,
   mediaTurnText,
   mergeVideo,
   normalizeKCode,
+  parseGoogleStt,
   parseVision,
   payloadOf,
   PDF_MAX_BYTES,
@@ -45,9 +57,12 @@ import {
   VISION_MAX_BYTES,
   VISION_SYSTEM,
   whisperLanguage,
+  whisperMayMiss,
   WHISPER_PROMPT,
   type MediaKind,
   type MediaMessage,
+  type GoogleAudioSpec,
+  type GoogleSttReply,
   type MediaUnderstanding,
   type VisionRead,
   type WhisperReply,
@@ -59,9 +74,13 @@ const MEDIA_MODEL = process.env.AGENT_MEDIA_MODEL?.trim() || "claude-haiku-5-5";
 const GROQ_URL = "https://api.groq.com/openai/v1/audio/transcriptions";
 const WHISPER_MODEL = () => process.env.GROQ_WHISPER_MODEL?.trim() || "whisper-large-v3";
 /** Hard ceilings per step; the turn's own deadline is larger than the longest of these. */
-export const MEDIA_TIMEOUTS = { bytes: 6_000, vision: 7_000, audio: 12_000 };
+export const MEDIA_TIMEOUTS = { bytes: 6_000, vision: 7_000, audio: 12_000, google: 10_000 };
 const PAUSE_AFTER_429_MS = 60_000;
 let groqPausedUntil = 0;
+/** A 400/401/403 from Google (the API not enabled yet, a bad key) will repeat: leave it alone for a while instead of paying its latency on every voice note. */
+const PAUSE_AFTER_GOOGLE_DENIED_MS = 5 * 60_000;
+let googlePausedUntil = 0;
+const googleKey = () => process.env.GOOGLE_SPEECH_API_KEY?.trim() || process.env.GOOGLE_TRANSLATE_API_KEY?.trim() || "";
 
 export interface VisionInput {
   data: Buffer;
@@ -75,11 +94,17 @@ export interface WhisperInput {
   mimetype: string;
   language?: string;
 }
+export interface GoogleInput {
+  bytes: Buffer;
+  spec: GoogleAudioSpec;
+}
 export interface MediaDeps {
   bytes: (messageId: string) => Promise<{ bytes: Buffer; mimetype: string } | null>;
   /** The model's raw reply (JSON text), or null. */
   vision: (input: VisionInput, timeoutMs: number) => Promise<string | null>;
   whisper: (input: WhisperInput, timeoutMs: number) => Promise<WhisperReply | null>;
+  /** Google Speech-to-Text on a voice note; null on any failure. */
+  google: (input: GoogleInput, timeoutMs: number) => Promise<GoogleSttReply | null>;
 }
 
 export interface UnderstandOptions {
@@ -150,7 +175,34 @@ async function whisperCall({ bytes, fileName, mimetype, language }: WhisperInput
   }
 }
 
-const DEFAULT_DEPS: MediaDeps = { bytes: (id) => mediaBytes(id), vision: visionCall, whisper: whisperCall };
+/** Google Speech-to-Text v1 sync recognize. Never throws; logs a status or an error name, never the key, the audio or the words. */
+async function googleCall({ bytes, spec }: GoogleInput, timeoutMs: number): Promise<GoogleSttReply | null> {
+  const key = googleKey();
+  if (!key || Date.now() < googlePausedUntil) return null;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${GOOGLE_STT_URL}?key=${encodeURIComponent(key)}`, {
+      method: "POST",
+      signal: controller.signal,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(googleSttBody(bytes.toString("base64"), spec)),
+    });
+    if (!res.ok) {
+      if (res.status === 400 || res.status === 401 || res.status === 403) googlePausedUntil = Date.now() + PAUSE_AFTER_GOOGLE_DENIED_MS;
+      console.warn(`[media] google stt ${res.status}`);
+      return null;
+    }
+    return parseGoogleStt(await res.json());
+  } catch (err) {
+    console.warn(`[media] google stt failed: ${(err as Error).name}`);
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+const DEFAULT_DEPS: MediaDeps = { bytes: (id) => mediaBytes(id), vision: visionCall, whisper: whisperCall, google: googleCall };
 
 /** A promise that gives up: null after `ms`, never a throw. */
 async function within<T>(p: Promise<T>, ms: number): Promise<T | null> {
@@ -227,8 +279,44 @@ async function transcribe(c: Ctx, kind: "audio" | "video", cachedBytes?: { bytes
   return transcript ? { transcript, lang: transcriptLang(transcript, reply?.language, c.lang) } : null;
 }
 
+/** Google's reading of a voice note, as `transcribe` returns Whisper's; null on any failure or silence. */
+async function listenGoogle(c: Ctx, got: { bytes: Buffer; mimetype: string }, spec: GoogleAudioSpec): Promise<{ transcript: string; lang?: Lang; reliable: true } | null> {
+  const reply = await within(c.deps.google({ bytes: got.bytes, spec }, c.t.google), c.t.google + 1_000);
+  const transcript = reply?.text.trim();
+  if (!reply || !transcript) return null;
+  const lang = googleLang(transcript, reply.languageCode, c.lang);
+  return { transcript, ...(lang ? { lang } : {}), reliable: true };
+}
+
 async function understandAudio(c: Ctx): Promise<MediaUnderstanding | null> {
-  const heard = await transcribe(c, "audio");
+  const size = fileLengthOf(c.msg);
+  if (size != null && size > GROQ_MAX_BYTES) {
+    console.log("[media] audio too large");
+    return null;
+  }
+  const whisperOn = c.deps.whisper !== whisperCall || !!process.env.GROQ_API_KEY?.trim();
+  const googleOn = c.deps.google !== googleCall || (!!googleKey() && Date.now() >= googlePausedUntil);
+  if (!whisperOn && !googleOn) return null;
+  const id = c.msg.key?.id;
+  const got = id ? await within(c.deps.bytes(id), c.t.bytes + 4_000) : null;
+  if (!got || got.bytes.length > GROQ_MAX_BYTES || got.bytes.length < 200) return null;
+  const mimetype = got.mimetype || payloadOf(c.msg).mimetype || "";
+  const seconds = payloadOf(c.msg).seconds;
+  // Google's sync limits (~60 s, 10 MB) and its formats (Ogg/Opus): else Whisper alone.
+  const spec = googleOn && got.bytes.length <= GOOGLE_MAX_BYTES && !(typeof seconds === "number" && seconds > GOOGLE_MAX_SECONDS) ? googleAudioSpec(mimetype) : null;
+
+  let heard: { transcript: string; lang?: Lang; reliable?: boolean } | null = null;
+  let triedGoogle = false;
+  if (spec && whisperMayMiss(c.lang)) {
+    // A Kinyarwanda chat, or one whose language is not known yet: Whisper would guess.
+    triedGoogle = true;
+    heard = await listenGoogle(c, got, spec);
+  }
+  if (!heard && whisperOn) {
+    heard = await transcribe(c, "audio", got);
+    // Whisper heard Kinyarwanda in a chat that was not known to be: Google is the better reader of it.
+    if (heard?.lang === "rw" && spec && !triedGoogle) heard = (await listenGoogle(c, got, spec)) ?? heard;
+  }
   if (!heard) return null;
   const kCode = normalizeKCode(/\bK\s?-?\d{3,6}\b/i.exec(heard.transcript)?.[0]);
   return {
@@ -237,6 +325,7 @@ async function understandAudio(c: Ctx): Promise<MediaUnderstanding | null> {
     transcript: heard.transcript,
     ...(kCode ? { kCode } : {}),
     ...(heard.lang ? { lang: heard.lang } : {}),
+    ...(heard.reliable ? { reliable: true } : {}),
   };
 }
 

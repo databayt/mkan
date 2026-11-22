@@ -213,7 +213,7 @@ WhatsApp tenant names a time ("tomorrow 10am", "ejo saa yine") ─► viewing-lo
                 yet is asked "is it free?" first and the time kept); their yes books it, another time goes to the
                 tenant. Both get a short confirmation in their language (time, pin or area, "Osman from Mkan will
                 meet you there"); Abdout gets an FYI. The 📅 #mkan card remains only as an FYI when the line may not
-                (MKAN_VIEWING_AUTO=off, sends paused, a team number, a web tenant, a share required, none agreed)
+                (MKAN_VIEWING_AUTO=off, sends paused, a team number, a web tenant). A broker with no agreed share is always booked: the booking message asks for Mkan's share in one line)
 (only for those fallbacks) a person books it ─► `pnpm deal:book --task … --listing … --at … [--advance=3 --deposit=1
                 --commission=10 --water=yes --power=no --lease=12 --move-in=YYYY-MM-DD]`:
                 ListingVisit (tenant + broker + rep) and a Deal priced on what the broker

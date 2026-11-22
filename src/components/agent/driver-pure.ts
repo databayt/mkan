@@ -444,7 +444,12 @@ export function mergeHumanLines(lines: readonly ChatLine[], humans: readonly Hum
 // ── before showing ───────────────────────────────────────────────────────────
 
 /** How many homes are asked about before the tenant sees any. */
-export const PREVERIFY = 3;
+export const PREVERIFY = 2;
+
+/** A real brief — an area or a budget — is what earns a broker's time; small talk never does. */
+export function hasRealBrief(r: { district?: string | null; neighbourhood?: string | null; neighbourhoods?: readonly string[] | null; area?: string | null; near?: unknown; maxPrice?: number | null }): boolean {
+  return !!(r.district?.trim() || r.neighbourhood?.trim() || r.neighbourhoods?.length || r.area?.trim() || r.near || (r.maxPrice != null && r.maxPrice > 0));
+}
 
 /** Broker-confirmed homes first, the rest in their order. */
 export function confirmedFirst<T extends { confirmed?: boolean; availability?: string }>(items: readonly T[]): T[] {

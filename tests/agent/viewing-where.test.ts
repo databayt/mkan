@@ -82,7 +82,7 @@ describe("the rest", () => {
 
   it("the one card left is an FYI that says why and what it is doing, never 'agree it by hand'", () => {
     const base = { title: "Flat", ref: "K7", label: "Tue 17 Nov, 10:00", tenant: "+250…", broker: "Eric", command: "`pnpm deal:book …`", rep: "Osman" };
-    for (const why of ["auto-off", "sends-off", "test-number", "no-whatsapp", "share-required"] as const) {
+    for (const why of ["auto-off", "sends-off", "test-number", "no-whatsapp"] as const) {
       const card = viewingFallbackCard({ ...base, why });
       expect(card, why).toMatch(/^📅 \*FYI — viewing asked\*/);
       expect(card, why).toContain("pnpm deal:book");

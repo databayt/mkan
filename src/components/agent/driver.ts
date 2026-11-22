@@ -26,7 +26,7 @@ import { openDemand, optInDemand } from "./demand";
 import { proposeViewing, openViewingAsk, readViewingAsk } from "./deal";
 import { readViewingTime, viewingLabel } from "./deal-pure";
 import { converse } from "./driver-loop";
-import { brokerCheckOf, composeReply, confirmedFirst, DRIVER_SYSTEM, driverEnabled, guardDriverText, guardNumbers, mergeHumanLines, pickHumanTurns, PREVERIFY, renderTurn, replyLanguageOf, resolvePick, type ChatLine, type DriverState, type HumanTurn, type PickRead } from "./driver-pure";
+import { brokerCheckOf, composeReply, confirmedFirst, DRIVER_SYSTEM, driverEnabled, guardDriverText, guardNumbers, hasRealBrief, mergeHumanLines, pickHumanTurns, PREVERIFY, renderTurn, replyLanguageOf, resolvePick, type ChatLine, type DriverState, type HumanTurn, type PickRead } from "./driver-pure";
 import { withoutListingBudget } from "./ref-budget-pure";
 import { findChatMessages } from "@/lib/whatsapp/evolution";
 import { messageText } from "../../../scripts/wa/outbox-pure";
@@ -283,7 +283,8 @@ async function searchTool(t: Turn, input: Record<string, unknown>) {
   const ordered = pinned ? [pinned, ...rest] : rest;
   t.pool = new Map(ordered.slice(0, 5).map((s) => [s.id, s]));
   // The best few are asked before any is shown (inside the broker caps): the tenant is told it is being checked.
-  if (t.pool.size) await verifyTop(t, [...t.pool.values()].filter((s) => s.availability !== "rented")).catch((err) => console.warn(`[driver] ${t.taskId} pre-verify: ${(err as Error).message}`));
+  // Only a real brief (an area or a budget) earns a broker's time; small talk never does.
+  if (t.pool.size && hasRealBrief(t.requirements)) await verifyTop(t, [...t.pool.values()].filter((s) => s.availability !== "rented")).catch((err) => console.warn(`[driver] ${t.taskId} pre-verify: ${(err as Error).message}`));
   t.events.push(["search_done", "done", { tool: "search_homes", candidates: candidates.length, returned: t.pool.size, relaxed: relaxedKeys }]);
   let saved = false;
   if (t.pool.size === 0 && !t.saved) {

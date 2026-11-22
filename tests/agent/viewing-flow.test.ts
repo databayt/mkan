@@ -118,7 +118,7 @@ describe("the tenant names a time", () => {
     expect(bookViewing).not.toHaveBeenCalled();
   });
 
-  it("leaves it to the old path when the line may not do it: switched off, sends paused or a team number, no broker, a share required", async () => {
+  it("leaves it to the old path when the line may not do it: switched off, sends paused or a team number, no broker", async () => {
     const at = kigali("2026-11-17T10:00");
     process.env.MKAN_VIEWING_AUTO = "off";
     expect(await proposeViewingAuto(ask, at, TENANT, "en", now)).toBeNull();
@@ -132,10 +132,8 @@ describe("the tenant names a time", () => {
     brokerRow = { ...brokerRow, optOut: true };
     expect(await proposeViewingAuto(ask, at, TENANT, "en", now)).toBeNull();
     brokerRow = { ...brokerRow, optOut: false };
-    // Ten deals paid and no share agreed with this broker: a person settles it first.
+    // Ten or more deals paid and no share agreed with this broker: the line still asks the broker (the share is asked at booking).
     paid = 10;
-    expect(await proposeViewingAuto(ask, at, TENANT, "en", now)).toBeNull();
-    brokerRow = { ...brokerRow, sharePct: 0.1 };
     expect(await proposeViewingAuto(ask, at, TENANT, "en", now)).toMatch(/^Got it/);
     expect(sent).toHaveLength(1);
   });
@@ -160,6 +158,27 @@ describe("the broker answers", () => {
     // The terms ask is on record as already handed: a YES records the agreement, nothing else goes out.
     expect(state.get(`terms-ask:${BROKER}`)).toMatchObject({ listingId: 7, brokerId: "b1", handedAt: expect.any(String) });
     expect(pending()).toHaveLength(0);
+  });
+
+  it("after 10 paid deals a broker with no share is still booked, and Mkan's share is asked in one line in their language", async () => {
+    paid = 12;
+    await asked();
+    const r = await brokerViewingReply(BROKER, "1", later);
+    expect(r).toMatchObject({ outcome: "booked" });
+    expect(bookViewing.mock.calls[0]![0]).toMatchObject({ share: { none: true } });
+    expect(r!.reply).toMatch(/\nOne more thing, for the tenants Mkan brings you: we ask 10% of your commission when they sign.*Reply YES/);
+    expect(state.get(`terms-ask:${BROKER}`)).toMatchObject({ listingId: 7, handedAt: expect.any(String) });
+  });
+
+  it("the share line follows the broker's language: French, and Kinyarwanda with English under it", async () => {
+    brokerRow = { ...brokerRow, preferredLanguage: "FR" };
+    await asked();
+    expect((await brokerViewingReply(BROKER, "oui", later))!.reply).toMatch(/\nUne dernière chose, pour les locataires que Mkan vous amène : nous demandons 10% de votre commission.*Répondez OUI/);
+    bookViewing.mockClear();
+    brokerRow = { ...brokerRow, preferredLanguage: "RW" };
+    await asked();
+    const rw = (await brokerViewingReply(BROKER, "yego", new Date(later.getTime() + 60_000)))!.reply!;
+    expect(rw).toMatch(/\nIkindi: ku bakiriya Mkan ibazanira, dusaba 10% bya komisiyo yawe.*Subiza YEGO[^\n]*\nOne more thing/);
   });
 
   it("a broker who already agreed a share is booked on it, and not asked again", async () => {
