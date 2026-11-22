@@ -1,5 +1,43 @@
 # Agent — open issues
 
+## 2026-11-22 — The line read again: bursts, two addresses, dead links, and media
+
+- **Why:** a read of all 68 chats on the line (21 days, 502 messages) showed that 11-21's fixes had never reached a
+  tenant (prod still old). It also found four live faults:
+  - one message got 3–5 replies in two languages;
+  - two of Abdout's personal contacts got the Mkan greeting, because WhatsApp sends a contact under an @lid and a
+    phone number;
+  - a broker's "The video is not available, send the link again" was read as taken, so the home was lost;
+  - photos, screenshots and voice notes got "I can only read typed messages".
+
+  Abdout: "process videos and images and audios … speak to them in their language … short, practical, friendly,
+  human-like"; the loop must finish the work by itself, with no hand-off.
+- **Shipped on main:**
+  - `7093ee5c`: a broker reply about our link now parses as `resend`. It sends the home's /k page and photo, and the
+    home is never marked taken.
+  - `0992bc65`:
+    - a tenant's lines wait for 25 s of quiet, then one turn answers them all; STOP, START and a pick still go at
+      once;
+    - the @lid↔phone pair is kept in WaState, and the personal, STOP, hold and rate checks read both addresses.
+  - `9dbb2cb6`:
+    - `media-in.ts` reads a photo or a video frame with Haiku vision and speech with Groq Whisper; a screenshot's
+      K-code pins the home. On 6 real line messages, every screenshot gave its K-code;
+    - `language.ts` detects en/rw/fr/ar/sw;
+    - the driver's voice is rewritten (we, 1–3 lines, no "each card").
+  - `MKAN_DRIVER=on` added to the prod env file.
+- **Owed:**
+  - Deploy.
+  - Whisper has no Kinyarwanda: rw transcripts are guesses and are marked rough. Try Google Speech `rw-RW`.
+  - fr/sw strings for the Phase 1 fallback.
+  - Plan steps 2–3:
+    - pre-verify before showing;
+    - the broker side on the driver;
+    - autonomous booking;
+    - stalls handled by the bot;
+    - taken homes taken off TikTok;
+    - a first-contact classifier;
+    - takeover context.
+
 ## 2026-11-21 — The chat funnel: sell a viewing, not a list
 
 - **Why:** Abdout: "The chat block is the bottleneck. It's not intuitive, not smart, doesn't sound human,
