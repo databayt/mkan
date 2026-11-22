@@ -169,6 +169,20 @@ export async function findMessages(since: Date, until: Date, limit = 200, name =
   return res.messages?.records ?? [];
 }
 
+/**
+ * One chat's stored messages (both directions), newest first, up to `limit`. A chat is `<digits>@s.whatsapp.net` or
+ * `<id>@lid` — one person can be stored under both (contact-kind.ts reads each).
+ */
+export async function findChatMessages(remoteJid: string, limit = 20, name = INSTANCE): Promise<EvoMessage[]> {
+  const res = await request<{ messages?: { records?: EvoMessage[] } } | EvoMessage[]>(`/chat/findMessages/${encodeURIComponent(name)}`, {
+    method: "POST",
+    body: JSON.stringify({ where: { key: { remoteJid } }, page: 1, offset: limit }),
+  });
+  const all = Array.isArray(res) ? res : (res.messages?.records ?? []);
+  // The bridge may ignore a filter it does not know: never hand back another chat's lines.
+  return all.filter((m) => m.key?.remoteJid === remoteJid).slice(0, limit);
+}
+
 /** A received photo's bytes (Evolution decrypts the media for us). Null when it is gone or not media. */
 export async function mediaBytes(messageId: string, name = INSTANCE): Promise<{ bytes: Buffer; mimetype: string } | null> {
   const res = await request<{ base64?: string; mimetype?: string }>(`/chat/getBase64FromMediaMessage/${encodeURIComponent(name)}`, {

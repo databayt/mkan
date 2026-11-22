@@ -16,6 +16,9 @@
  *   hook-miss     the misses of the last hours, and when #mkan last heard (tenant-pure.ts noteMisses)
  *   alias:<lid>   {phone} — the phone digits of a `<id>@lid` address (one person, two addresses)
  *   lid-of:<phone> {lid} — the reverse, so a phone-keyed check also reads the lid's history
+ *   kind:<address> {kind, why, at, source} — who a first-time writer is (contact-kind.ts): tenant · broker · landlord ·
+ *                 personal · vendor · unknown. A label and a reason code, never a word of the chat. `source: manual`
+ *                 is `pnpm wa:personal set` and always wins. Under the phone and the `@lid`; no pruning.
  *   tburst:<phone> a tenant's unanswered lines while the chat is not yet quiet (tenant-pure.ts BurstLine)
  */
 import type { Prisma } from "@prisma/client";

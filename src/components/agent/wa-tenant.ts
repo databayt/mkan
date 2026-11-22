@@ -11,6 +11,7 @@ import "server-only";
 import { addressList, botSentTo, followLine, homesListed, humanAtAny, humanChatBeforeBot, joinBurst, planBurst, stoppedAt, type BurstLine, langOfWords, LATE_AFTER_MS, lateLead, MAX_AGE_MS, mediaEnabled, MEDIA_NUDGE_MS, REPEAT_WINDOW_MS, repeatsLast, saidJustNow, showsAHome, startText, stopConfirmText, tenantDecision, textHash, typePleaseText, type Sent, type TenantDecision } from "../../../scripts/wa/tenant-pure";
 import { db } from "@/lib/db";
 import { sendMedia, sendPresence, sendText } from "@/lib/whatsapp/evolution";
+import { contactKind, kindAct } from "./contact-kind";
 import { isPersonal, markPersonal } from "./personal";
 import { readRepWord, repDigits } from "./rep-word-pure";
 import { testPhones } from "./broker-sends";
@@ -217,7 +218,7 @@ export function answerTenant(m: TenantMessage): Promise<TenantOutcome> {
       if (personalChat) await markPersonal(m.phone, "a person talked in this chat before the agent did", lid ? [lid] : []);
       // Sent replies only (they carry an id): the pre-send echo marks would count every reply twice.
       const recent = sent.filter((s) => s.id && new Date(s.at).getTime() > hourAgo);
-      const decision = tenantDecision({
+      const decisionInput = {
         text: m.text,
         sentAt: m.sentAt,
         now,
@@ -227,7 +228,21 @@ export function answerTenant(m: TenantMessage): Promise<TenantOutcome> {
         lineRepliesLastHour: recent.length,
         media: m.media,
         personalChat: personalChat || undefined,
-      });
+      };
+      const decision = tenantDecision(decisionInput);
+      // Who is this? The bot speaks only to someone about housing (contact-kind.ts, 2026-11-22): a friend, a vendor
+      // and a bare greeter get no reply, no "please type", no card. Asked only when the turn would otherwise say
+      // something; STOP and START (anyone may say them) were judged above and are untouched.
+      if (!personal && (decision === "answer" || decision === "media" || decision === "skip-old")) {
+        const read = await contactKind(m.phone, lid, m.text.split("\n"), { excludeIds: [m.msgId, ...(m.folded ?? [])] });
+        const act = kindAct(read);
+        if (act !== "answer") {
+          await settle();
+          log(`tenant +${m.phone} ${read.kind} (${read.why}) — silent`);
+          if (act === "broker") void import("./wa-outbox").then((o) => o.kickOutbox("broker-message", 8_000)).catch(() => {});
+          return "skip-kind";
+        }
+      }
       if (decision === "stop") {
         await addToList("tenant-stop", m.phone);
         await silenceTenant(m.phone);

@@ -109,7 +109,7 @@ export function langOfWords(text: string): 'ar' | 'rw' | null {
   return null;
 }
 
-export type TenantDecision = 'answer' | 'stop' | 'start' | 'media' | 'skip-stopped' | 'skip-human' | 'skip-personal' | 'skip-old' | 'skip-empty' | 'skip-rate';
+export type TenantDecision = 'answer' | 'stop' | 'start' | 'media' | 'skip-stopped' | 'skip-human' | 'skip-personal' | 'skip-kind' | 'skip-old' | 'skip-empty' | 'skip-rate';
 
 export function tenantDecision(input: {
   text: string;
@@ -127,12 +127,18 @@ export function tenantDecision(input: {
    * Judged after STOP and START, which anyone may say, and before everything that would answer.
    */
   personalChat?: boolean;
+  /**
+   * The first-contact classifier (contact-kind.ts) says this person is not about housing — personal, vendor, an
+   * unknown greeter, or a broker the outbox reads. Judged after STOP and START, like personalChat.
+   */
+  silentKind?: boolean;
 }): TenantDecision {
   const { text, now } = input;
   if (isTenantStop(text)) return 'stop';
   if (isOptIn(text)) return input.stopped ? 'start' : 'answer';
   if (input.stopped) return 'skip-stopped';
   if (input.personalChat) return 'skip-personal';
+  if (input.silentKind) return 'skip-kind';
   if (now.getTime() - input.sentAt.getTime() > MAX_AGE_MS) return 'skip-old';
   if (input.humanAt && now.getTime() - input.humanAt.getTime() < HUMAN_HOLD_MS) return 'skip-human';
   if (!text.trim()) return input.media ? 'media' : 'skip-empty';

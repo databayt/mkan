@@ -7,6 +7,9 @@
  *   pnpm wa:personal add <+250…|<id>@lid> [--name="…"]   one number by hand
  *   pnpm wa:personal remove <address>
  *   pnpm wa:personal list
+ *   pnpm wa:personal list-kinds         who the first-contact classifier took each person for (counts; phones masked)
+ *   pnpm wa:personal set <address> <tenant|broker|landlord|personal|vendor|unknown|clear>
+ *                                       a label by hand — always wins over the classifier; `clear` hands it back
  *
  * Personal = a chat that began before the agent went live on this number
  * (2026-10-24), or a contact saved in the address book — unless it is a broker
@@ -110,6 +113,41 @@ async function put(address: string, value: Record<string, unknown>) {
   await db.waState.upsert({ where: { key }, create: { key, value: value as never }, update: { value: value as never } });
 }
 
+/** Both addresses of a person (a phone and its @lid), so a label set on one covers the other. */
+async function addressesOfPerson(address: string): Promise<string[]> {
+  const { addressesOf } = await import('../../src/components/agent/wa-state');
+  const clean = address.replace(/^\+/, '').trim();
+  return [...new Set([clean, ...(await addressesOf(clean).catch(() => [clean]))])];
+}
+
+async function listKinds() {
+  const { db } = await import('../../src/lib/db');
+  const { CONTACT_KINDS, maskAddress } = await import('../../src/components/agent/contact-kind-pure');
+  type Row = { kind: string; source: string; why: string; at: string };
+  const rows = await db.waState.findMany({ where: { key: { startsWith: 'kind:' } }, orderBy: { updatedAt: 'asc' } });
+  const listed = await db.waState.findMany({ where: { key: { startsWith: 'personal:' } }, select: { key: true } });
+  // One person is stored under their phone and their @lid with the same label: show the phone, the lid only when alone.
+  const people = new Map<string, Row>();
+  const sig = (v: Row) => `${v.kind}|${v.at}`;
+  const phoneSigs = new Set<string>();
+  const entries = rows.map((r) => ({ address: r.key.slice('kind:'.length), v: (r.value ?? {}) as Partial<Row> }));
+  for (const { address, v } of entries) if (!address.endsWith('@lid')) phoneSigs.add(sig(v as Row));
+  for (const { address, v } of entries) {
+    if (address.endsWith('@lid') && phoneSigs.has(sig(v as Row))) continue;
+    people.set(address, { kind: v.kind ?? '?', source: v.source ?? '', why: v.why ?? '', at: (v.at ?? '').slice(0, 10) });
+  }
+  for (const r of listed) {
+    const a = r.key.slice('personal:'.length);
+    if (!a.endsWith('@lid') && !people.has(a)) people.set(a, { kind: 'personal', source: 'list', why: 'personal-list', at: '' });
+  }
+  const counts = new Map<string, number>();
+  for (const [address, v] of people) {
+    counts.set(v.kind, (counts.get(v.kind) ?? 0) + 1);
+    console.log(`${maskAddress(address).padEnd(8)} ${v.kind.padEnd(9)} ${v.source.padEnd(8)} ${v.why.padEnd(22)} ${v.at}`);
+  }
+  console.log(`\n${[...CONTACT_KINDS].map((k) => `${k} ${counts.get(k) ?? 0}`).join(' · ')}  (${people.size} people)`);
+}
+
 async function main() {
   const [cmd, target] = process.argv.slice(2).filter((a) => !a.startsWith('--'));
   const { db } = await import('../../src/lib/db');
@@ -120,8 +158,27 @@ async function main() {
   } else if (cmd === 'add' && target) {
     await put(target, { name: arg('name') ?? null, why: 'by hand', at: new Date().toISOString() });
     console.log(`added ${target}`);
+  } else if (cmd === 'list-kinds') {
+    await listKinds();
+  } else if (cmd === 'set' && target) {
+    const { isContactKind, kindKey, maskAddress } = await import('../../src/components/agent/contact-kind-pure');
+    const kind = process.argv.slice(2).filter((a) => !a.startsWith('--'))[2];
+    const addresses = await addressesOfPerson(target);
+    if (kind === 'clear') {
+      await db.waState.deleteMany({ where: { key: { in: addresses.map(kindKey) } } });
+      console.log(`cleared the label of ${maskAddress(target)} — the classifier reads them afresh`);
+    } else if (isContactKind(kind)) {
+      const value = { kind, why: 'set-by-hand', at: new Date().toISOString(), source: 'manual' };
+      for (const a of addresses) await db.waState.upsert({ where: { key: kindKey(a) }, create: { key: kindKey(a), value }, update: { value } });
+      console.log(`${maskAddress(target)} is ${kind} (by hand, ${addresses.length} address${addresses.length === 1 ? '' : 'es'})`);
+    } else {
+      console.log('usage: pnpm wa:personal set <address> <tenant|broker|landlord|personal|vendor|unknown|clear>');
+    }
   } else if (cmd === 'remove' && target) {
     await db.waState.deleteMany({ where: { key: keyOf(target) } });
+    // Off the list also forgets what the classifier thought: they are read afresh the next time they write.
+    const { kindKey } = await import('../../src/components/agent/contact-kind-pure');
+    await db.waState.deleteMany({ where: { key: { in: (await addressesOfPerson(target)).map(kindKey) } } });
     console.log(`removed ${target}`);
   } else if (cmd === 'suggest') {
     const list = await suggest();
@@ -136,7 +193,7 @@ async function main() {
       console.log(`applied: ${list.length} chat(s) on the personal list`);
     }
   } else {
-    console.log('usage: pnpm wa:personal suggest [--apply] | add <address> [--name=…] | remove <address> | list');
+    console.log('usage: pnpm wa:personal suggest [--apply] | add <address> [--name=…] | remove <address> | list | list-kinds | set <address> <kind>');
   }
   process.exit(0);
 }

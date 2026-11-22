@@ -16,6 +16,13 @@ const handle = vi.fn();
 const silence = vi.fn(async () => {});
 vi.mock("@/components/agent/whatsapp-chat", () => ({ handleTenantWhatsApp: (a: unknown) => handle(a), silenceTenant: () => silence() }));
 
+// Who is writing (contact-kind.ts): every test below is a tenant unless it says otherwise; the classifier has its own tests.
+const kindRead = vi.fn<(phone: string, lid: string | null, lines: string[]) => Promise<{ kind: string; why: string; source: string }>>(async () => ({ kind: "tenant", why: "housing-words", source: "rule" }));
+vi.mock("@/components/agent/contact-kind", async () => {
+  const pure = await import("@/components/agent/contact-kind-pure");
+  return { ...pure, contactKind: (phone: string, lid: string | null, lines: string[]) => kindRead(phone, lid, lines) };
+});
+
 let stopped: string[] = [];
 const state = {
   claimMessage: vi.fn(async () => ({ mode: "fresh" as const, tries: 1 })),
@@ -41,7 +48,8 @@ const msg = (phone: string, text: string, o: Record<string, unknown> = {}) => ({
 
 beforeEach(() => {
   stopped = [];
-  for (const f of [sendText, personal, post, handle, silence, kick, ...Object.values(state)]) f.mockClear();
+  for (const f of [sendText, personal, post, handle, silence, kick, kindRead, ...Object.values(state)]) f.mockClear();
+  kindRead.mockResolvedValue({ kind: "tenant", why: "housing-words", source: "rule" });
   personal.mockResolvedValue(false);
   handle.mockResolvedValue({ reply: "Here are homes", taskId: "t1" });
   state.claimMessage.mockResolvedValue({ mode: "fresh", tries: 1 });
@@ -172,5 +180,55 @@ describe("one reply per burst (2026-11-22)", () => {
     const out = await answerTenantBurst("250720000045", [line("f1", "Mwiriwe", 20 * 60), line("f2", "inzu remera", 5)]);
     expect(out).toBe("sent");
     expect(sendText.mock.calls[0]![1]).toMatch(/^Sorry for the slow reply/);
+  });
+});
+
+describe("who is writing — the bot is silent with anyone who is not about housing (2026-11-22)", () => {
+  it.each(["personal", "vendor", "unknown"])("a %s gets no reply, no card, no turn; the message is settled", async (kind) => {
+    kindRead.mockResolvedValue({ kind, why: "x", source: "history" });
+    expect(await answerTenant(msg("250720000051", "Hello mr"))).toBe("skip-kind");
+    expect(handle).not.toHaveBeenCalled();
+    expect(sendText).not.toHaveBeenCalled();
+    expect(post).not.toHaveBeenCalled();
+    expect(state.settleMessage).toHaveBeenCalled();
+  });
+  it("a media-only message from a vendor gets no 'please type'", async () => {
+    kindRead.mockResolvedValue({ kind: "vendor", why: "sales-words", source: "model" });
+    expect(await answerTenant(msg("250720000052", "", { media: true }))).toBe("skip-kind");
+    expect(sendText).not.toHaveBeenCalled();
+  });
+  it("an old message from a friend is not posted to #mkan", async () => {
+    kindRead.mockResolvedValue({ kind: "personal", why: "owner-chatted", source: "history" });
+    expect(await answerTenant(msg("250720000053", "hello", { sentAt: new Date(Date.now() - 13 * 3_600_000) }))).toBe("skip-kind");
+    expect(post).not.toHaveBeenCalled();
+  });
+  it("a landlord and a tenant get the normal turn", async () => {
+    for (const kind of ["landlord", "tenant"]) {
+      kindRead.mockResolvedValue({ kind, why: "x", source: "rule" });
+      expect(await answerTenant(msg(`25072000005${kind === "tenant" ? 4 : 5}`, "hi"))).toBe("sent");
+    }
+    expect(handle).toHaveBeenCalledTimes(2);
+  });
+  it("a broker the directory does not know is left to the outbox pass, silent here", async () => {
+    kindRead.mockResolvedValue({ kind: "broker", why: "says-broker", source: "rule" });
+    expect(await answerTenant(msg("250720000056", "I am a broker, I have rooms"))).toBe("skip-kind");
+    expect(handle).not.toHaveBeenCalled();
+    await vi.waitFor(() => expect(kick).toHaveBeenCalledWith("broker-message", 8_000));
+  });
+  it("STOP and START are unchanged whoever the person is", async () => {
+    kindRead.mockResolvedValue({ kind: "vendor", why: "x", source: "model" });
+    expect(await answerTenant(msg("250720000057", "STOP"))).toBe("stop");
+    expect(kindRead).not.toHaveBeenCalled();
+    expect(sendText.mock.calls[0]![1]).toMatch(/START/);
+  });
+  it("a person on the personal list skips the classifier: the handler's own gate keeps judging them", async () => {
+    personal.mockResolvedValue(true);
+    await answerTenant(msg("250720000058", "I am looking for a house"));
+    expect(kindRead).not.toHaveBeenCalled();
+    expect(handle).toHaveBeenCalled();
+  });
+  it("the classifier reads every line of a burst, never the folded ids", async () => {
+    await answerTenantBurst("250720000059", [{ id: "g1", text: "Hello", sentAt: new Date(Date.now() - 60_000) }, { id: "g2", text: "I need 2 bedrooms", sentAt: new Date(Date.now() - 5_000) }]);
+    expect(kindRead.mock.calls[0]![2]).toEqual(["Hello", "I need 2 bedrooms"]);
   });
 });
