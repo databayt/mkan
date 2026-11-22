@@ -26,7 +26,7 @@ node cf/env-split.mjs "$SRC" secrets > "$OUT"
 # TICKET_QR_SECRET / ANALYTICS_SALT_SECRET: pinned to the pre-2026-11-06 NEXTAUTH_SECRET when the
 # session secret rotated, so bus tickets already issued still verify and visitor ids stay stable
 # (both fell back to NEXTAUTH_SECRET).
-for VAR in NEXTAUTH_SECRET AUTH_SECRET RESEND_API_KEY GROQ_API_KEY SLACK_BOT_TOKEN AGENT_ANTHROPIC_API_KEY MKAN_WA_OUTBOX MKAN_WA_BRIDGE_SECRET MKAN_EVOLUTION_KEY TICKET_QR_SECRET ANALYTICS_SALT_SECRET; do
+for VAR in NEXTAUTH_SECRET AUTH_SECRET RESEND_API_KEY GROQ_API_KEY GEMINI_API_KEY SLACK_BOT_TOKEN AGENT_ANTHROPIC_API_KEY MKAN_WA_OUTBOX MKAN_WA_BRIDGE_SECRET MKAN_EVOLUTION_KEY TICKET_QR_SECRET ANALYTICS_SALT_SECRET; do
   V=$(security find-generic-password -s "cf-mkan-$VAR" -w 2>/dev/null || true)
   [[ -n "$V" ]] && OUT="$OUT" VAR="$VAR" V="$V" node -e '
     const fs=require("fs");const p=process.env.OUT;const o=JSON.parse(fs.readFileSync(p,"utf8"));
