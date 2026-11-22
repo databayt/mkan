@@ -43,6 +43,7 @@ import { afterViewingFor, openViewingAsk, prepareDealSheet, proposeViewing, read
 import { askTimeMessage, readAfterViewing, readViewingTime, viewingLabel } from "./deal-pure";
 import { introFollowUpFor, introMode, introTenantAnswer, startIntro } from "./deal-intro";
 import { postSlackCard } from "./whatsapp";
+import { cleanHandle, isTtPhone } from "./tiktok-channel-pure";
 import { driveTurn } from "./driver";
 import { driverEnabled } from "./driver-pure";
 
@@ -78,8 +79,9 @@ async function waDict(lang: WaLang): Promise<WaDict> {
   return { reply: a.reply, ask: a.ask, demand: a.demand, refine: a.refine, clarify: a.clarify };
 }
 
-async function profileFor(digits: string) {
-  const keyHash = hashKey(`wa:${digits}`);
+async function profileFor(digits: string, tiktok?: string | null) {
+  // A TikTok DM is a profile like a WhatsApp number is: sha256("tt:<handle>"), its pseudo number in waPhone (tiktok-channel-pure.ts).
+  const keyHash = hashKey(tiktok ? `tt:${tiktok}` : `wa:${digits}`);
   const select = { id: true, userId: true, memory: true, lastSearchAt: true, waPhone: true, firstSource: true } satisfies Prisma.AgentProfileSelect;
   const waPhone = `+${digits}`;
   const found = await db.agentProfile.findUnique({ where: { keyHash }, select });
@@ -131,6 +133,8 @@ export async function handleTenantWhatsApp(input: {
   msgId: string;
   /** A retry of a message whose last run died (wa-state.ts claimMessage): if it was already taken in, answer with where the chat stands. */
   retry?: boolean;
+  /** A TikTok DM (tiktok-chat.ts): `phone` is the handle's pseudo number; the agent runs as for any tenant, minus WhatsApp-only checks. */
+  tiktok?: string;
   /** Called once the agent will answer — the "typing…" presence, never shown before the personal / hand-off gates. */
   onAnswering?: () => void;
 }): Promise<WaResult> {
@@ -138,8 +142,9 @@ export async function handleTenantWhatsApp(input: {
   const raw = input.text.trim().slice(0, MAX_TEXT);
   if (!digits || !raw) return { reply: null, why: "empty" };
   // Abdout's own contacts on this number are read message by message below (personal.ts).
-  const personal = await isPersonal(digits);
-  const profile = await profileFor(digits);
+  const tiktok = input.tiktok && isTtPhone(input.phone) ? cleanHandle(input.tiktok) : null;
+  const personal = tiktok ? false : await isPersonal(digits);
+  const profile = await profileFor(digits, tiktok);
   const viewer: Viewer = { profile, ids: [profile.id], legacyKey: null };
 
   const since = new Date(Date.now() - 3_600_000);
@@ -408,7 +413,8 @@ export async function handleTenantWhatsApp(input: {
     await noteHandoff(input.msgId, stranger ? "not-about-a-home" : "after-hello");
     const who = profile.waPhone ?? "a number";
     const known = profile.waPhone ? `\nIf this is someone you know: \`pnpm wa:personal add ${profile.waPhone}\`` : "";
-    if (!personal && !(await saidHelloLately(digits))) {
+    // A TikTok DM always gets the line back: nobody at Mkan watches that inbox, so "stay quiet" would be silence.
+    if (!personal && (tiktok || !(await saidHelloLately(digits)))) {
       await noteHello(digits);
       await postSlackCard(`💬 ${who} wrote, not about a home — the agent said who Mkan is and asked what they are looking for:\n> ${text.slice(0, 300)}${known}`).catch(() => {});
       if (current) await stampSeen(current.id, input.msgId, 0);

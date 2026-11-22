@@ -16,6 +16,8 @@ import "server-only";
 import type { OutboundKind } from "@prisma/client";
 import { db } from "@/lib/db";
 import { waLink } from "../../../scripts/crm/public-links";
+import { isTtPhone } from "./tiktok-channel-pure";
+import { queueTikTok } from "./tiktok-channel";
 
 const DEFAULT_SLACK_CHANNEL = "C0BS2NZE2AY";
 
@@ -66,8 +68,14 @@ export interface Outgoing {
  * Send several messages. Queued for the Mac when the outbox is on; otherwise
  * one #mkan card carries every wa.me link, under `heading`.
  */
-export async function sendMessages(messages: Outgoing[], heading: string): Promise<SendChannel> {
-  if (messages.length === 0) return outboxOn() ? "queued" : "manual";
+export async function sendMessages(all: Outgoing[], heading: string): Promise<SendChannel> {
+  // A TikTok tenant (tiktok-channel-pure.ts: a pseudo number) is reached in the DM, never on WhatsApp: the
+  // message waits in WaState `tt-outbox` for the Mac's `pnpm tt:inbox`. The one branch every later message
+  // to a tenant passes — broker answers, viewings, deal sheets, follow-ups.
+  const toTikTok = all.filter((m) => isTtPhone(m.to));
+  if (toTikTok.length) await queueTikTok(toTikTok).catch((err) => console.warn(`[tiktok] outbox write failed: ${(err as Error).message}`));
+  const messages = toTikTok.length ? all.filter((m) => !isTtPhone(m.to)) : all;
+  if (messages.length === 0) return toTikTok.length || outboxOn() ? "queued" : "manual";
   const on = outboxOn();
   await db.outboundMessage.createMany({
     data: messages.map((m) => ({

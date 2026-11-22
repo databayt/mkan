@@ -18,6 +18,12 @@ export type SendMode = "off" | "gated";
 export type GateReason = "sends-off" | "not-whatsapp" | "test-phone";
 export type GateVerdict = { ok: true } | { ok: false; why: GateReason };
 
+/**
+ * A TikTok DM tenant passes like a WhatsApp one (2026-11-22): their profile's `waPhone` is the handle's pseudo
+ * number (tiktok-channel-pure.ts), so the pick is the consent and the broker's answer is queued for the DM
+ * (whatsapp.ts sendMessages → `tt-outbox`). Every cap downstream — the weekly budget, the rest, the test list — is
+ * keyed by that number and applies unchanged.
+ */
 export function tenantGate(input: { mode: SendMode; waPhone: string | null; testPhones: ReadonlySet<string> }): GateVerdict {
   if (!input.waPhone) return { ok: false, why: "not-whatsapp" };
   if (input.testPhones.has(input.waPhone.replace(/\D/g, ""))) return { ok: false, why: "test-phone" };

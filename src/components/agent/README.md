@@ -388,3 +388,33 @@ tenant WA → Evolution in the hogwarts container (instance "mkan", shared Whats
   Since 2026-11-08 the webhook marks each tenant message it delivers (`thook:<id>`); the outbox counts
   the ones the poll found without a mark (`hook-miss`) and posts one 📡 card per 6 h at 3 misses, or as
   soon as one waited 30 min — the 11-07 outage went unnoticed for hours.
+
+## TikTok DMs — the same agent, answered in the DM (2026-11-22)
+
+Tenants who DM **@mkan.rw** on TikTok get the agent WhatsApp has, in their language, and hear back in the DM when
+a broker answers or a viewing is set. TikTok has no DM API for the account, so the Mac drives the web inbox.
+
+```
+tenant DM ─ inbox in the session-vault Chrome (:9222, a hidden page, no focus)
+          ─ pnpm tt:inbox (scripts/crm/tiktok-inbox.ts; Hermes job mkan-tiktok-inbox, */10 07:00–22:00 Kigali)
+          ─ POST www.mkan.sd/api/agent/tiktok  {handle, lines:[{id,text,at,videoId?}]}   (x-mkan-tt-secret)
+          ─ tiktok-chat.ts → handleTenantWhatsApp (the same brain) → reply text → typed in the DM (≤ 2 messages)
+later:    sendMessages (whatsapp.ts) sees a TikTok tenant → WaState `tt-outbox` → the next pass types it
+```
+
+- **A handle is a pseudo number** (`tiktok-channel-pure.ts`): `+999` and twelve digits of its hash — never a real country
+  code. The profile is `sha256("tt:<handle>")` with that number in `waPhone`, so every digit-keyed rule (broker gate,
+  viewing ask, deal sheet, STOP, quiet follow-ups, caps) works unchanged. `WaState tt-handle:<digits>` maps it back.
+- **One choke point for follow-ups:** `sendMessages` (whatsapp.ts). Broker answers, viewing confirmations, deal sheets
+  and quiet-nudges all pass it; a pseudo number is queued in `tt-outbox` `[{id, handle, text, label, at}]`, never on WhatsApp.
+- **A shared video is its home:** the card's post id (read from the message's React props) → `TikTokPost.tiktokId` /
+  `sourceVideoId` / the ad it was read from → `K6972`, put in front of the tenant's words like a code message.
+- **No classifier:** a DM to the brand account is a tenant (contact-kind.ts is not asked). STOP / START work (`tenant-stop`).
+  The reply drops the "see all in the chat" web link; `/k` home links stay (no photo send from here).
+- **Held for a person:** a message of ours the bot did not type (it records every text it types in `tenant-sent`) marks
+  `tenant-human` — the bot is quiet in that chat 12 h, and so are the follow-ups. A chat that opened with OUR message is a
+  person's own conversation, never the agent's. Nothing older than 12 h is answered.
+- **Manners:** a 25 s quiet burst before one turn; at most two messages per reply (split at the first blank line); the
+  pass does nothing while Abdout is at the keyboard (HID idle < 120 s), and never outside 07:00–22:00 Kigali.
+- **Auth:** `MKAN_TT_SECRET`, else `MKAN_WA_BRIDGE_SECRET` (the Mac already has it; Keychain `cf-mkan-<name>`). Closed with neither.
+- `pnpm tt:inbox --dry` reads the inbox and prints what it would answer and send; it writes and types nothing.

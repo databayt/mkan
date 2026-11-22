@@ -35,7 +35,11 @@ export async function homeForTikTokLink(text: string): Promise<number | null> {
   const link = tiktokLink(text);
   if (!link) return null;
   const id = videoIdOf((await expand(link)) ?? "");
-  if (!id) return null;
+  return id ? homeForVideoId(id) : null;
+}
+
+/** The listing a TikTok post id shows (a TikTok DM's shared video arrives as an id, not a link), or null. */
+export async function homeForVideoId(id: string): Promise<number | null> {
   // Mkan's own post of the home, or the broker's video that post was made from.
   const post = await db.tikTokPost.findFirst({ where: { OR: [{ tiktokId: id }, { sourceVideoId: id }, { tiktokUrl: { contains: id } }] }, orderBy: { pickedAt: "desc" }, select: { listingId: true } });
   if (post) return post.listingId;

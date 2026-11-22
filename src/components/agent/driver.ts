@@ -32,6 +32,7 @@ import { findChatMessages } from "@/lib/whatsapp/evolution";
 import { messageText } from "../../../scripts/wa/outbox-pure";
 import { addressList, textHash, type Sent } from "../../../scripts/wa/tenant-pure";
 import { lidOfPhone, readState } from "./wa-state";
+import { isTtPhone } from "./tiktok-channel-pure";
 import { coerceMemory } from "./memory";
 import { rankCandidates } from "./rank";
 import { relaxations } from "./relax";
@@ -121,6 +122,8 @@ const HUMAN_LOOKBACK_MS = 3 * 86_400_000;
  * no read, no human lines.
  */
 async function humanTurnsFor(digits: string, now = Date.now()): Promise<HumanTurn[]> {
+  // A TikTok tenant has no WhatsApp chat to read; Mkan's person typing in the DM is held by `tenant-human` (tt:inbox).
+  if (isTtPhone(digits)) return [];
   try {
     const lid = await lidOfPhone(digits);
     const addrs = addressList({ phone: digits, lid });

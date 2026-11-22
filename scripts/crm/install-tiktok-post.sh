@@ -22,6 +22,9 @@
 # shares one lock, so no two ever upload at once. The times match SLOT_TIMES in
 # tiktok-post-pure.ts.
 #   bash scripts/crm/hermes/tiktok-post.sh --plan; bash scripts/crm/hermes/tiktok-upload-retry.sh --plan
+# A fifth, mkan-tiktok-inbox (every 10 min, 07:00–22:00 Kigali), runs `pnpm tt:inbox`: it answers the
+# tenants who DM @mkan.rw with the same agent WhatsApp has, and types what the agent queued for them
+# (scripts/crm/tiktok-inbox.ts). It does nothing while Abdout is at the keyboard.
 # A fourth, mkan-tiktok-stats (daily
 # 21:00), reads followers, views, likes, comments and shares per post for /monetize, and
 # puts the page's numbers in #mkan on Mondays.
@@ -47,6 +50,9 @@ EVENING_SCHEDULE="${TIKTOK_EVENING_SCHEDULE:-30 18-22 * * *}"
 STATS="mkan-tiktok-stats"
 STATS_SCRIPT="$HERMES_HOME/scripts/$STATS.sh"
 STATS_SCHEDULE="${TIKTOK_STATS_SCHEDULE:-0 21 * * *}"
+INBOX="mkan-tiktok-inbox"
+INBOX_SCRIPT="$HERMES_HOME/scripts/$INBOX.sh"
+INBOX_SCHEDULE="${TIKTOK_INBOX_SCHEDULE:-*/10 7-22 * * *}"
 
 hermes_job_ids() {
   hermes cron list 2>/dev/null | awk -v n="${1:-$NAME}" '/^  [0-9a-f]{12} \[/{id=$1} $1=="Name:" && $2==n {print id}'
@@ -60,7 +66,8 @@ if [ "${1:-}" = "--remove" ]; then
   remove_hermes_job "$RETRY"
   remove_hermes_job "$EVENING"
   remove_hermes_job "$STATS"
-  rm -f "$HERMES_SCRIPT" "$RETRY_SCRIPT" "$EVENING_SCRIPT" "$STATS_SCRIPT"
+  remove_hermes_job "$INBOX"
+  rm -f "$HERMES_SCRIPT" "$RETRY_SCRIPT" "$EVENING_SCRIPT" "$STATS_SCRIPT" "$INBOX_SCRIPT"
   exit 0
 fi
 
@@ -106,6 +113,13 @@ remove_hermes_job "$STATS"
 hermes cron create "$STATS_SCHEDULE" --name "$STATS" --script "$STATS.sh" --no-agent \
   --deliver "slack:$MKAN_CHANNEL" >/dev/null
 
+sed -e "s|\${MKAN_REPO:-/Users/abdout/mkan}|\${MKAN_REPO:-$REPO}|" \
+  "$REPO/scripts/crm/hermes/tiktok-inbox.sh" >"$INBOX_SCRIPT.tmp"
+chmod +x "$INBOX_SCRIPT.tmp" && mv -f "$INBOX_SCRIPT.tmp" "$INBOX_SCRIPT"
+remove_hermes_job "$INBOX"
+hermes cron create "$INBOX_SCHEDULE" --name "$INBOX" --script "$INBOX.sh" --no-agent \
+  --deliver "slack:$MKAN_CHANNEL" >/dev/null
+
 # Only one scheduler may own the tick: the old launchd job rendered without posting.
 launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
 if [ -f "$PLIST" ]; then
@@ -116,4 +130,5 @@ fi
 echo "installed Hermes job $NAME — '$SCHEDULE', picks the day's homes ($PER_DAY: one clean video each) and posts the first to @mkan.rw"
 echo "installed Hermes job $RETRY — '$RETRY_SCHEDULE', posts each slot's share and renders ahead (or runs the whole post when 07:00 rendered nothing)"
 echo "installed Hermes job $EVENING — '$EVENING_SCHEDULE', adds the 15:00 sweep's ads, then posts each slot's share and renders ahead"
+echo "installed Hermes job $INBOX — '$INBOX_SCHEDULE', answers the TikTok DMs with the rental agent and types its queued follow-ups"
 echo "installed Hermes job $STATS — '$STATS_SCHEDULE', the page's views and likes in #mkan"
