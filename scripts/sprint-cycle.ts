@@ -10,7 +10,7 @@
  *   b. unblock — a blocked prompt whose `unblockWhen` now holds goes back to pending; one without a
  *                condition is retried once after 48 h, its last result kept for the next session
  *   c. measure — lessons due (24 h after done) get their after-value and a verdict: moved / flat / worse
- *   d. plan    — no active WEEK or MONTH sprint: one planner session (kun-claude.sh, unattended, Opus,
+ *   d. plan    — no active WEEK or MONTH sprint: one planner session (kun-claude.sh, unattended, Sonnet,
  *                lean) writes the plan JSON from the roadmap entry for the week (src/lib/monetize/roadmap.ts)
  *                and the live numbers; zod-checked, else the roadmap entry as is, else nextSteps()
  *   e. top up  — under 2 pending prompts: each next step with no open prompt becomes one (gated steps
@@ -363,8 +363,8 @@ const DISALLOWED = [
 /** One planner session; resolves with its exit code (75 = parked: the plan's limit or the loop's budget, 124 = timed out). */
 function runPlanner(prompt: string, logPath: string): Promise<number> {
   const bin = process.env.KUN_CLAUDE ?? `${process.env.HOME}/.claude/bin/kun-claude.sh`;
-  // Opus plans, Sonnet executes (Abdout, 2026-11-07); lean: no MCP servers or skills — the planner reads files only.
-  const args = ['-p', prompt, '--model', 'opus', '--dangerously-skip-permissions', '--max-turns', '30', '--tools', 'Read,Write,Glob,Grep', '--disallowedTools', ...DISALLOWED];
+  // Sonnet plans and executes (was Opus planner until 2026-11-24, to cut plan burn); lean: no MCP servers or skills — the planner reads files only.
+  const args = ['-p', prompt, '--model', 'sonnet', '--dangerously-skip-permissions', '--max-turns', '30', '--tools', 'Read,Write,Glob,Grep', '--disallowedTools', ...DISALLOWED];
   return new Promise((resolve) => {
     const log: string[] = [];
     const child = spawn(bin, args, {
@@ -373,7 +373,7 @@ function runPlanner(prompt: string, logPath: string): Promise<number> {
       detached: true,
       stdio: ['ignore', 'pipe', 'pipe'],
       // The runner's job name: the planner counts toward the same daily cap (engine.json).
-      env: { ...process.env, MKAN_UNATTENDED: '1', KUN_LEAN: '1', CLAUDE_CODE_EFFORT_LEVEL: 'high', KUN_JOB: process.env.KUN_JOB ?? 'hermes:mkan-sprint-runner' },
+      env: { ...process.env, MKAN_UNATTENDED: '1', KUN_LEAN: '1', CLAUDE_CODE_EFFORT_LEVEL: 'medium', KUN_JOB: process.env.KUN_JOB ?? 'hermes:mkan-sprint-runner' },
     });
     child.stdout.on('data', (d) => log.push(String(d)));
     child.stderr.on('data', (d) => log.push(String(d)));
@@ -498,8 +498,10 @@ async function topUp(db: Db, model: MonetizeOverview, now: Date, out: Summary) {
  * and at most REPLAN_MAX a day; a parked planner (plan limit, budget) never counts. The loop's budget
  * (engine.json claude_budget) is what keeps this from burning the plan.
  */
-const REPLAN_GAP_H = 2;
-const REPLAN_MAX = 8;
+const REPLAN_GAP_H = 4;
+const REPLAN_MAX = 4;
+// Idle ticks cost zero tokens: when no prompt changed state since the last planner call, ask again only after this long.
+const REPLAN_SAME_STATE_H = 12;
 async function replan(db: Db, model: MonetizeOverview, metrics: Metrics, now: Date, out: Summary) {
   const active = (await openSprints(db)).filter((s) => s.endsAt > now && s.startsAt <= now);
   const week = active.find((s) => s.kind === 'WEEK');
@@ -512,8 +514,17 @@ async function replan(db: Db, model: MonetizeOverview, metrics: Metrics, now: Da
   const lastN = used.length ? Math.max(...used) : 0;
   const last = lastN ? Date.parse(readFileSync(join(DATA, `.replanned-${today}-${lastN}`), 'utf8').trim()) : NaN;
   if (Number.isFinite(last) && now.getTime() - last < REPLAN_GAP_H * H) return say(`replan: nothing runnable; the last top-up was under ${REPLAN_GAP_H} h ago`);
+  const fpFile = join(DATA, '.replan-state');
+  const fp = prompts.map((p) => `${p.id}:${p.status}`).sort().join('|');
+  try {
+    const [prevAt, prevFp] = readFileSync(fpFile, 'utf8').split('\n');
+    if (prevFp === fp && now.getTime() - Date.parse(prevAt!) < REPLAN_SAME_STATE_H * H) return say('replan: nothing changed since the last planner call — skipped (no tokens)');
+  } catch {
+    /* no previous call */
+  }
   if (dry) return say('replan: nothing runnable — would ask the planner for 1–3 new prompts');
   mkdirSync(DATA, { recursive: true });
+  writeFileSync(fpFile, `${now.toISOString()}\n${fp}`);
   writeFileSync(join(DATA, `.replanned-${today}-${lastN + 1}`), now.toISOString());
   const recent = prompts
     .filter((p) => !isWebText(p.text) && (OPEN.includes(p.status) || (p.processedAt && now.getTime() - p.processedAt.getTime() < 72 * H)))
